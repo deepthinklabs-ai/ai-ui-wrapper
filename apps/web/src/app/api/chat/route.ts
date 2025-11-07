@@ -1,70 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
+import { NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export async function POST(req: Request) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      console.error("OPENAI_API_KEY is missing");
-      return NextResponse.json(
-        { error: "Missing OPENAI_API_KEY on server" },
-        { status: 500 }
-      );
-    }
-
     const body = await req.json();
     const messages = body?.messages;
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      console.error("Bad request body:", body);
       return NextResponse.json(
-        { error: "Request body must include a non-empty 'messages' array" },
+        { error: "Missing messages array" },
         { status: 400 }
       );
     }
 
-    const formattedMessages = messages.map((m: any) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    console.log("Calling OpenAI with messages:", messages);
 
-    console.log("Calling OpenAI with messages:", formattedMessages);
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: formattedMessages,
-      }),
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini-2024-07-18", // or your preferred model
+      messages,
     });
 
-    const data = await response.json();
-    console.log("OpenAI raw response:", data);
+    console.log("OpenAI raw response:", completion);
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: data?.error?.message ?? "OpenAI API error" },
-        { status: 500 }
-      );
-    }
+    const reply =
+      completion.choices?.[0]?.message?.content ??
+      "Sorry, I couldn't generate a response.";
 
-    const reply = data.choices?.[0]?.message;
-    if (!reply) {
-      return NextResponse.json(
-        { error: "No reply from OpenAI" },
-        { status: 500 }
-      );
-    }
-
+    // 👈 THIS is what the browser will see
     return NextResponse.json({ reply });
-  } catch (err: any) {
-    console.error("Chat API error:", err);
+  } catch (err) {
+    console.error("Error in /api/chat:", err);
     return NextResponse.json(
-      { error: err?.message ?? "Unexpected server error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
