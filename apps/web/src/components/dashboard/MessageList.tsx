@@ -4,11 +4,15 @@ import React, { useEffect, useRef } from "react";
 import type { Message } from "@/types/chat";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import MessageActions from "./MessageActions";
 
 type MessageListProps = {
   messages: Message[];
   loading: boolean;
-  thinking: boolean; // 👈 NEW
+  thinking: boolean;
+  onRevertToMessage?: (messageId: string) => void;
+  onForkFromMessage?: (messageId: string) => void;
+  messageActionsDisabled?: boolean;
 };
 
 function formatTimestamp(iso: string | null | undefined): string {
@@ -25,6 +29,9 @@ const MessageList: React.FC<MessageListProps> = ({
   messages,
   loading,
   thinking,
+  onRevertToMessage,
+  onForkFromMessage,
+  messageActionsDisabled = false,
 }) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,9 +47,10 @@ const MessageList: React.FC<MessageListProps> = ({
         <div className="text-xs text-slate-500">Loading messages…</div>
       )}
 
-      {messages.map((m) => {
+      {messages.map((m, index) => {
         const isUser = m.role === "user";
         const isSummary = m.content.startsWith("**Thread summary**");
+        const isLastMessage = index === messages.length - 1;
         const label = isUser
           ? "You"
           : isSummary
@@ -58,30 +66,47 @@ const MessageList: React.FC<MessageListProps> = ({
             key={m.id}
             className={`flex w-full ${
               isUser ? "justify-end" : "justify-start"
-            }`}
+            } group`}
           >
-            <div
-              className={`max-w-[70%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                isUser
-                  ? "bg-sky-600 text-white"
-                  : isSummary
-                  ? "bg-emerald-900/60 text-emerald-50 border border-emerald-700/70"
-                  : "bg-slate-900 text-slate-100 border border-slate-800"
-              }`}
-            >
-              <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide opacity-70">
-                <span>{label}</span>
-                {timestamp && (
-                  <span className="ml-2 normal-case text-[10px] opacity-75">
-                    {timestamp}
-                  </span>
-                )}
-              </div>
+            <div className="flex flex-col gap-0 max-w-[70%]">
+              {/* Message Actions - only on assistant messages */}
+              {onRevertToMessage && onForkFromMessage && !isUser && (
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                  <MessageActions
+                    messageId={m.id}
+                    isLastMessage={isLastMessage}
+                    isUserMessage={isUser}
+                    onRevert={onRevertToMessage}
+                    onForkFrom={onForkFromMessage}
+                    disabled={messageActionsDisabled}
+                  />
+                </div>
+              )}
 
-              <div className="prose prose-invert prose-sm max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {m.content}
-                </ReactMarkdown>
+              {/* Message Content */}
+              <div
+                className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                  isUser
+                    ? "bg-sky-600 text-white"
+                    : isSummary
+                    ? "bg-emerald-900/60 text-emerald-50 border border-emerald-700/70"
+                    : "bg-slate-900 text-slate-100 border border-slate-800"
+                }`}
+              >
+                <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide opacity-70">
+                  <span>{label}</span>
+                  {timestamp && (
+                    <span className="ml-2 normal-case text-[10px] opacity-75">
+                      {timestamp}
+                    </span>
+                  )}
+                </div>
+
+                <div className="prose prose-invert prose-sm max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           </div>

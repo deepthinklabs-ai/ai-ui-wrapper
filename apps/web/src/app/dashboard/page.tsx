@@ -1,18 +1,26 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { redirect } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useThreads } from "@/hooks/useThreads";
 import { useMessages } from "@/hooks/useMessages";
+import { useTextSelection } from "@/hooks/useTextSelection";
+import { useThreadOperations } from "@/hooks/useThreadOperations";
+import { useContextPanel } from "@/hooks/useContextPanel";
+import { useMessageComposition } from "@/hooks/useMessageComposition";
+import { useMessageActions } from "@/hooks/useMessageActions";
+import { useTextConversion } from "@/hooks/useTextConversion";
 import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
 import MessageList from "@/components/dashboard/MessageList";
 import MessageComposer from "@/components/dashboard/MessageComposer";
+import TextSelectionPopup from "@/components/contextPanel/TextSelectionPopup";
+import ContextPanel from "@/components/contextPanel/ContextPanel";
 
 export default function DashboardPage() {
   const { user, loadingUser, error: userError, signOut } = useAuthSession();
-  const [draft, setDraft] = useState("");
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loadingUser && !user) {
@@ -27,6 +35,10 @@ export default function DashboardPage() {
     selectedThreadId,
     selectThread,
     createThread,
+    createThreadWithContext,
+    forkThread,
+    deleteThread,
+    refreshThreads,
   } = useThreads(user?.id);
 
   const {
@@ -37,22 +49,83 @@ export default function DashboardPage() {
     summarizeInFlight,
     sendMessage,
     summarizeThread,
-  } = useMessages(selectedThreadId);
+    generateSummary,
+    refreshMessages,
+  } = useMessages(selectedThreadId, {
+    onThreadTitleUpdated: refreshThreads,
+  });
 
   const currentThread =
     threads.find((t) => t.id === selectedThreadId) ?? null;
 
-  const handleSend = async () => {
-    const content = draft.trim();
-    if (!content || !selectedThreadId) return;
-    await sendMessage(content);
-    setDraft("");
-  };
+  // Text selection detection
+  const { selection, clearSelection } = useTextSelection(messagesContainerRef);
 
-  const handleSummarize = async () => {
-    if (!selectedThreadId) return;
-    await summarizeThread();
-  };
+  // Message composition (draft, files, send handler)
+  const { draft, setDraft, attachedFiles, setAttachedFiles, handleSend } =
+    useMessageComposition({
+      selectedThreadId,
+      sendMessage,
+    });
+
+  // Text conversion (convert draft to Markdown or JSON)
+  const {
+    convertingToMarkdown,
+    convertingToJson,
+    convertToMarkdown,
+    convertToJson,
+  } = useTextConversion({
+    onTextConverted: (convertedText) => setDraft(convertedText),
+  });
+
+  const handleConvertToMarkdown = () => convertToMarkdown(draft);
+  const handleConvertToJson = () => convertToJson(draft);
+
+  // Thread operations (fork, summarize, summarize and continue)
+  const {
+    summarizeAndContinueInFlight,
+    forkInFlight,
+    handleSummarize,
+    handleSummarizeAndContinue,
+    handleFork,
+  } = useThreadOperations({
+    selectedThreadId,
+    messages,
+    currentThreadTitle: currentThread?.title ?? null,
+    generateSummary,
+    createThreadWithContext,
+    forkThread,
+    summarizeThread,
+    refreshThreads,
+  });
+
+  // Context panel (text selection, context questions)
+  const {
+    isContextPanelOpen,
+    selectedContextText,
+    handleAddContext,
+    handleCloseContextPanel,
+    handleContextSubmit,
+  } = useContextPanel({
+    selection,
+    clearSelection,
+    threadMessages: messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+  });
+
+  // Message actions (revert, fork from message)
+  const {
+    revertInFlight,
+    forkFromMessageInFlight,
+    handleRevertToMessage,
+    handleForkFromMessage,
+  } = useMessageActions({
+    threadId: selectedThreadId,
+    currentThreadTitle: currentThread?.title ?? null,
+    messages,
+    refreshMessages,
+    forkThread,
+    refreshThreads,
+  });
 
   if (loadingUser) {
     return (
@@ -84,6 +157,7 @@ export default function DashboardPage() {
           selectedThreadId={selectedThreadId}
           onSelectThread={selectThread}
           onNewThread={createThread}
+          onDeleteThread={deleteThread}
           onSignOut={signOut}
         />
       </aside>
@@ -111,11 +185,17 @@ export default function DashboardPage() {
             {/* Chat card: messages + composer, very clearly separate from sidebar */}
             <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-lg">
               {/* Messages list (scrolls) */}
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div
+                ref={messagesContainerRef}
+                className="flex-1 overflow-y-auto px-4 py-4"
+              >
                 <MessageList
                   messages={messages}
                   loading={loadingMessages}
                   thinking={sendInFlight || summarizeInFlight}
+                  onRevertToMessage={handleRevertToMessage}
+                  onForkFromMessage={handleForkFromMessage}
+                  messageActionsDisabled={revertInFlight || forkFromMessageInFlight}
                 />
               </div>
 
@@ -127,14 +207,45 @@ export default function DashboardPage() {
                   onSend={handleSend}
                   disabled={sendInFlight || !selectedThreadId}
                   onSummarize={handleSummarize}
+                  onSummarizeAndContinue={handleSummarizeAndContinue}
+                  onFork={handleFork}
                   canSummarize={!!selectedThreadId && messages.length > 0}
                   summarizing={summarizeInFlight}
+                  summarizingAndContinuing={summarizeAndContinueInFlight}
+                  forking={forkInFlight}
+                  attachedFiles={attachedFiles}
+                  onFilesChange={setAttachedFiles}
+                  onConvertToMarkdown={handleConvertToMarkdown}
+                  onConvertToJson={handleConvertToJson}
+                  convertingToMarkdown={convertingToMarkdown}
+                  convertingToJson={convertingToJson}
                 />
               </div>
             </section>
           </div>
         </div>
       </main>
+
+      {/* Text Selection Popup */}
+      {selection && (
+        <TextSelectionPopup
+          x={selection.x}
+          y={selection.y}
+          onAddContext={handleAddContext}
+        />
+      )}
+
+      {/* Context Panel */}
+      <ContextPanel
+        isOpen={isContextPanelOpen}
+        onClose={handleCloseContextPanel}
+        contextText={selectedContextText}
+        threadMessages={messages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }))}
+        onSubmit={handleContextSubmit}
+      />
     </div>
   );
 }
