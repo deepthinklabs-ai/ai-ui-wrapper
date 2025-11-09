@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import type { Message } from "@/types/chat";
+import type { AIModel } from "@/lib/apiKeyStorage";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MessageActions from "./MessageActions";
@@ -10,7 +11,9 @@ type MessageListProps = {
   messages: Message[];
   loading: boolean;
   thinking: boolean;
-  onRevertToMessage?: (messageId: string) => void;
+  currentModel?: AIModel;
+  onRevertToMessage?: (messageId: string, switchToOriginalModel: boolean) => void;
+  onRevertWithDraft?: (messageId: string, switchToOriginalModel: boolean) => void;
   onForkFromMessage?: (messageId: string) => void;
   messageActionsDisabled?: boolean;
 };
@@ -29,7 +32,9 @@ const MessageList: React.FC<MessageListProps> = ({
   messages,
   loading,
   thinking,
+  currentModel,
   onRevertToMessage,
+  onRevertWithDraft,
   onForkFromMessage,
   messageActionsDisabled = false,
 }) => {
@@ -61,6 +66,11 @@ const MessageList: React.FC<MessageListProps> = ({
 
         const timestamp = formatTimestamp(m.created_at);
 
+        // Check if this user message has an AI response after it (for "Revert with Draft" button)
+        const hasAiResponseAfter = isUser &&
+          index < messages.length - 1 &&
+          messages[index + 1].role === "assistant";
+
         return (
           <div
             key={m.id}
@@ -69,15 +79,20 @@ const MessageList: React.FC<MessageListProps> = ({
             } group`}
           >
             <div className="flex flex-col gap-0 max-w-[70%]">
-              {/* Message Actions - only on assistant messages */}
-              {onRevertToMessage && onForkFromMessage && !isUser && (
+              {/* Message Actions - show on all messages (different buttons for user vs assistant) */}
+              {onRevertToMessage && onForkFromMessage && onRevertWithDraft && currentModel && (
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                   <MessageActions
                     messageId={m.id}
+                    messageModel={m.model}
                     isLastMessage={isLastMessage}
                     isUserMessage={isUser}
+                    currentModel={currentModel}
+                    messagesAfterCount={messages.length - index - 1}
                     onRevert={onRevertToMessage}
+                    onRevertWithDraft={onRevertWithDraft}
                     onForkFrom={onForkFromMessage}
+                    hasAiResponseAfter={hasAiResponseAfter}
                     disabled={messageActionsDisabled}
                   />
                 </div>

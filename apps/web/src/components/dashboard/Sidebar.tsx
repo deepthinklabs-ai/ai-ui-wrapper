@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 type Thread = {
   id: string;
@@ -27,6 +28,24 @@ export default function Sidebar({
   onDeleteThread,
   onSignOut,
 }: SidebarProps) {
+  const router = useRouter();
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    if (isUserMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isUserMenuOpen]);
+
   const handleDelete = (e: React.MouseEvent, threadId: string, threadTitle: string) => {
     e.stopPropagation(); // Prevent selecting the thread when clicking delete
 
@@ -38,6 +57,7 @@ export default function Sidebar({
       onDeleteThread(threadId);
     }
   };
+
   return (
     <div className="flex h-full flex-col bg-slate-950 text-slate-100">
       {/* Top: app + user info + new thread */}
@@ -45,8 +65,69 @@ export default function Sidebar({
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           AI UI Wrapper
         </div>
-        <div className="mt-1 truncate text-sm text-slate-200">
-          {userEmail ?? "Signed in"}
+
+        {/* User Menu Button */}
+        <div className="relative mt-1" ref={menuRef}>
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="w-full flex items-center justify-between rounded-md px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-900 transition-colors"
+          >
+            <span className="truncate">{userEmail ?? "Signed in"}</span>
+            <svg
+              className={`h-4 w-4 flex-shrink-0 transition-transform ${isUserMenuOpen ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Dropdown Menu */}
+          {isUserMenuOpen && (
+            <div className="absolute left-0 right-0 mt-1 rounded-md border border-slate-700 bg-slate-800 shadow-lg z-10">
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  router.push("/settings");
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors rounded-t-md"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                Settings
+              </button>
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  onSignOut();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors rounded-b-md"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
 
         <button
@@ -111,16 +192,6 @@ export default function Sidebar({
         </ul>
       </div>
 
-      {/* Bottom: sign out */}
-      <div className="border-t border-slate-800 px-3 py-3">
-        <button
-          type="button"
-          onClick={onSignOut}
-          className="w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950"
-        >
-          Sign out
-        </button>
-      </div>
     </div>
   );
 }

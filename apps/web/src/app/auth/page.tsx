@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useApiKeyCleanup } from "@/hooks/useApiKeyCleanup";
 
 type UserSummary = {
   id: string;
@@ -27,6 +28,9 @@ type Message = {
 
 export default function DashboardPage() {
   const router = useRouter();
+
+  // Auto-clear API key on logout for security
+  useApiKeyCleanup();
 
   // auth
   const [loadingUser, setLoadingUser] = useState(true);

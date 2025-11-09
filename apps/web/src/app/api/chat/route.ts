@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     console.log("Calling OpenAI with messages:", messages);
 
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini-2024-07-18", // or your preferred model
+      model: "gpt-4o", // Using GPT-4o for better general knowledge and reasoning
       messages,
     });
 

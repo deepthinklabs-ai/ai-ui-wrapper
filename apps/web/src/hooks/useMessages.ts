@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Message, MessageRole } from "@/types/chat";
-import { sendChatRequest, type ContentPart } from "@/lib/chatClient";
+import { sendUnifiedChatRequest, type UnifiedContentPart } from "@/lib/unifiedAIClient";
 import { generateThreadTitle, shouldGenerateTitle } from "@/lib/titleGenerator";
 import { processFiles, formatFilesForMessage } from "@/lib/fileProcessor";
+import { getSelectedModel } from "@/lib/apiKeyStorage";
 
 type UseMessagesOptions = {
   onThreadTitleUpdated?: () => void;
+  systemPromptAddition?: string;
 };
 
 type UseMessagesResult = {
@@ -76,6 +78,17 @@ export function useMessages(
       const textFilesContent = formatFilesForMessage(processedFiles);
       const dbContent = content + textFilesContent;
 
+      // Store attachment metadata for later restoration
+      const attachmentMetadata = processedFiles.length > 0
+        ? processedFiles.map(f => ({
+            name: f.name,
+            type: f.type,
+            size: f.size,
+            content: f.content,
+            isImage: f.isImage,
+          }))
+        : null;
+
       // 1) Insert user message into DB
       const { data: insertedUser, error: insertUserError } = await supabase
         .from("messages")
@@ -84,6 +97,7 @@ export function useMessages(
           role: "user",
           content: dbContent,
           model: null,
+          attachments: attachmentMetadata,
         })
         .select()
         .single();
@@ -103,11 +117,11 @@ export function useMessages(
 
       // For the new message, if there are images, use the vision format
       const imageFiles = processedFiles.filter(f => f.isImage);
-      let newMessageContent: string | ContentPart[];
+      let newMessageContent: string | UnifiedContentPart[];
 
       if (imageFiles.length > 0) {
         // Use vision format with content parts
-        const contentParts: ContentPart[] = [];
+        const contentParts: UnifiedContentPart[] = [];
 
         // Add text part if there's any text
         if (content.trim() || processedFiles.some(f => !f.isImage)) {
@@ -133,16 +147,26 @@ export function useMessages(
         newMessageContent = dbContent;
       }
 
-      const payloadMessages = [
+      // Add system prompt if provided (for step-by-step mode or other instructions)
+      const payloadMessages: Array<{ role: MessageRole; content: string | UnifiedContentPart[] }> = [];
+
+      if (options?.systemPromptAddition) {
+        payloadMessages.push({
+          role: "system" as MessageRole,
+          content: options.systemPromptAddition,
+        });
+      }
+
+      payloadMessages.push(
         ...previousMessages,
         {
           role: "user" as MessageRole,
           content: newMessageContent,
-        },
-      ];
+        }
+      );
 
-      // 4) Call centralized chat client
-      const replyText = await sendChatRequest(payloadMessages);
+      // 4) Call unified AI client (routes to OpenAI or Claude based on selected model)
+      const replyText = await sendUnifiedChatRequest(payloadMessages);
 
       // 5) Insert assistant reply into DB
       const { data: insertedAssistant, error: insertAssistantError } =
@@ -152,7 +176,7 @@ export function useMessages(
             thread_id: threadId,
             role: "assistant",
             content: replyText,
-            model: "gpt-4o-mini", // adjust if needed
+            model: getSelectedModel(), // Use user's selected model
           })
           .select()
           .single();
@@ -239,7 +263,7 @@ Be thorough and ensure you capture information from the BEGINNING, MIDDLE, and E
       { role: "user", content: summaryPrompt },
     ];
 
-    const summaryBody = await sendChatRequest(payloadMessages);
+    const summaryBody = await sendUnifiedChatRequest(payloadMessages);
     return summaryBody;
   };
 
@@ -257,7 +281,7 @@ Be thorough and ensure you capture information from the BEGINNING, MIDDLE, and E
           thread_id: threadId,
           role: "assistant",
           content: summaryContent,
-          model: "gpt-4o-mini",
+          model: getSelectedModel(),
         })
         .select()
         .single();

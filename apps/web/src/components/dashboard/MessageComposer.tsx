@@ -2,12 +2,18 @@
 
 import React, { KeyboardEvent, useRef } from "react";
 import TextConversionButtons from "./TextConversionButtons";
+import ModelDropdown from "./ModelDropdown";
+import StepByStepToggle from "./StepByStepToggle";
+import type { AIModel } from "@/lib/apiKeyStorage";
+import { getFileUploadWarning } from "@/lib/modelCapabilities";
 
 type MessageComposerProps = {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
   disabled: boolean;
+  selectedModel?: AIModel;
+  onModelChange?: (model: AIModel) => void;
   onSummarize?: () => void;
   onSummarizeAndContinue?: () => void;
   onFork?: () => void;
@@ -21,6 +27,11 @@ type MessageComposerProps = {
   onConvertToJson?: () => void;
   convertingToMarkdown?: boolean;
   convertingToJson?: boolean;
+  // Step-by-step mode props
+  isStepByStepWithExplanation?: boolean;
+  isStepByStepNoExplanation?: boolean;
+  onToggleStepByStepWithExplanation?: () => void;
+  onToggleStepByStepNoExplanation?: () => void;
 };
 
 const MessageComposer: React.FC<MessageComposerProps> = ({
@@ -28,6 +39,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   onChange,
   onSend,
   disabled,
+  selectedModel,
+  onModelChange,
   onSummarize,
   onSummarizeAndContinue,
   onFork,
@@ -41,6 +54,10 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   onConvertToJson,
   convertingToMarkdown = false,
   convertingToJson = false,
+  isStepByStepWithExplanation = false,
+  isStepByStepNoExplanation = false,
+  onToggleStepByStepWithExplanation,
+  onToggleStepByStepNoExplanation,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,8 +92,33 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
+  // Check if current model supports the attached files
+  const fileWarning = selectedModel ? getFileUploadWarning(selectedModel, attachedFiles) : null;
+
   return (
     <div className="border-t border-slate-800 bg-slate-950 px-4 py-3">
+      {/* File Upload Warning */}
+      {fileWarning && (
+        <div className="mb-3 rounded-md border border-amber-600 bg-amber-600/10 px-3 py-2 text-xs text-amber-400">
+          <div className="flex items-start gap-2">
+            <svg
+              className="h-4 w-4 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <span>{fileWarning}</span>
+          </div>
+        </div>
+      )}
+
       {/* Attached Files Display */}
       {attachedFiles.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
@@ -155,39 +197,62 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
             onKeyDown={handleKeyDown}
             disabled={disabled}
           />
-          {/* File Upload Button */}
-          {onFilesChange && (
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                onChange={handleFileSelect}
-                className="hidden"
-                accept="image/*,.pdf,.txt,.md,.json,.csv,.js,.ts,.tsx,.jsx,.py,.java,.c,.cpp,.html,.css,.xml,.yaml,.yml"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
+          {/* Model Dropdown and File Upload Row */}
+          <div className="flex items-center gap-2">
+            {/* Model Dropdown */}
+            {selectedModel && onModelChange && (
+              <ModelDropdown
+                selectedModel={selectedModel}
+                onModelChange={onModelChange}
                 disabled={disabled}
-                className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-60"
-                title="Attach files or images"
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              />
+            )}
+
+            {/* File Upload Button */}
+            {onFilesChange && (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,.pdf,.txt,.md,.json,.csv,.js,.ts,.tsx,.jsx,.py,.java,.c,.cpp,.html,.css,.xml,.yaml,.yml"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={disabled}
+                  className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-60"
+                  title="Attach files or images"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                  />
-                </svg>
-                Attach files
-              </button>
-            </div>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                    />
+                  </svg>
+                  Attach files
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Step-by-Step Mode Toggle */}
+          {onToggleStepByStepWithExplanation && onToggleStepByStepNoExplanation && (
+            <StepByStepToggle
+              isWithExplanationEnabled={isStepByStepWithExplanation}
+              isNoExplanationEnabled={isStepByStepNoExplanation}
+              onToggleWithExplanation={onToggleStepByStepWithExplanation}
+              onToggleNoExplanation={onToggleStepByStepNoExplanation}
+              disabled={disabled}
+            />
           )}
 
           {/* Text Conversion Buttons */}

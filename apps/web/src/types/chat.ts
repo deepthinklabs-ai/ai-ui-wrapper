@@ -9,11 +9,20 @@ export type Thread = {
   updated_at: string | null;
 };
 
+export type AttachmentMetadata = {
+  name: string;
+  type: string;
+  size: number;
+  content: string; // base64 for images, text content for text files
+  isImage: boolean;
+};
+
 export type Message = {
   id: string;
   thread_id: string;
   role: MessageRole;
   content: string;
   model: string | null;
+  attachments?: AttachmentMetadata[] | null;
   created_at: string;
 };

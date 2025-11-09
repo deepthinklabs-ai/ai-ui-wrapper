@@ -2,10 +2,10 @@
  * Title Generator Utility
  *
  * Automatically generates concise thread titles based on the first user message
- * using OpenAI's GPT model.
+ * using the user's selected AI model.
  */
 
-import { sendChatRequest } from "./chatClient";
+import { sendUnifiedChatRequest } from "./unifiedAIClient";
 import type { MessageRole } from "@/types/chat";
 
 /**
@@ -41,7 +41,7 @@ Title: "State Management Best Practices"`;
       { role: "user", content: userMessage },
     ];
 
-    const titleResponse = await sendChatRequest(messages);
+    const titleResponse = await sendUnifiedChatRequest(messages);
 
     // Clean up the response (remove quotes if present, trim)
     let title = titleResponse.trim();

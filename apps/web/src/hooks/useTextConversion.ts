@@ -9,7 +9,7 @@
 "use client";
 
 import { useState } from "react";
-import { sendChatRequest } from "@/lib/chatClient";
+import { sendUnifiedChatRequest } from "@/lib/unifiedAIClient";
 
 type ConversionFormat = "markdown" | "json";
 
@@ -60,7 +60,7 @@ ${text}`,
     ];
 
     try {
-      const convertedText = await sendChatRequest(messages);
+      const convertedText = await sendUnifiedChatRequest(messages);
       onTextConverted(convertedText);
     } catch (error) {
       console.error(`Error converting to ${format}:`, error);

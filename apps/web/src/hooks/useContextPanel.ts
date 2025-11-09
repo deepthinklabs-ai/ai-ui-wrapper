@@ -18,13 +18,15 @@ type UseContextPanelOptions = {
 
 type UseContextPanelResult = {
   isContextPanelOpen: boolean;
-  selectedContextText: string;
+  selectedContextSections: string[];
   handleAddContext: () => void;
+  handleRemoveContextSection: (index: number) => void;
   handleCloseContextPanel: () => void;
   handleContextSubmit: (
     question: string,
-    contextText: string,
-    threadMessages?: { role: "user" | "assistant"; content: string }[]
+    contextSections: string[],
+    threadMessagesParam?: { role: "user" | "assistant"; content: string }[],
+    files?: File[]
   ) => Promise<string>;
 };
 
@@ -32,30 +34,49 @@ export function useContextPanel(options: UseContextPanelOptions): UseContextPane
   const { selection, clearSelection, threadMessages } = options;
 
   const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
-  const [selectedContextText, setSelectedContextText] = useState("");
+  const [selectedContextSections, setSelectedContextSections] = useState<string[]>([]);
 
   const handleAddContext = () => {
     if (!selection) return;
 
-    setSelectedContextText(selection.text);
-    setIsContextPanelOpen(true);
+    // If panel is already open, add to existing sections
+    if (isContextPanelOpen) {
+      setSelectedContextSections((prev) => [...prev, selection.text]);
+    } else {
+      // First selection - open panel with this text
+      setSelectedContextSections([selection.text]);
+      setIsContextPanelOpen(true);
+    }
+
     clearSelection();
+  };
+
+  const handleRemoveContextSection = (index: number) => {
+    setSelectedContextSections((prev) => {
+      const newSections = prev.filter((_, i) => i !== index);
+      // If no sections left, close the panel
+      if (newSections.length === 0) {
+        setIsContextPanelOpen(false);
+      }
+      return newSections;
+    });
   };
 
   const handleCloseContextPanel = () => {
     setIsContextPanelOpen(false);
-    setSelectedContextText("");
+    setSelectedContextSections([]);
   };
 
   const handleContextSubmit = async (
     question: string,
-    contextText: string,
-    threadMessagesParam?: { role: "user" | "assistant"; content: string }[]
+    contextSections: string[],
+    threadMessagesParam?: { role: "user" | "assistant"; content: string }[],
+    files?: File[]
   ): Promise<string> => {
     try {
       // Use provided thread messages or fall back to the hook's thread messages
       const messagesToUse = threadMessagesParam || threadMessages;
-      const response = await askContextQuestion(question, contextText, messagesToUse);
+      const response = await askContextQuestion(question, contextSections, messagesToUse, files);
       return response;
     } catch (error) {
       console.error("Error in context question:", error);
@@ -65,8 +86,9 @@ export function useContextPanel(options: UseContextPanelOptions): UseContextPane
 
   return {
     isContextPanelOpen,
-    selectedContextText,
+    selectedContextSections,
     handleAddContext,
+    handleRemoveContextSection,
     handleCloseContextPanel,
     handleContextSubmit,
   };

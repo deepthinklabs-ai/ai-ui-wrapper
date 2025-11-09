@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { redirect } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useThreads } from "@/hooks/useThreads";
@@ -10,17 +10,43 @@ import { useThreadOperations } from "@/hooks/useThreadOperations";
 import { useContextPanel } from "@/hooks/useContextPanel";
 import { useMessageComposition } from "@/hooks/useMessageComposition";
 import { useMessageActions } from "@/hooks/useMessageActions";
+import { useRevertWithDraft } from "@/hooks/useRevertWithDraft";
 import { useTextConversion } from "@/hooks/useTextConversion";
+import { useStepByStepMode } from "@/hooks/useStepByStepMode";
+import { useApiKeyCleanup } from "@/hooks/useApiKeyCleanup";
+import { getSelectedModel, setSelectedModel, type AIModel } from "@/lib/apiKeyStorage";
 import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
 import MessageList from "@/components/dashboard/MessageList";
 import MessageComposer from "@/components/dashboard/MessageComposer";
+import RevertUndoButton from "@/components/dashboard/RevertUndoButton";
+import RevertWithDraftUndoButton from "@/components/dashboard/RevertWithDraftUndoButton";
 import TextSelectionPopup from "@/components/contextPanel/TextSelectionPopup";
 import ContextPanel from "@/components/contextPanel/ContextPanel";
 
 export default function DashboardPage() {
   const { user, loadingUser, error: userError, signOut } = useAuthSession();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Model selection state
+  const [selectedModel, setSelectedModelState] = useState<AIModel>(() => getSelectedModel());
+
+  const handleModelChange = (model: AIModel) => {
+    setSelectedModelState(model);
+    setSelectedModel(model); // Persist to localStorage
+  };
+
+  // Step-by-step mode
+  const {
+    isStepByStepWithExplanation,
+    isStepByStepNoExplanation,
+    toggleStepByStepWithExplanation,
+    toggleStepByStepNoExplanation,
+    getSystemPromptAddition,
+  } = useStepByStepMode();
+
+  // Auto-clear API key on logout for security
+  useApiKeyCleanup();
 
   useEffect(() => {
     if (!loadingUser && !user) {
@@ -53,6 +79,7 @@ export default function DashboardPage() {
     refreshMessages,
   } = useMessages(selectedThreadId, {
     onThreadTitleUpdated: refreshThreads,
+    systemPromptAddition: getSystemPromptAddition(),
   });
 
   const currentThread =
@@ -102,8 +129,9 @@ export default function DashboardPage() {
   // Context panel (text selection, context questions)
   const {
     isContextPanelOpen,
-    selectedContextText,
+    selectedContextSections,
     handleAddContext,
+    handleRemoveContextSection,
     handleCloseContextPanel,
     handleContextSubmit,
   } = useContextPanel({
@@ -118,6 +146,9 @@ export default function DashboardPage() {
     forkFromMessageInFlight,
     handleRevertToMessage,
     handleForkFromMessage,
+    canUndoRevert,
+    undoRevertInFlight,
+    handleUndoRevert,
   } = useMessageActions({
     threadId: selectedThreadId,
     currentThreadTitle: currentThread?.title ?? null,
@@ -125,7 +156,54 @@ export default function DashboardPage() {
     refreshMessages,
     forkThread,
     refreshThreads,
+    onModelChange: handleModelChange,
+    currentModel: selectedModel,
   });
+
+  // Revert with draft (revert and pre-populate composer)
+  const {
+    revertWithDraftInFlight,
+    handleRevertWithDraft: handleRevertWithDraftCore,
+    canUndoRevertWithDraft,
+    undoRevertWithDraftInFlight,
+    handleUndoRevertWithDraft,
+  } = useRevertWithDraft({
+    threadId: selectedThreadId,
+    messages,
+    refreshMessages,
+    onModelChange: handleModelChange,
+    onDraftChange: setDraft,
+    onAttachmentsChange: setAttachedFiles,
+    currentModel: selectedModel,
+    currentDraft: draft,
+  });
+
+  // Operation guards to prevent concurrent message operations
+  const isMessageOperationInProgress = revertInFlight || forkFromMessageInFlight || revertWithDraftInFlight;
+
+  const handleRevertToMessageGuarded = async (messageId: string, switchToOriginalModel: boolean) => {
+    if (isMessageOperationInProgress) {
+      console.warn("Another message operation is in progress, ignoring revert request");
+      return;
+    }
+    await handleRevertToMessage(messageId, switchToOriginalModel);
+  };
+
+  const handleRevertWithDraftGuarded = async (messageId: string, switchToOriginalModel: boolean) => {
+    if (isMessageOperationInProgress) {
+      console.warn("Another message operation is in progress, ignoring revert with draft request");
+      return;
+    }
+    await handleRevertWithDraftCore(messageId, switchToOriginalModel);
+  };
+
+  const handleForkFromMessageGuarded = async (messageId: string) => {
+    if (isMessageOperationInProgress) {
+      console.warn("Another message operation is in progress, ignoring fork request");
+      return;
+    }
+    await handleForkFromMessage(messageId);
+  };
 
   if (loadingUser) {
     return (
@@ -193,9 +271,25 @@ export default function DashboardPage() {
                   messages={messages}
                   loading={loadingMessages}
                   thinking={sendInFlight || summarizeInFlight}
-                  onRevertToMessage={handleRevertToMessage}
-                  onForkFromMessage={handleForkFromMessage}
-                  messageActionsDisabled={revertInFlight || forkFromMessageInFlight}
+                  currentModel={selectedModel}
+                  onRevertToMessage={handleRevertToMessageGuarded}
+                  onRevertWithDraft={handleRevertWithDraftGuarded}
+                  onForkFromMessage={handleForkFromMessageGuarded}
+                  messageActionsDisabled={isMessageOperationInProgress}
+                />
+              </div>
+
+              {/* Undo buttons - only one can show at a time */}
+              <div className="border-t border-slate-800/50">
+                <RevertUndoButton
+                  canUndo={canUndoRevert}
+                  undoInFlight={undoRevertInFlight}
+                  onUndo={handleUndoRevert}
+                />
+                <RevertWithDraftUndoButton
+                  canUndo={canUndoRevertWithDraft}
+                  undoInFlight={undoRevertWithDraftInFlight}
+                  onUndo={handleUndoRevertWithDraft}
                 />
               </div>
 
@@ -206,6 +300,8 @@ export default function DashboardPage() {
                   onChange={setDraft}
                   onSend={handleSend}
                   disabled={sendInFlight || !selectedThreadId}
+                  selectedModel={selectedModel}
+                  onModelChange={handleModelChange}
                   onSummarize={handleSummarize}
                   onSummarizeAndContinue={handleSummarizeAndContinue}
                   onFork={handleFork}
@@ -219,6 +315,10 @@ export default function DashboardPage() {
                   onConvertToJson={handleConvertToJson}
                   convertingToMarkdown={convertingToMarkdown}
                   convertingToJson={convertingToJson}
+                  isStepByStepWithExplanation={isStepByStepWithExplanation}
+                  isStepByStepNoExplanation={isStepByStepNoExplanation}
+                  onToggleStepByStepWithExplanation={toggleStepByStepWithExplanation}
+                  onToggleStepByStepNoExplanation={toggleStepByStepNoExplanation}
                 />
               </div>
             </section>
@@ -232,6 +332,7 @@ export default function DashboardPage() {
           x={selection.x}
           y={selection.y}
           onAddContext={handleAddContext}
+          isContextPanelOpen={isContextPanelOpen}
         />
       )}
 
@@ -239,11 +340,13 @@ export default function DashboardPage() {
       <ContextPanel
         isOpen={isContextPanelOpen}
         onClose={handleCloseContextPanel}
-        contextText={selectedContextText}
+        contextSections={selectedContextSections}
+        onRemoveSection={handleRemoveContextSection}
         threadMessages={messages.map((m) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
         }))}
+        selectedModel={selectedModel}
         onSubmit={handleContextSubmit}
       />
     </div>
