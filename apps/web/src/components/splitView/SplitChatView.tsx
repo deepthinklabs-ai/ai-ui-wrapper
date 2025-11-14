@@ -61,15 +61,37 @@ export default function SplitChatView({
   const leftThread = threads.find((t) => t.id === leftThreadId) || null;
   const rightThread = threads.find((t) => t.id === rightThreadId) || null;
 
+  // Store sendMessage refs for cross-chat
+  const leftSendMessageRef = useRef<((message: string, files: File[]) => Promise<void>) | null>(null);
+  const rightSendMessageRef = useRef<((message: string, files: File[]) => Promise<void>) | null>(null);
+
   // Cross-chat: Handle AI responses from each panel
   const handleLeftAIResponse = useCallback(async (content: string) => {
-    if (!crossChatEnabled || !rightThreadId) return;
+    if (!crossChatEnabled || !rightThreadId || !rightSendMessageRef.current) return;
+
     console.log('[Cross-Chat] Left AI responded, relaying to right panel');
+    const relayMessage = `**[Message from Left Panel AI]**\n\n${content}`;
+
+    // Send to right panel
+    try {
+      await rightSendMessageRef.current(relayMessage, []);
+    } catch (error) {
+      console.error('[Cross-Chat] Failed to relay message to right panel:', error);
+    }
   }, [crossChatEnabled, rightThreadId]);
 
   const handleRightAIResponse = useCallback(async (content: string) => {
-    if (!crossChatEnabled || !leftThreadId) return;
+    if (!crossChatEnabled || !leftThreadId || !leftSendMessageRef.current) return;
+
     console.log('[Cross-Chat] Right AI responded, relaying to left panel');
+    const relayMessage = `**[Message from Right Panel AI]**\n\n${content}`;
+
+    // Send to left panel
+    try {
+      await leftSendMessageRef.current(relayMessage, []);
+    } catch (error) {
+      console.error('[Cross-Chat] Failed to relay message to left panel:', error);
+    }
   }, [crossChatEnabled, leftThreadId]);
 
   // Create new thread handlers
@@ -220,10 +242,15 @@ export default function SplitChatView({
               selectedModel={selectedModel}
               onModelChange={onModelChange}
               onThreadTitleUpdated={onThreadTitleUpdated}
-              onCreateThread={onCreateThread}
+              onCreateThread={handleCreateLeftThread}
               onForkThread={onForkThread}
               isFeatureEnabled={isFeatureEnabled}
               showHeader={false}
+              crossChatEnabled={crossChatEnabled}
+              onAIResponse={handleLeftAIResponse}
+              exposeSendMessage={(sendFn) => {
+                leftSendMessageRef.current = sendFn;
+              }}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-slate-500">
@@ -281,10 +308,15 @@ export default function SplitChatView({
               selectedModel={selectedModel}
               onModelChange={onModelChange}
               onThreadTitleUpdated={onThreadTitleUpdated}
-              onCreateThread={onCreateThread}
+              onCreateThread={handleCreateRightThread}
               onForkThread={onForkThread}
               isFeatureEnabled={isFeatureEnabled}
               showHeader={false}
+              crossChatEnabled={crossChatEnabled}
+              onAIResponse={handleRightAIResponse}
+              exposeSendMessage={(sendFn) => {
+                rightSendMessageRef.current = sendFn;
+              }}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-slate-500">

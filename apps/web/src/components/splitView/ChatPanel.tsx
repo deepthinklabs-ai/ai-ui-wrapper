@@ -37,7 +37,7 @@ interface ChatPanelProps {
   headerTitle?: string;
   onAIResponse?: (content: string) => void; // Called when AI responds (for cross-chat)
   crossChatEnabled?: boolean; // Whether cross-chat is active
-  onSendMessage?: (message: string, files: File[]) => Promise<void>; // External message sender
+  exposeSendMessage?: (sendFn: (message: string, files: File[]) => Promise<void>) => void; // Expose sendMessage function
 }
 
 export default function ChatPanel({
@@ -55,7 +55,7 @@ export default function ChatPanel({
   headerTitle,
   onAIResponse,
   crossChatEnabled = false,
-  onSendMessage,
+  exposeSendMessage,
 }: ChatPanelProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -190,24 +190,16 @@ export default function ChatPanel({
     lastMessageCountRef.current = messages.length;
   }, [messages, crossChatEnabled, onAIResponse]);
 
-  // External message sender (for cross-chat relay)
+  // Expose sendMessage function to parent for cross-chat
   useEffect(() => {
-    if (onSendMessage && draft) {
-      // External message waiting to be sent
-      // This will be triggered by the parent component
+    if (exposeSendMessage && sendMessage) {
+      const wrappedSendMessage = async (message: string, files: File[]) => {
+        // Send the message using the internal sendMessage
+        await sendMessage(message, files);
+      };
+      exposeSendMessage(wrappedSendMessage);
     }
-  }, [onSendMessage, draft]);
-
-  // Custom send handler that uses external sender if provided
-  const customHandleSend = useCallback(async () => {
-    if (onSendMessage && draft.trim()) {
-      await onSendMessage(draft, attachedFiles);
-      setDraft("");
-      setAttachedFiles([]);
-    } else {
-      await handleSend();
-    }
-  }, [onSendMessage, draft, attachedFiles, handleSend, setDraft, setAttachedFiles]);
+  }, [exposeSendMessage, sendMessage]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -266,7 +258,7 @@ export default function ChatPanel({
           <MessageComposer
             value={draft}
             onChange={setDraft}
-            onSend={customHandleSend}
+            onSend={handleSend}
             disabled={sendInFlight}
             selectedModel={selectedModel}
             onModelChange={onModelChange}
