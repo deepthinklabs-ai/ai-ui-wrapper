@@ -74,6 +74,7 @@ export default function DashboardPage() {
     swapPanels,
     setLeftThread,
     setRightThread,
+    toggleCrossChat,
   } = useSplitView();
 
   useEffect(() => {
