@@ -12,7 +12,8 @@
       "Bash(taskkill:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "Bash(del srchooksuseResizablePanel.ts)"
+      "Bash(del srchooksuseResizablePanel.ts)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

@@ -19,6 +19,7 @@ import { useApiKeyCleanup } from "@/hooks/useApiKeyCleanup";
 import { useContextWindow } from "@/hooks/useContextWindow";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { useFeatureToggles } from "@/hooks/useFeatureToggles";
+import { useSplitView } from "@/hooks/useSplitView";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
 import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
@@ -30,6 +31,7 @@ import ContextWindowIndicator from "@/components/dashboard/ContextWindowIndicato
 import TextSelectionPopup from "@/components/contextPanel/TextSelectionPopup";
 import ContextPanel from "@/components/contextPanel/ContextPanel";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
+import SplitChatView from "@/components/splitView/SplitChatView";
 
 export default function DashboardPage() {
   const { user, loadingUser, error: userError, signOut } = useAuthSession();
@@ -63,6 +65,16 @@ export default function DashboardPage() {
 
   // Load feature toggles
   const { isFeatureEnabled } = useFeatureToggles(user?.id);
+
+  // Split view feature
+  const {
+    splitView,
+    activateSplitView,
+    deactivateSplitView,
+    swapPanels,
+    setLeftThread,
+    setRightThread,
+  } = useSplitView();
 
   useEffect(() => {
     if (!loadingUser && !user) {
@@ -306,11 +318,55 @@ export default function DashboardPage() {
 
       {/* RIGHT: chat column */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Centered chat area, like ChatGPT */}
-        <div className="flex h-full w-full justify-center overflow-hidden">
-          <div className="flex h-full w-full max-w-3xl flex-col gap-3 px-4 py-4 overflow-hidden">
-            {/* Header at top of chat column */}
-            <ChatHeader currentThreadTitle={currentThread?.title ?? null} />
+        {splitView.isActive ? (
+          /* Split View Mode */
+          <SplitChatView
+            leftThreadId={splitView.leftThreadId}
+            rightThreadId={splitView.rightThreadId}
+            threads={threads}
+            userId={user?.id}
+            userTier={tier}
+            selectedModel={selectedModel}
+            onModelChange={handleModelChange}
+            onThreadTitleUpdated={refreshThreads}
+            onCreateThread={createThread}
+            onForkThread={forkThread}
+            onClose={deactivateSplitView}
+            onSwapPanels={swapPanels}
+            onSelectLeftThread={setLeftThread}
+            onSelectRightThread={setRightThread}
+            isFeatureEnabled={isFeatureEnabled}
+            initialSplitRatio={splitView.splitRatio}
+            crossChatEnabled={splitView.crossChatEnabled}
+            onToggleCrossChat={toggleCrossChat}
+          />
+        ) : (
+          /* Normal Single Chat View */
+          <>
+            {/* Centered chat area, like ChatGPT */}
+            <div className="flex h-full w-full justify-center overflow-hidden">
+              <div className="flex h-full w-3/4 flex-col gap-3 px-4 py-4 overflow-hidden">
+                {/* Header at top of chat column with Split View button */}
+                <div className="flex items-center justify-between gap-3">
+                  <ChatHeader currentThreadTitle={currentThread?.title ?? null} />
+                  {selectedThreadId && (
+                    <button
+                      onClick={() => activateSplitView(selectedThreadId, null)}
+                      className="flex-shrink-0 rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors flex items-center gap-2"
+                      title="Open split view"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 4H5a2 2 0 00-2 2v14a2 2 0 002 2h4m0-18v18m0-18l7-2v18l-7 2"
+                        />
+                      </svg>
+                      Split View
+                    </button>
+                  )}
+                </div>
 
             {/* Context Window Indicator - shows token usage */}
             {isFeatureEnabled('context_window_indicator') && selectedThreadId && messages.length > 0 && (
@@ -404,6 +460,8 @@ export default function DashboardPage() {
             </section>
           </div>
         </div>
+          </>
+        )}
       </main>
 
       {/* Text Selection Popup */}
