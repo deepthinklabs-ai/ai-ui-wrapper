@@ -90,5 +90,5 @@ IMPORTANT: Provide your answer directly without showing your reasoning process, 
   }
 
   const response = await sendUnifiedChatRequest(messages);
-  return response;
+  return response.content;
 }

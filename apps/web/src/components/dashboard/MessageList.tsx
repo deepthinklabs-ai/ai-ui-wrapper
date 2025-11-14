@@ -3,9 +3,8 @@
 import React, { useEffect, useRef } from "react";
 import type { Message } from "@/types/chat";
 import type { AIModel } from "@/lib/apiKeyStorage";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import MessageActions from "./MessageActions";
+import type { FeatureId } from "@/types/features";
+import MessageItem from "./MessageItem";
 
 type MessageListProps = {
   messages: Message[];
@@ -16,17 +15,8 @@ type MessageListProps = {
   onRevertWithDraft?: (messageId: string, switchToOriginalModel: boolean) => void;
   onForkFromMessage?: (messageId: string) => void;
   messageActionsDisabled?: boolean;
+  isFeatureEnabled?: (featureId: FeatureId) => boolean;
 };
-
-function formatTimestamp(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 const MessageList: React.FC<MessageListProps> = ({
   messages,
@@ -37,6 +27,7 @@ const MessageList: React.FC<MessageListProps> = ({
   onRevertWithDraft,
   onForkFromMessage,
   messageActionsDisabled = false,
+  isFeatureEnabled,
 }) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -52,81 +43,21 @@ const MessageList: React.FC<MessageListProps> = ({
         <div className="text-xs text-slate-500">Loading messages…</div>
       )}
 
-      {messages.map((m, index) => {
-        const isUser = m.role === "user";
-        const isSummary = m.content.startsWith("**Thread summary**");
-        const isLastMessage = index === messages.length - 1;
-        const label = isUser
-          ? "You"
-          : isSummary
-          ? "Summary"
-          : m.role === "assistant"
-          ? "Assistant"
-          : "System";
-
-        const timestamp = formatTimestamp(m.created_at);
-
-        // Check if this user message has an AI response after it (for "Revert with Draft" button)
-        const hasAiResponseAfter = isUser &&
-          index < messages.length - 1 &&
-          messages[index + 1].role === "assistant";
-
-        return (
-          <div
-            key={m.id}
-            className={`flex w-full ${
-              isUser ? "justify-end" : "justify-start"
-            } group`}
-          >
-            <div className="flex flex-col gap-0 max-w-[70%]">
-              {/* Message Actions - show on all messages (different buttons for user vs assistant) */}
-              {onRevertToMessage && onForkFromMessage && onRevertWithDraft && currentModel && (
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                  <MessageActions
-                    messageId={m.id}
-                    messageModel={m.model}
-                    isLastMessage={isLastMessage}
-                    isUserMessage={isUser}
-                    currentModel={currentModel}
-                    messagesAfterCount={messages.length - index - 1}
-                    onRevert={onRevertToMessage}
-                    onRevertWithDraft={onRevertWithDraft}
-                    onForkFrom={onForkFromMessage}
-                    hasAiResponseAfter={hasAiResponseAfter}
-                    disabled={messageActionsDisabled}
-                  />
-                </div>
-              )}
-
-              {/* Message Content */}
-              <div
-                className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                  isUser
-                    ? "bg-sky-600 text-white"
-                    : isSummary
-                    ? "bg-emerald-900/60 text-emerald-50 border border-emerald-700/70"
-                    : "bg-slate-900 text-slate-100 border border-slate-800"
-                }`}
-              >
-                <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide opacity-70">
-                  <span>{label}</span>
-                  {timestamp && (
-                    <span className="ml-2 normal-case text-[10px] opacity-75">
-                      {timestamp}
-                    </span>
-                  )}
-                </div>
-
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {m.content}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {messages.map((m, index) => (
+        <MessageItem
+          key={m.id}
+          message={m}
+          index={index}
+          totalMessages={messages.length}
+          currentModel={currentModel}
+          onRevertToMessage={onRevertToMessage}
+          onRevertWithDraft={onRevertWithDraft}
+          onForkFromMessage={onForkFromMessage}
+          messageActionsDisabled={messageActionsDisabled}
+          nextMessage={messages[index + 1]}
+          isFeatureEnabled={isFeatureEnabled}
+        />
+      ))}
 
       {/* Typing / thinking indicator */}
       {thinking && (

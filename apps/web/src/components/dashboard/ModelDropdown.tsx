@@ -15,17 +15,19 @@ type ModelDropdownProps = {
   selectedModel: AIModel;
   onModelChange: (model: AIModel) => void;
   disabled?: boolean;
+  userTier?: "free" | "pro";
 };
 
 const ModelDropdown: React.FC<ModelDropdownProps> = ({
   selectedModel,
   onModelChange,
   disabled = false,
+  userTier,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const availableModels = getAvailableModels();
+  const availableModels = getAvailableModels(userTier);
   const selectedModelInfo = availableModels.find((m) => m.value === selectedModel);
 
   // Close dropdown when clicking outside

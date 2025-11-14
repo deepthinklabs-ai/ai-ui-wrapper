@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Thread } from "@/types/chat";
+import { useUserTier, TIER_LIMITS } from "./useUserTier";
 
 type UseThreadsResult = {
   threads: Thread[];
@@ -10,11 +11,14 @@ type UseThreadsResult = {
   threadsError: string | null;
   selectedThreadId: string | null;
   selectThread: (id: string) => void;
-  createThread: () => Promise<void>;
+  createThread: () => Promise<string | null>;
   createThreadWithContext: (contextMessage: string, title?: string) => Promise<string | null>;
   forkThread: (threadId: string, messages: { role: string; content: string; model: string | null }[]) => Promise<string | null>;
   deleteThread: (id: string) => Promise<void>;
+  updateThreadTitle: (id: string, newTitle: string) => Promise<void>;
   refreshThreads: () => Promise<void>;
+  canCreateThread: boolean;
+  threadLimitReached: boolean;
 };
 
 export function useThreads(userId: string | null | undefined): UseThreadsResult {
@@ -22,6 +26,12 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [threadsError, setThreadsError] = useState<string | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+
+  // Get user tier to enforce thread limits
+  const { tier } = useUserTier(userId);
+  const maxThreads = TIER_LIMITS[tier].maxThreads;
+  const threadLimitReached = threads.length >= maxThreads;
+  const canCreateThread = !threadLimitReached;
 
   useEffect(() => {
     if (!userId) {
@@ -62,8 +72,17 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     setSelectedThreadId(id);
   };
 
-  const createThread = async () => {
-    if (!userId) return;
+  const createThread = async (): Promise<string | null> => {
+    if (!userId) return null;
+
+    // Check thread limit
+    if (threadLimitReached) {
+      setThreadsError(
+        `You've reached the maximum of ${maxThreads} threads for the free tier. Please delete a thread or upgrade to Pro for unlimited threads.`
+      );
+      return null;
+    }
+
     try {
       const { data, error } = await supabase
         .from("threads")
@@ -75,12 +94,15 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
         .single();
 
       if (error) throw error;
-      if (!data) return;
+      if (!data) return null;
 
       setThreads((prev) => [data, ...prev]);
       setSelectedThreadId(data.id);
+
+      return data.id;
     } catch (err) {
       console.error("Error creating thread", err);
+      return null;
     }
   };
 
@@ -89,6 +111,15 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     title: string = "Continued Thread"
   ): Promise<string | null> => {
     if (!userId) return null;
+
+    // Check thread limit
+    if (threadLimitReached) {
+      setThreadsError(
+        `You've reached the maximum of ${maxThreads} threads for the free tier. Please delete a thread or upgrade to Pro for unlimited threads.`
+      );
+      return null;
+    }
+
     try {
       // 1. Create the new thread
       const { data: newThread, error: threadError } = await supabase
@@ -131,6 +162,15 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     messages: { role: string; content: string; model: string | null }[]
   ): Promise<string | null> => {
     if (!userId) return null;
+
+    // Check thread limit
+    if (threadLimitReached) {
+      setThreadsError(
+        `You've reached the maximum of ${maxThreads} threads for the free tier. Please delete a thread or upgrade to Pro for unlimited threads.`
+      );
+      return null;
+    }
+
     try {
       // 1. Get the original thread title
       const originalThread = threads.find(t => t.id === threadId);
@@ -208,6 +248,28 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     }
   };
 
+  const updateThreadTitle = async (id: string, newTitle: string) => {
+    if (!userId) return;
+    try {
+      // Update the thread title in the database
+      const { error } = await supabase
+        .from("threads")
+        .update({ title: newTitle })
+        .eq("id", id)
+        .eq("user_id", userId); // Ensure user owns this thread
+
+      if (error) throw error;
+
+      // Update local state
+      setThreads((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, title: newTitle } : t))
+      );
+    } catch (err) {
+      console.error("Error updating thread title", err);
+      setThreadsError("Failed to update thread title");
+    }
+  };
+
   return {
     threads,
     loadingThreads,
@@ -218,6 +280,9 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     createThreadWithContext,
     forkThread,
     deleteThread,
+    updateThreadTitle,
     refreshThreads,
+    canCreateThread,
+    threadLimitReached,
   };
 }

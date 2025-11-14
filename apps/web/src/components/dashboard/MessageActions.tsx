@@ -13,6 +13,7 @@ import React, { useState } from "react";
 import RevertOptionsModal from "./RevertOptionsModal";
 import RevertWithDraftModal from "./RevertWithDraftModal";
 import type { AIModel } from "@/lib/apiKeyStorage";
+import type { FeatureId } from "@/types/features";
 
 type MessageActionsProps = {
   messageId: string;
@@ -26,6 +27,7 @@ type MessageActionsProps = {
   onForkFrom: (messageId: string) => void;
   hasAiResponseAfter: boolean;
   disabled?: boolean;
+  isFeatureEnabled?: (featureId: FeatureId) => boolean;
 };
 
 const MessageActions: React.FC<MessageActionsProps> = ({
@@ -40,16 +42,24 @@ const MessageActions: React.FC<MessageActionsProps> = ({
   onForkFrom,
   hasAiResponseAfter,
   disabled = false,
+  isFeatureEnabled,
 }) => {
   const [showRevertModal, setShowRevertModal] = useState(false);
   const [showRevertWithDraftModal, setShowRevertWithDraftModal] = useState(false);
 
-  // Only show revert button on AI messages (not on last message, not on user messages)
-  const showRevert = !isUserMessage && !isLastMessage;
+  // Check if features are enabled (defaults to true if not provided)
+  const revertEnabled = isFeatureEnabled ? isFeatureEnabled('revert') : true;
+  const revertWithDraftEnabled = isFeatureEnabled ? isFeatureEnabled('revert_with_draft') : true;
+  const forkEnabled = isFeatureEnabled ? isFeatureEnabled('fork_thread') : true;
 
-  // Show "Revert with Draft" on AI messages only when there are messages after it
-  // (hasAiResponseAfter is repurposed to mean "has messages after" for AI messages)
-  const showRevertWithDraft = !isUserMessage && !isLastMessage && messagesAfterCount > 0;
+  // Only show revert button on AI messages (not on last message, not on user messages) AND if feature is enabled
+  const showRevert = revertEnabled && !isUserMessage && !isLastMessage;
+
+  // Show "Revert with Draft" on AI messages only when there are messages after it AND if feature is enabled
+  const showRevertWithDraft = revertWithDraftEnabled && !isUserMessage && !isLastMessage && messagesAfterCount > 0;
+
+  // Only show fork button on AI messages (not on user messages) AND if feature is enabled
+  const showFork = forkEnabled && !isUserMessage;
 
   const handleRevertClick = () => {
     setShowRevertModal(true);
@@ -82,28 +92,30 @@ const MessageActions: React.FC<MessageActionsProps> = ({
           isUserMessage ? "justify-end" : "justify-start"
         }`}
       >
-        {/* Fork from this message */}
-        <button
-          onClick={() => onForkFrom(messageId)}
-          disabled={disabled}
-          className="rounded-md bg-purple-600/90 hover:bg-purple-500 px-2 py-1 text-[10px] font-medium text-white shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-          title="Fork thread from this message - create a new thread with messages up to this point"
-        >
-          <svg
-            className="h-3 w-3"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {/* Fork from this message - only show on AI messages */}
+        {showFork && (
+          <button
+            onClick={() => onForkFrom(messageId)}
+            disabled={disabled}
+            className="rounded-md bg-purple-600/90 hover:bg-purple-500 px-2 py-1 text-[10px] font-medium text-white shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            title="Fork thread from this message - create a new thread with messages up to this point"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-            />
-          </svg>
-          Fork
-        </button>
+            <svg
+              className="h-3 w-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
+            </svg>
+            Fork
+          </button>
+        )}
 
         {/* Revert to this message */}
         {showRevert && (

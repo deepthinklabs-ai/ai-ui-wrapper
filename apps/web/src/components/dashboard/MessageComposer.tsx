@@ -1,11 +1,15 @@
 "use client";
 
-import React, { KeyboardEvent, useRef } from "react";
+import React, { KeyboardEvent, useRef, useCallback, useEffect } from "react";
 import TextConversionButtons from "./TextConversionButtons";
 import ModelDropdown from "./ModelDropdown";
 import StepByStepToggle from "./StepByStepToggle";
+import MicrophoneButton from "./MicrophoneButton";
 import type { AIModel } from "@/lib/apiKeyStorage";
+import type { FeatureId } from "@/types/features";
 import { getFileUploadWarning } from "@/lib/modelCapabilities";
+import { useResizableComposer } from "@/hooks/useResizableComposer";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 
 type MessageComposerProps = {
   value: string;
@@ -32,6 +36,8 @@ type MessageComposerProps = {
   isStepByStepNoExplanation?: boolean;
   onToggleStepByStepWithExplanation?: () => void;
   onToggleStepByStepNoExplanation?: () => void;
+  userTier?: "free" | "pro";
+  isFeatureEnabled?: (featureId: FeatureId) => boolean;
 };
 
 const MessageComposer: React.FC<MessageComposerProps> = ({
@@ -58,8 +64,58 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   isStepByStepNoExplanation = false,
   onToggleStepByStepWithExplanation,
   onToggleStepByStepNoExplanation,
+  userTier,
+  isFeatureEnabled,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if voice input feature is enabled (defaults to true if not provided)
+  const voiceInputEnabled = isFeatureEnabled ? isFeatureEnabled('voice_input') : true;
+  // Check if file attachments feature is enabled (defaults to true if not provided)
+  const fileAttachmentsEnabled = isFeatureEnabled ? isFeatureEnabled('file_attachments') : true;
+  // Check if model selection feature is enabled (defaults to true if not provided)
+  const modelSelectionEnabled = isFeatureEnabled ? isFeatureEnabled('model_selection') : true;
+  // Check if step-by-step mode feature is enabled (defaults to true if not provided)
+  const stepByStepModeEnabled = isFeatureEnabled ? isFeatureEnabled('step_by_step_mode') : true;
+  // Check if text conversion features are enabled (defaults to true if not provided)
+  const convertToMarkdownEnabled = isFeatureEnabled ? isFeatureEnabled('convert_to_markdown') : true;
+  const convertToJsonEnabled = isFeatureEnabled ? isFeatureEnabled('convert_to_json') : true;
+  // Check if thread operation features are enabled (defaults to true if not provided)
+  const summarizeThreadEnabled = isFeatureEnabled ? isFeatureEnabled('summarize_thread') : true;
+  const summarizeAndContinueEnabled = isFeatureEnabled ? isFeatureEnabled('summarize_and_continue') : true;
+  const forkThreadEnabled = isFeatureEnabled ? isFeatureEnabled('fork_thread') : true;
+
+  // Resizable composer functionality
+  const { height, isDragging, handleDragStart } = useResizableComposer({
+    minHeight: 80, // Matches current 2-row textarea
+    maxHeight: 600,
+    initialHeight: 80,
+  });
+
+  // Speech recognition functionality
+  // Use a ref to track the value so we don't recreate the callback on every render
+  const valueRef = useRef(value);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  const handleTranscript = useCallback((text: string) => {
+    // Append transcribed text to current value using the ref
+    const currentValue = valueRef.current;
+    const newValue = currentValue ? `${currentValue} ${text}` : text;
+    onChange(newValue);
+  }, [onChange]);
+
+  const {
+    isListening,
+    isSupported,
+    error: speechError,
+    toggleListening,
+  } = useSpeechRecognition({
+    onTranscript: handleTranscript,
+    continuous: true,
+    interimResults: true,
+  });
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -188,28 +244,45 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
 
       <div className="flex items-end gap-2">
         <div className="flex-1 flex flex-col gap-2">
+          {/* Drag Handle Bar */}
+          <div
+            onMouseDown={handleDragStart}
+            className={`group flex items-center justify-center h-2 cursor-ns-resize hover:bg-slate-800/50 rounded-t transition-colors ${
+              isDragging ? 'bg-slate-700/70' : ''
+            }`}
+            title="Drag to resize"
+          >
+            {/* Visual indicator (three horizontal dots) */}
+            <div className="flex gap-1 opacity-40 group-hover:opacity-70 transition-opacity">
+              <div className="w-1 h-1 rounded-full bg-slate-400"></div>
+              <div className="w-1 h-1 rounded-full bg-slate-400"></div>
+              <div className="w-1 h-1 rounded-full bg-slate-400"></div>
+            </div>
+          </div>
+
           <textarea
             className="resize-none rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-600"
-            rows={2}
+            style={{ height: `${height}px` }}
             placeholder="Send a message… (Shift+Enter for new line)"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={disabled}
           />
-          {/* Model Dropdown and File Upload Row */}
+          {/* Model Dropdown, File Upload, and Microphone Row */}
           <div className="flex items-center gap-2">
-            {/* Model Dropdown */}
-            {selectedModel && onModelChange && (
+            {/* Model Dropdown - only show if model selection is enabled */}
+            {modelSelectionEnabled && selectedModel && onModelChange && (
               <ModelDropdown
                 selectedModel={selectedModel}
                 onModelChange={onModelChange}
                 disabled={disabled}
+                userTier={userTier}
               />
             )}
 
-            {/* File Upload Button */}
-            {onFilesChange && (
+            {/* File Upload Button - only show if file attachments are enabled */}
+            {fileAttachmentsEnabled && onFilesChange && (
               <div>
                 <input
                   ref={fileInputRef}
@@ -242,10 +315,21 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 </button>
               </div>
             )}
+
+            {/* Microphone Button - only show if voice input is enabled */}
+            {voiceInputEnabled && (
+              <MicrophoneButton
+                isListening={isListening}
+                isSupported={isSupported}
+                onClick={toggleListening}
+                disabled={disabled}
+                error={speechError}
+              />
+            )}
           </div>
 
-          {/* Step-by-Step Mode Toggle */}
-          {onToggleStepByStepWithExplanation && onToggleStepByStepNoExplanation && (
+          {/* Step-by-Step Mode Toggle - only show if step-by-step mode is enabled */}
+          {stepByStepModeEnabled && onToggleStepByStepWithExplanation && onToggleStepByStepNoExplanation && (
             <StepByStepToggle
               isWithExplanationEnabled={isStepByStepWithExplanation}
               isNoExplanationEnabled={isStepByStepNoExplanation}
@@ -255,8 +339,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
             />
           )}
 
-          {/* Text Conversion Buttons */}
-          {onConvertToMarkdown && onConvertToJson && (
+          {/* Text Conversion Buttons - show if at least one conversion feature is enabled */}
+          {(convertToMarkdownEnabled || convertToJsonEnabled) && onConvertToMarkdown && onConvertToJson && (
             <TextConversionButtons
               hasText={!!value.trim()}
               convertingToMarkdown={convertingToMarkdown}
@@ -264,11 +348,14 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
               onConvertToMarkdown={onConvertToMarkdown}
               onConvertToJson={onConvertToJson}
               disabled={disabled}
+              showMarkdownButton={convertToMarkdownEnabled}
+              showJsonButton={convertToJsonEnabled}
             />
           )}
         </div>
         <div className="flex flex-col gap-2">
-          {onSummarize && (
+          {/* Summarize Thread button - only show if feature is enabled */}
+          {summarizeThreadEnabled && onSummarize && (
             <button
               className="rounded-md border border-slate-600 px-3 py-1 text-[11px] text-slate-200 hover:bg-slate-800 disabled:opacity-60"
               onClick={onSummarize}
@@ -278,7 +365,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
               {summarizing ? "Summarizing…" : "Summarize thread"}
             </button>
           )}
-          {onSummarizeAndContinue && (
+          {/* Summarize & Continue button - only show if feature is enabled */}
+          {summarizeAndContinueEnabled && onSummarizeAndContinue && (
             <button
               className="rounded-md border border-emerald-600 bg-emerald-600/10 px-3 py-1 text-[11px] text-emerald-400 hover:bg-emerald-600/20 disabled:opacity-60 transition-all"
               onClick={onSummarizeAndContinue}
@@ -298,7 +386,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
               )}
             </button>
           )}
-          {onFork && (
+          {/* Fork Thread button - only show if feature is enabled */}
+          {forkThreadEnabled && onFork && (
             <button
               className="rounded-md border border-purple-600 bg-purple-600/10 px-3 py-1 text-[11px] text-purple-400 hover:bg-purple-600/20 disabled:opacity-60 transition-all"
               onClick={onFork}

@@ -12,40 +12,69 @@ import type { MessageRole } from "@/types/chat";
  * Generates a short, descriptive title from a user's message
  *
  * @param userMessage - The first message from the user
+ * @param options - Optional user tier and userId for API routing
  * @returns A concise title (max ~60 characters)
  */
 export async function generateThreadTitle(
-  userMessage: string
+  userMessage: string,
+  options?: {
+    userTier?: 'free' | 'pro';
+    userId?: string;
+  }
 ): Promise<string> {
   try {
-    const systemPrompt = `You are a title generator. Given a user's message, create a very short, descriptive title (max 60 characters).
-Rules:
+    const systemPrompt = `You are a title generator. Given a user's message, respond with ONLY a short, descriptive title (max 60 characters).
+
+IMPORTANT:
+- Respond with ONLY the title text itself, no prefixes like "Title:" or labels
+- No quotes around the title
+- No punctuation at the end
 - Be concise and specific
 - Capture the main topic or question
 - Use title case
-- No quotes or punctuation at the end
 - If it's a question, make it a statement
 
 Examples:
 User: "How do I implement authentication in Next.js?"
-Title: "Next.js Authentication Implementation"
+Response: Next.js Authentication Implementation
 
 User: "Can you help me debug this React hook?"
-Title: "React Hook Debugging"
+Response: React Hook Debugging
 
 User: "What's the best way to handle state management?"
-Title: "State Management Best Practices"`;
+Response: State Management Best Practices
+
+User: "Tell me all about dogs"
+Response: All About Dogs`;
 
     const messages: { role: MessageRole; content: string }[] = [
       { role: "system", content: systemPrompt },
       { role: "user", content: userMessage },
     ];
 
-    const titleResponse = await sendUnifiedChatRequest(messages);
+    console.log("[Title Generator] Calling AI with userTier:", options?.userTier, "userId:", options?.userId);
 
-    // Clean up the response (remove quotes if present, trim)
-    let title = titleResponse.trim();
-    title = title.replace(/^["']|["']$/g, ""); // Remove leading/trailing quotes
+    const response = await sendUnifiedChatRequest(messages, {
+      userTier: options?.userTier,
+      userId: options?.userId,
+    });
+
+    // Clean up the response
+    let title = response.content.trim();
+
+    // Remove common prefixes
+    title = title.replace(/^(Title:\s*|title:\s*)/i, "");
+
+    // Remove leading/trailing quotes
+    title = title.replace(/^["']|["']$/g, "");
+
+    // Remove any markdown or formatting
+    title = title.replace(/\*\*/g, ""); // Remove bold markdown
+    title = title.replace(/\*/g, "");   // Remove italic markdown
+    title = title.replace(/`/g, "");    // Remove code backticks
+
+    // Final trim
+    title = title.trim();
 
     // Truncate if too long
     if (title.length > 60) {

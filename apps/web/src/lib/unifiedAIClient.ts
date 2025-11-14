@@ -2,13 +2,17 @@
  * Unified AI Client
  *
  * Routes requests to the appropriate AI provider (OpenAI or Claude)
- * based on the selected model.
+ * based on the selected model and user tier.
+ *
+ * - Pro users: Use backend API proxy (no API keys needed)
+ * - Free users: Direct browser calls (must provide their own API keys)
  */
 
 import { sendClientChatRequest, type ChatMessage as OpenAIChatMessage } from "./clientOpenAI";
 import { sendClaudeChatRequest, type ClaudeMessage, type ClaudeContentPart } from "./clientClaude";
 import { getSelectedModel, getModelProvider, type AIModel } from "./apiKeyStorage";
 import type { MessageRole } from "@/types/chat";
+import type { UserTier } from "@/hooks/useUserTier";
 
 /**
  * Unified content part type that supports both OpenAI and Claude formats
@@ -21,6 +25,15 @@ export type UnifiedContentPart =
 export type UnifiedChatMessage = {
   role: MessageRole;
   content: string | UnifiedContentPart[]; // Can be string or content parts for vision
+};
+
+export type UnifiedChatResponse = {
+  content: string;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+  };
 };
 
 /**
@@ -57,19 +70,71 @@ function convertToClaudeContentParts(parts: UnifiedContentPart[]): ClaudeContent
 }
 
 /**
+ * Send chat request via Pro API proxy (for Pro users)
+ */
+async function sendProChatRequest(
+  userId: string,
+  messages: UnifiedChatMessage[],
+  model: AIModel,
+  provider: 'openai' | 'claude'
+): Promise<UnifiedChatResponse> {
+  const endpoint = provider === 'openai' ? '/api/pro/openai' : '/api/pro/claude';
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId,
+      messages,
+      model,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Pro API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  return {
+    content: data.content,
+    usage: {
+      input_tokens: data.usage.input_tokens || data.usage.prompt_tokens || 0,
+      output_tokens: data.usage.output_tokens || data.usage.completion_tokens || 0,
+      total_tokens: data.usage.total_tokens || 0,
+    },
+  };
+}
+
+/**
  * Send a chat request to the appropriate AI provider
  *
  * @param messages - Array of chat messages
- * @param model - Optional model override (uses stored model if not provided)
- * @returns The AI's response text
+ * @param options - Configuration options
+ * @returns The AI's response text and token usage
  */
 export async function sendUnifiedChatRequest(
   messages: UnifiedChatMessage[],
-  model?: AIModel
-): Promise<string> {
+  options?: {
+    model?: AIModel;
+    userTier?: UserTier;
+    userId?: string;
+  }
+): Promise<UnifiedChatResponse> {
+  const { model, userTier = 'free', userId } = options || {};
   const selectedModel = model || getSelectedModel();
   const provider = getModelProvider(selectedModel);
 
+  // Pro users: Route to backend API proxy
+  if (userTier === 'pro') {
+    if (!userId) {
+      throw new Error('userId is required for Pro users');
+    }
+    return sendProChatRequest(userId, messages, selectedModel, provider);
+  }
+
+  // Free users: Direct browser calls (existing behavior)
   if (provider === "claude") {
     // Convert to Claude format
     const claudeMessages: ClaudeMessage[] = messages
@@ -99,7 +164,15 @@ export async function sendUnifiedChatRequest(
       });
     }
 
-    return await sendClaudeChatRequest(claudeMessages, selectedModel);
+    const response = await sendClaudeChatRequest(claudeMessages, selectedModel);
+    return {
+      content: response.content,
+      usage: {
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+        total_tokens: response.usage.total_tokens,
+      },
+    };
   } else {
     // OpenAI format
     const openaiMessages: OpenAIChatMessage[] = messages.map((msg) => ({
@@ -107,6 +180,14 @@ export async function sendUnifiedChatRequest(
       content: msg.content,
     }));
 
-    return await sendClientChatRequest(openaiMessages);
+    const response = await sendClientChatRequest(openaiMessages);
+    return {
+      content: response.content,
+      usage: {
+        input_tokens: response.usage.prompt_tokens,
+        output_tokens: response.usage.completion_tokens,
+        total_tokens: response.usage.total_tokens,
+      },
+    };
   }
 }

@@ -11,7 +11,8 @@ import { useState } from "react";
 
 type UseMessageCompositionOptions = {
   selectedThreadId: string | null;
-  sendMessage: (content: string, files?: File[]) => Promise<void>;
+  sendMessage: (content: string, files?: File[], overrideThreadId?: string) => Promise<void>;
+  createThread?: () => Promise<string | null>;
 };
 
 type UseMessageCompositionResult = {
@@ -23,21 +24,43 @@ type UseMessageCompositionResult = {
 };
 
 export function useMessageComposition(options: UseMessageCompositionOptions): UseMessageCompositionResult {
-  const { selectedThreadId, sendMessage } = options;
+  const { selectedThreadId, sendMessage, createThread } = options;
 
   const [draft, setDraft] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
   const handleSend = async () => {
     const content = draft.trim();
-    if ((!content && attachedFiles.length === 0) || !selectedThreadId) return;
+    if (!content && attachedFiles.length === 0) return;
 
-    // Send message with files
-    await sendMessage(content || "Here are the files:", attachedFiles);
+    // Determine which thread to use
+    let threadId = selectedThreadId;
 
-    // Clear draft and files after sending
+    // If no thread is selected and createThread is provided, create a new thread first
+    if (!threadId && createThread) {
+      const newThreadId = await createThread();
+      if (!newThreadId) {
+        console.error("Failed to create thread");
+        return;
+      }
+      threadId = newThreadId;
+    }
+
+    // If we still don't have a thread ID, we can't send the message
+    if (!threadId) {
+      console.error("No thread ID available to send message");
+      return;
+    }
+
+    // Store the files to send
+    const filesToSend = [...attachedFiles];
+
+    // Clear draft and files immediately before sending (for better UX)
     setDraft("");
     setAttachedFiles([]);
+
+    // Send message with files, passing the thread ID
+    await sendMessage(content || "Here are the files:", filesToSend, threadId);
   };
 
   return {

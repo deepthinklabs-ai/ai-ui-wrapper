@@ -11,6 +11,8 @@ import { getSelectedModel } from "@/lib/apiKeyStorage";
 type UseMessagesOptions = {
   onThreadTitleUpdated?: () => void;
   systemPromptAddition?: string;
+  userTier?: 'free' | 'pro';
+  userId?: string;
 };
 
 type UseMessagesResult = {
@@ -19,7 +21,7 @@ type UseMessagesResult = {
   messagesError: string | null;
   sendInFlight: boolean;
   summarizeInFlight: boolean;
-  sendMessage: (content: string, files?: File[]) => Promise<void>;
+  sendMessage: (content: string, files?: File[], overrideThreadId?: string) => Promise<void>;
   summarizeThread: () => Promise<void>;
   generateSummary: () => Promise<string>;
   refreshMessages: () => Promise<void>;
@@ -65,8 +67,11 @@ export function useMessages(
     }
   };
 
-  const sendMessage = async (content: string, files?: File[]) => {
-    if (!threadId || (!content.trim() && (!files || files.length === 0))) return;
+  const sendMessage = async (content: string, files?: File[], overrideThreadId?: string) => {
+    // Use overrideThreadId if provided, otherwise use the hook's threadId
+    const activeThreadId = overrideThreadId || threadId;
+
+    if (!activeThreadId || (!content.trim() && (!files || files.length === 0))) return;
 
     setSendInFlight(true);
     try {
@@ -93,7 +98,7 @@ export function useMessages(
       const { data: insertedUser, error: insertUserError } = await supabase
         .from("messages")
         .insert({
-          thread_id: threadId,
+          thread_id: activeThreadId,
           role: "user",
           content: dbContent,
           model: null,
@@ -165,21 +170,55 @@ export function useMessages(
         }
       );
 
-      // 4) Call unified AI client (routes to OpenAI or Claude based on selected model)
-      const replyText = await sendUnifiedChatRequest(payloadMessages);
+      // 4) Call unified AI client (routes to OpenAI or Claude based on selected model and user tier)
+      const response = await sendUnifiedChatRequest(payloadMessages, {
+        userTier: options?.userTier,
+        userId: options?.userId,
+      });
 
-      // 5) Insert assistant reply into DB
-      const { data: insertedAssistant, error: insertAssistantError } =
-        await supabase
+      // 5) Insert assistant reply into DB with token usage
+      // Try with token fields first (if migration has been run)
+      let insertedAssistant;
+      let insertAssistantError;
+
+      const assistantMessageWithTokens = {
+        thread_id: activeThreadId,
+        role: "assistant",
+        content: response.content,
+        model: getSelectedModel(), // Use user's selected model
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+        total_tokens: response.usage.total_tokens,
+      };
+
+      const result = await supabase
+        .from("messages")
+        .insert(assistantMessageWithTokens)
+        .select()
+        .single();
+
+      insertedAssistant = result.data;
+      insertAssistantError = result.error;
+
+      // If error (likely due to missing columns), retry without token fields
+      if (insertAssistantError) {
+        console.warn("Failed to insert with token fields, retrying without them. Run the database migration to enable token tracking.");
+        const assistantMessageWithoutTokens = {
+          thread_id: activeThreadId,
+          role: "assistant",
+          content: response.content,
+          model: getSelectedModel(),
+        };
+
+        const retryResult = await supabase
           .from("messages")
-          .insert({
-            thread_id: threadId,
-            role: "assistant",
-            content: replyText,
-            model: getSelectedModel(), // Use user's selected model
-          })
+          .insert(assistantMessageWithoutTokens)
           .select()
           .single();
+
+        insertedAssistant = retryResult.data;
+        insertAssistantError = retryResult.error;
+      }
 
       if (insertAssistantError) throw insertAssistantError;
       if (!insertedAssistant)
@@ -188,38 +227,64 @@ export function useMessages(
       // 6) Optimistically add assistant message
       setMessages((prev) => [...prev, insertedAssistant as Message]);
 
-      // 7) Auto-generate thread title if this is the first message
-      if (messages.length === 0) {
-        try {
+      // 7) Auto-generate thread title if this is the first user message
+      // Check the database directly for message count to avoid race conditions with local state
+      try {
+        console.log("[Title Generation] Checking if we should generate title for thread:", activeThreadId);
+
+        // Count messages in the database for this thread (excluding the one we just inserted)
+        const { count, error: countError } = await supabase
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .eq("thread_id", activeThreadId);
+
+        console.log("[Title Generation] Message count in DB:", count);
+
+        // If there are exactly 2 messages (1 user + 1 assistant we just added), this is the first exchange
+        const isFirstMessage = count === 2;
+
+        console.log("[Title Generation] isFirstMessage:", isFirstMessage);
+
+        if (isFirstMessage) {
           // Fetch the current thread to check its title
           const { data: threadData, error: threadError } = await supabase
             .from("threads")
             .select("title")
-            .eq("id", threadId)
+            .eq("id", activeThreadId)
             .single();
 
+          console.log("[Title Generation] Current thread title:", threadData?.title);
+          console.log("[Title Generation] Should generate?", shouldGenerateTitle(threadData?.title ?? null));
+
           if (!threadError && threadData && shouldGenerateTitle(threadData.title)) {
-            // Generate a title based on the user's first message
-            const newTitle = await generateThreadTitle(content);
+            console.log("[Title Generation] Generating title for content:", content.substring(0, 100));
+
+            // Generate a title based on the user's first message (use the original content without file additions)
+            const newTitle = await generateThreadTitle(content, {
+              userTier: options?.userTier,
+              userId: options?.userId,
+            });
+
+            console.log("[Title Generation] Generated title:", newTitle);
 
             // Update the thread title in the database
             const { error: updateError } = await supabase
               .from("threads")
               .update({ title: newTitle })
-              .eq("id", threadId);
+              .eq("id", activeThreadId);
 
             if (updateError) {
-              console.error("Error updating thread title:", updateError);
+              console.error("[Title Generation] Error updating thread title:", updateError);
             } else {
-              console.log("Thread title auto-generated:", newTitle);
+              console.log("[Title Generation] Successfully updated thread title to:", newTitle);
               // Notify parent component to refresh threads list
               options?.onThreadTitleUpdated?.();
             }
           }
-        } catch (titleErr) {
-          console.error("Error in title generation:", titleErr);
-          // Don't fail the message send if title generation fails
         }
+      } catch (titleErr) {
+        console.error("[Title Generation] Error in title generation:", titleErr);
+        // Don't fail the message send if title generation fails
       }
 
       // 8) FINAL: force a full refresh from DB to ensure consistency
@@ -263,8 +328,11 @@ Be thorough and ensure you capture information from the BEGINNING, MIDDLE, and E
       { role: "user", content: summaryPrompt },
     ];
 
-    const summaryBody = await sendUnifiedChatRequest(payloadMessages);
-    return summaryBody;
+    const response = await sendUnifiedChatRequest(payloadMessages, {
+      userTier: options?.userTier,
+      userId: options?.userId,
+    });
+    return response.content;
   };
 
   const summarizeThread = async () => {

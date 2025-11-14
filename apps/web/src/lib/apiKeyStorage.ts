@@ -38,57 +38,8 @@ export const AVAILABLE_MODELS: {
   description: string;
   provider: ModelProvider;
   capabilities: ModelCapabilities;
+  contextWindow: number; // Maximum tokens
 }[] = [
-  // OpenAI Models
-  {
-    value: 'gpt-5',
-    label: 'GPT-5',
-    description: 'Latest OpenAI model, best for coding and agentic tasks, 272K context • Supports images',
-    provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
-  },
-  {
-    value: 'gpt-5-mini',
-    label: 'GPT-5 Mini',
-    description: 'Balanced performance and cost, great for most applications • Supports images',
-    provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
-  },
-  {
-    value: 'gpt-5-nano',
-    label: 'GPT-5 Nano',
-    description: 'Ultra-fast and cost-efficient, ideal for high-volume tasks • Supports images',
-    provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
-  },
-  {
-    value: 'gpt-4o',
-    label: 'GPT-4o',
-    description: 'Previous generation flagship • Supports images',
-    provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
-  },
-  {
-    value: 'gpt-4o-mini',
-    label: 'GPT-4o Mini',
-    description: 'Fast and cost-efficient GPT-4 variant • Supports images',
-    provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
-  },
-  {
-    value: 'gpt-4-turbo',
-    label: 'GPT-4 Turbo',
-    description: 'Earlier GPT-4 version with extended context • Supports images',
-    provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
-  },
-  {
-    value: 'gpt-3.5-turbo',
-    label: 'GPT-3.5 Turbo',
-    description: 'Legacy model, fastest and cheapest • Text only (no images)',
-    provider: 'openai',
-    capabilities: { supportsImages: false, supportsFiles: false },
-  },
   // Claude Models (Claude 4+ generation)
   {
     value: 'claude-sonnet-4-5',
@@ -96,6 +47,7 @@ export const AVAILABLE_MODELS: {
     description: 'Most intelligent Claude model, best for coding and complex agents • Supports images',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 200000,
   },
   {
     value: 'claude-sonnet-4',
@@ -103,6 +55,7 @@ export const AVAILABLE_MODELS: {
     description: 'Powerful model for advanced reasoning and analysis • Supports images',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 200000,
   },
   {
     value: 'claude-opus-4-1',
@@ -110,6 +63,7 @@ export const AVAILABLE_MODELS: {
     description: 'Highest intelligence model for complex tasks and deep analysis • Supports images',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 200000,
   },
   {
     value: 'claude-haiku-4-5',
@@ -117,6 +71,7 @@ export const AVAILABLE_MODELS: {
     description: 'Fast and cost-effective, great balance of speed and capability • Supports images',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 200000,
   },
   {
     value: 'claude-haiku-3-5',
@@ -124,6 +79,64 @@ export const AVAILABLE_MODELS: {
     description: 'Ultra-fast and cheapest Claude option • Supports images',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 200000,
+  },
+  // OpenAI Models
+  {
+    value: 'gpt-5',
+    label: 'GPT-5',
+    description: 'Latest OpenAI model, best for coding and agentic tasks, 272K context • Supports images',
+    provider: 'openai',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 272000,
+  },
+  {
+    value: 'gpt-5-mini',
+    label: 'GPT-5 Mini',
+    description: 'Balanced performance and cost, great for most applications • Supports images',
+    provider: 'openai',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 128000,
+  },
+  {
+    value: 'gpt-5-nano',
+    label: 'GPT-5 Nano',
+    description: 'Ultra-fast and cost-efficient, ideal for high-volume tasks • Supports images',
+    provider: 'openai',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 128000,
+  },
+  {
+    value: 'gpt-4o',
+    label: 'GPT-4o',
+    description: 'Previous generation flagship • Supports images',
+    provider: 'openai',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 128000,
+  },
+  {
+    value: 'gpt-4o-mini',
+    label: 'GPT-4o Mini',
+    description: 'Fast and cost-efficient GPT-4 variant • Supports images',
+    provider: 'openai',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 128000,
+  },
+  {
+    value: 'gpt-4-turbo',
+    label: 'GPT-4 Turbo',
+    description: 'Earlier GPT-4 version with extended context • Supports images',
+    provider: 'openai',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 128000,
+  },
+  {
+    value: 'gpt-3.5-turbo',
+    label: 'GPT-3.5 Turbo',
+    description: 'Legacy model, fastest and cheapest • Text only (no images)',
+    provider: 'openai',
+    capabilities: { supportsImages: false, supportsFiles: false },
+    contextWindow: 16385,
   },
 ];
 

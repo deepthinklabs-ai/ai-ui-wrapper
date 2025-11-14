@@ -2,7 +2,8 @@
  * Available Models Utility
  *
  * Filters available AI models based on which API keys the user has configured.
- * Only shows models for providers where the user has provided an API key.
+ * For Pro users, all models are available (uses backend API keys).
+ * For Free users, only shows models for providers where they've provided an API key.
  */
 
 import { AVAILABLE_MODELS, type AIModel, type ModelProvider } from "./apiKeyStorage";
@@ -11,8 +12,15 @@ import { hasClaudeApiKey } from "./apiKeyStorage.claude";
 
 /**
  * Get which providers the user has API keys for
+ * @param userTier - Optional user tier ('free' | 'pro')
  */
-export function getAvailableProviders(): ModelProvider[] {
+export function getAvailableProviders(userTier?: "free" | "pro"): ModelProvider[] {
+  // Pro users have access to all providers via backend API keys
+  if (userTier === "pro") {
+    return ["openai", "claude"];
+  }
+
+  // Free users only get models for providers they have API keys for
   const providers: ModelProvider[] = [];
 
   if (hasApiKey()) {
@@ -27,12 +35,13 @@ export function getAvailableProviders(): ModelProvider[] {
 }
 
 /**
- * Get all models that the user has access to based on their API keys
+ * Get all models that the user has access to based on their API keys or tier
+ * @param userTier - Optional user tier ('free' | 'pro')
  */
-export function getAvailableModels(): typeof AVAILABLE_MODELS {
-  const availableProviders = getAvailableProviders();
+export function getAvailableModels(userTier?: "free" | "pro"): typeof AVAILABLE_MODELS {
+  const availableProviders = getAvailableProviders(userTier);
 
-  // Filter models to only include those from providers with API keys
+  // Filter models to only include those from providers the user has access to
   return AVAILABLE_MODELS.filter((model) =>
     availableProviders.includes(model.provider)
   );

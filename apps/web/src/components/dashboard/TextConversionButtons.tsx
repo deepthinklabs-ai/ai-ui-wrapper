@@ -16,6 +16,8 @@ type TextConversionButtonsProps = {
   onConvertToMarkdown: () => void;
   onConvertToJson: () => void;
   disabled?: boolean;
+  showMarkdownButton?: boolean;
+  showJsonButton?: boolean;
 };
 
 const TextConversionButtons: React.FC<TextConversionButtonsProps> = ({
@@ -25,13 +27,23 @@ const TextConversionButtons: React.FC<TextConversionButtonsProps> = ({
   onConvertToMarkdown,
   onConvertToJson,
   disabled = false,
+  showMarkdownButton = true,
+  showJsonButton = true,
 }) => {
   const isDisabled = disabled || !hasText;
 
+  // Don't render anything if both buttons are hidden
+  if (!showMarkdownButton && !showJsonButton) {
+    return null;
+  }
+
   return (
-    <div className="flex gap-2">
-      {/* Convert to Markdown */}
-      <button
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-slate-400 font-medium">Convert Draft To:</span>
+
+      {/* Convert to Markdown - only show if enabled */}
+      {showMarkdownButton && (
+        <button
         onClick={onConvertToMarkdown}
         disabled={isDisabled || convertingToMarkdown}
         className="flex items-center gap-1.5 rounded-md border border-blue-600 bg-blue-600/10 px-3 py-1 text-[11px] text-blue-400 hover:bg-blue-600/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
@@ -79,10 +91,12 @@ const TextConversionButtons: React.FC<TextConversionButtonsProps> = ({
             Markdown
           </>
         )}
-      </button>
+        </button>
+      )}
 
-      {/* Convert to JSON */}
-      <button
+      {/* Convert to JSON - only show if enabled */}
+      {showJsonButton && (
+        <button
         onClick={onConvertToJson}
         disabled={isDisabled || convertingToJson}
         className="flex items-center gap-1.5 rounded-md border border-teal-600 bg-teal-600/10 px-3 py-1 text-[11px] text-teal-400 hover:bg-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
@@ -130,7 +144,8 @@ const TextConversionButtons: React.FC<TextConversionButtonsProps> = ({
             JSON
           </>
         )}
-      </button>
+        </button>
+      )}
     </div>
   );
 };

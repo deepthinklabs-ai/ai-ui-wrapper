@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   getApiKey,
   setApiKey,
@@ -18,9 +18,17 @@ import {
 import ApiKeyInput from "@/components/settings/ApiKeyInput";
 import ModelSelector from "@/components/settings/ModelSelector";
 import SecurityWarning from "@/components/settings/SecurityWarning";
+import SubscriptionManagement from "@/components/settings/SubscriptionManagement";
+import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal";
+import FeatureToggles from "@/components/settings/FeatureToggles";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { useUserTier } from "@/hooks/useUserTier";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuthSession();
+  const { tier } = useUserTier(user?.id);
   const [openaiApiKey, setOpenaiApiKeyState] = useState("");
   const [claudeApiKey, setClaudeApiKeyState] = useState("");
   const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5");
@@ -29,6 +37,17 @@ export default function SettingsPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isOpenaiKeySaved, setIsOpenaiKeySaved] = useState(false);
   const [isClaudeKeySaved, setIsClaudeKeySaved] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+
+  const isPro = tier === 'pro';
+
+  // Check if user came from onboarding
+  useEffect(() => {
+    const isFromOnboarding = searchParams.get('onboarding') === 'true';
+    if (isFromOnboarding && !isPro) {
+      setShowOnboardingModal(true);
+    }
+  }, [searchParams, isPro]);
 
   // Load existing settings on mount
   useEffect(() => {
@@ -148,6 +167,12 @@ export default function SettingsPage() {
 
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-50 overflow-hidden">
+      {/* Onboarding Welcome Modal */}
+      <OnboardingWelcomeModal
+        isOpen={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
+      />
+
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 px-6 py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
@@ -185,15 +210,37 @@ export default function SettingsPage() {
           {/* Security Best Practices Warning */}
           <SecurityWarning />
 
-          {/* OpenAI API Key Section */}
+          {/* Subscription Management Section */}
+          <SubscriptionManagement
+            priceId={process.env.NEXT_PUBLIC_STRIPE_PRICE_ID}
+          />
+
+          {/* Claude API Key Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-slate-100">OpenAI API Key</h2>
-              <p className="mt-2 text-sm text-slate-400">
-                Your API key is stored locally in your browser and never sent to our servers.
-                We only use it to make direct calls to OpenAI on your behalf.
-              </p>
+              {isPro ? (
+                <div className="mt-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+                  <div className="flex items-center gap-3">
+                    <svg className="h-6 w-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <div className="text-sm font-semibold text-blue-300">API Access Included with Pro</div>
+                      <div className="text-xs text-blue-400/80 mt-1">No need to provide your own API key. Enjoy unlimited access to OpenAI models!</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">
+                  Your API key is stored locally in your browser and never sent to our servers.
+                  We only use it to make direct calls to OpenAI on your behalf.
+                </p>
+              )}
             </div>
+
+            {!isPro && (
+              <>
 
             {/* Instructions */}
             <div className="mb-6 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
@@ -310,16 +357,35 @@ export default function SettingsPage() {
                 </>
               )}
             </div>
+            </>
+            )}
           </section>
 
           {/* Claude API Key Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-slate-100">Claude (Anthropic) API Key</h2>
-              <p className="mt-2 text-sm text-slate-400">
-                Optional: Add your Claude API key to use Anthropic's Claude models.
-              </p>
+              {isPro ? (
+                <div className="mt-4 rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
+                  <div className="flex items-center gap-3">
+                    <svg className="h-6 w-6 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <div className="text-sm font-semibold text-orange-300">Claude API Access Included with Pro</div>
+                      <div className="text-xs text-orange-400/80 mt-1">No need to provide your own API key. Enjoy unlimited access to Claude models!</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">
+                  Optional: Add your Claude API key to use Anthropic's Claude models.
+                </p>
+              )}
             </div>
+
+            {!isPro && (
+              <>
 
             {/* Instructions */}
             <div className="mb-6 rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
@@ -426,6 +492,8 @@ export default function SettingsPage() {
                 </>
               )}
             </div>
+            </>
+            )}
           </section>
 
           {/* Model Selection Section */}
@@ -454,6 +522,11 @@ export default function SettingsPage() {
                 for details. You'll be charged directly by OpenAI based on your usage.
               </p>
             </div>
+          </section>
+
+          {/* Feature Toggles Section */}
+          <section>
+            <FeatureToggles userId={user?.id} />
           </section>
 
         </div>

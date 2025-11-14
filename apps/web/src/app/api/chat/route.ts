@@ -17,14 +17,10 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("Calling OpenAI with messages:", messages);
-
     const completion = await client.chat.completions.create({
       model: "gpt-4o", // Using GPT-4o for better general knowledge and reasoning
       messages,
     });
-
-    console.log("OpenAI raw response:", completion);
 
     const reply =
       completion.choices?.[0]?.message?.content ??

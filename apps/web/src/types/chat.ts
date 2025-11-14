@@ -25,4 +25,8 @@ export type Message = {
   model: string | null;
   attachments?: AttachmentMetadata[] | null;
   created_at: string;
+  // Token usage from API (null for user messages, populated for assistant responses)
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  total_tokens?: number | null;
 };

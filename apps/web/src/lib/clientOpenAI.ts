@@ -17,16 +17,25 @@ export type ChatMessage = {
   content: string | ContentPart[];
 };
 
+export type ChatResponse = {
+  content: string;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+};
+
 /**
  * Send a chat request directly to OpenAI from the browser
  *
  * @param messages - Array of chat messages
- * @returns The assistant's response text
+ * @returns The assistant's response text and token usage
  * @throws Error if no API key is set or if the API call fails
  */
 export async function sendClientChatRequest(
   messages: ChatMessage[]
-): Promise<string> {
+): Promise<ChatResponse> {
   const apiKey = getApiKey();
 
   if (!apiKey) {
@@ -76,7 +85,21 @@ export async function sendClientChatRequest(
       throw new Error("No response from OpenAI");
     }
 
-    return reply;
+    // Extract token usage from response
+    const usage = data.usage || {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    };
+
+    return {
+      content: reply,
+      usage: {
+        prompt_tokens: usage.prompt_tokens,
+        completion_tokens: usage.completion_tokens,
+        total_tokens: usage.total_tokens,
+      },
+    };
   } catch (error) {
     if (error instanceof Error) {
       throw error;

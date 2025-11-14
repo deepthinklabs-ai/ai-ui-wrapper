@@ -30,6 +30,8 @@ type ContextPanelProps = {
     threadMessages?: { role: "user" | "assistant"; content: string }[],
     files?: File[]
   ) => Promise<string>;
+  onAddToMainChat?: (contextMessages: ContextMessage[], contextSections: string[]) => void;
+  isAddingToMainChat?: boolean;
 };
 
 const ContextPanel: React.FC<ContextPanelProps> = ({
@@ -40,6 +42,8 @@ const ContextPanel: React.FC<ContextPanelProps> = ({
   threadMessages,
   selectedModel,
   onSubmit,
+  onAddToMainChat,
+  isAddingToMainChat = false,
 }) => {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ContextMessage[]>([]);
@@ -120,6 +124,12 @@ const ContextPanel: React.FC<ContextPanelProps> = ({
     onClose();
   };
 
+  const handleAddToMainChat = () => {
+    if (onAddToMainChat && messages.length > 0) {
+      onAddToMainChat(messages, contextSections);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -134,24 +144,78 @@ const ContextPanel: React.FC<ContextPanelProps> = ({
               Ask a Question About This Highlighted Text
             </h2>
           </div>
-          <button
-            onClick={handleClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
-            title="Close panel"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              viewBox="0 0 20 20"
-              fill="currentColor"
+          <div className="flex items-center gap-2">
+            {/* Add to Main Chat Button */}
+            {onAddToMainChat && messages.length > 0 && (
+              <button
+                onClick={handleAddToMainChat}
+                disabled={isAddingToMainChat}
+                className="flex items-center gap-1.5 rounded-md border border-emerald-600 bg-emerald-600/10 px-3 py-1.5 text-xs text-emerald-400 hover:bg-emerald-600/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                title="Add this conversation to the main chat thread"
+              >
+                {isAddingToMainChat ? (
+                  <>
+                    <svg
+                      className="animate-spin h-3.5 w-3.5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    Add to Main Chat
+                  </>
+                )}
+              </button>
+            )}
+            <button
+              onClick={handleClose}
+              className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+              title="Close panel"
             >
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Context Display - Multiple Sections */}

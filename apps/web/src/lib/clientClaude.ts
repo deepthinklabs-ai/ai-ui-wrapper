@@ -16,6 +16,15 @@ export type ClaudeContentPart =
   | { type: "text"; text: string }
   | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
 
+export type ClaudeResponse = {
+  content: string;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+  };
+};
+
 // Map our internal model names to Claude API model names
 // Updated with actual Claude 4+ models as of 2025
 const CLAUDE_API_MODEL_MAP: Record<string, string> = {
@@ -27,17 +36,17 @@ const CLAUDE_API_MODEL_MAP: Record<string, string> = {
 };
 
 /**
- * Send a chat request to Claude via our server-side proxy
+ * Send a chat request directly to Claude from the browser
  *
  * @param messages - Array of chat messages
  * @param model - The Claude model to use
- * @returns The assistant's response text
+ * @returns The assistant's response text and token usage
  * @throws Error if no API key is set or if the API call fails
  */
 export async function sendClaudeChatRequest(
   messages: ClaudeMessage[],
   model: string
-): Promise<string> {
+): Promise<ClaudeResponse> {
   const apiKey = getClaudeApiKey();
 
   if (!apiKey) {
@@ -59,27 +68,37 @@ export async function sendClaudeChatRequest(
     systemPrompt = systemMessages[0].content.replace(/^System:\s*/, "");
   }
 
+  // Build request body for Claude API
+  const requestBody: any = {
+    model: apiModel,
+    max_tokens: 8192,
+    messages: conversationMessages.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    })),
+  };
+
+  // Add system prompt if provided
+  if (systemPrompt) {
+    requestBody.system = systemPrompt;
+  }
+
   try {
-    // Call our server-side proxy route instead of Claude API directly
-    const response = await fetch("/api/claude", {
+    // Call Claude API directly from browser (CORS enabled as of Aug 2024)
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true", // Required for CORS
       },
-      body: JSON.stringify({
-        apiKey, // Send user's API key to proxy (not stored on server)
-        model: apiModel,
-        messages: conversationMessages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        systemPrompt: systemPrompt || undefined,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || response.statusText;
+      const errorMessage = errorData.error?.message || response.statusText;
 
       if (response.status === 401) {
         throw new Error(
@@ -97,13 +116,28 @@ export async function sendClaudeChatRequest(
     }
 
     const data = await response.json();
-    const reply = data.reply;
 
-    if (!reply) {
+    // Extract the text content from Claude's response
+    const content = data.content?.[0]?.text;
+
+    if (!content) {
       throw new Error("No response from Claude");
     }
 
-    return reply;
+    // Extract token usage from response
+    const usage = data.usage || {
+      input_tokens: 0,
+      output_tokens: 0,
+    };
+
+    return {
+      content: content,
+      usage: {
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        total_tokens: usage.input_tokens + usage.output_tokens,
+      },
+    };
   } catch (error) {
     if (error instanceof Error) {
       throw error;
@@ -126,6 +160,7 @@ export async function testClaudeApiKey(apiKey: string): Promise<boolean> {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true", // Required for CORS
       },
       body: JSON.stringify({
         model: "claude-3-5-haiku-20241022",
