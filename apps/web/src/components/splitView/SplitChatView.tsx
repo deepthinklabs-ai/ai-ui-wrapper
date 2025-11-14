@@ -66,31 +66,47 @@ export default function SplitChatView({
   const rightSendMessageRef = useRef<((message: string, files: File[]) => Promise<void>) | null>(null);
 
   // Cross-chat: Handle AI responses from each panel
+  // LEFT (Main) → RIGHT (New): Always relay instructions
   const handleLeftAIResponse = useCallback(async (content: string) => {
     if (!crossChatEnabled || !rightThreadId || !rightSendMessageRef.current) return;
 
-    console.log('[Cross-Chat] Left AI responded, relaying to right panel');
-    const relayMessage = `**[Message from Left Panel AI]**\n\n${content}`;
+    console.log('[Cross-Chat] Main chat sending instruction to New chat');
+    const relayMessage = `**[Instruction from Main Chat]**\n\n${content}`;
 
     // Send to right panel
     try {
       await rightSendMessageRef.current(relayMessage, []);
     } catch (error) {
-      console.error('[Cross-Chat] Failed to relay message to right panel:', error);
+      console.error('[Cross-Chat] Failed to send instruction to New chat:', error);
     }
   }, [crossChatEnabled, rightThreadId]);
 
+  // RIGHT (New) → LEFT (Main): Only relay if it looks like a question
   const handleRightAIResponse = useCallback(async (content: string) => {
     if (!crossChatEnabled || !leftThreadId || !leftSendMessageRef.current) return;
 
-    console.log('[Cross-Chat] Right AI responded, relaying to left panel');
-    const relayMessage = `**[Message from Right Panel AI]**\n\n${content}`;
+    // Check if the response contains question indicators
+    const isQuestion = content.includes('?') ||
+                      content.toLowerCase().includes('clarif') ||
+                      content.toLowerCase().includes('could you') ||
+                      content.toLowerCase().includes('can you') ||
+                      content.toLowerCase().includes('please confirm') ||
+                      content.toLowerCase().includes('not sure') ||
+                      content.toLowerCase().includes('unclear');
+
+    if (!isQuestion) {
+      console.log('[Cross-Chat] New chat response does not appear to be a question, not relaying');
+      return;
+    }
+
+    console.log('[Cross-Chat] New chat asking clarifying question to Main chat');
+    const relayMessage = `**[Question from New Chat]**\n\n${content}`;
 
     // Send to left panel
     try {
       await leftSendMessageRef.current(relayMessage, []);
     } catch (error) {
-      console.error('[Cross-Chat] Failed to relay message to left panel:', error);
+      console.error('[Cross-Chat] Failed to send question to Main chat:', error);
     }
   }, [crossChatEnabled, leftThreadId]);
 
@@ -187,7 +203,7 @@ export default function SplitChatView({
                     ? 'border-green-600 bg-green-600 text-white hover:bg-green-500'
                     : 'border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700'
                 }`}
-                title="Toggle AI cross-chat (AIs talk to each other)"
+                title="Enable workflow mode: Main chat can send instructions to New chat"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -197,7 +213,7 @@ export default function SplitChatView({
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   />
                 </svg>
-                {crossChatEnabled ? 'Cross-Chat ON' : 'Cross-Chat OFF'}
+                {crossChatEnabled ? 'Workflow Mode ON' : 'Workflow Mode OFF'}
               </button>
             )}
           </div>
