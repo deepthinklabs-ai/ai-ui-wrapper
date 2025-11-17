@@ -20,11 +20,13 @@ import { useContextWindow } from "@/hooks/useContextWindow";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { useFeatureToggles } from "@/hooks/useFeatureToggles";
 import { useSplitView } from "@/hooks/useSplitView";
+import { useMCPServers } from "@/hooks/useMCPServers";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
 import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
 import MessageList from "@/components/dashboard/MessageList";
 import MessageComposer from "@/components/dashboard/MessageComposer";
+import MCPServerIndicator from "@/components/dashboard/MCPServerIndicator";
 import RevertUndoButton from "@/components/dashboard/RevertUndoButton";
 import RevertWithDraftUndoButton from "@/components/dashboard/RevertWithDraftUndoButton";
 import ContextWindowIndicator from "@/components/dashboard/ContextWindowIndicator";
@@ -75,7 +77,24 @@ export default function DashboardPage() {
     setLeftThread,
     setRightThread,
     toggleCrossChat,
+    setLeftPanelName,
+    setRightPanelName,
+    setMessageType,
   } = useSplitView();
+
+  // MCP servers
+  const { connections, tools, isConnecting, servers, isEnabled } = useMCPServers();
+
+  // Debug MCP status
+  useEffect(() => {
+    console.log('[Dashboard MCP Status]', {
+      isEnabled,
+      serversConfigured: servers.length,
+      connections: connections.length,
+      tools: tools.length,
+      isConnecting
+    });
+  }, [isEnabled, servers.length, connections.length, tools.length, isConnecting]);
 
   useEffect(() => {
     if (!loadingUser && !user) {
@@ -175,6 +194,8 @@ export default function DashboardPage() {
     selection,
     clearSelection,
     threadMessages: messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+    userTier: tier,
+    userId: user?.id,
   });
 
   // Context-to-main-chat feature
@@ -340,6 +361,12 @@ export default function DashboardPage() {
             initialSplitRatio={splitView.splitRatio}
             crossChatEnabled={splitView.crossChatEnabled}
             onToggleCrossChat={toggleCrossChat}
+            leftPanelName={splitView.leftPanelName}
+            rightPanelName={splitView.rightPanelName}
+            onLeftPanelNameChange={setLeftPanelName}
+            onRightPanelNameChange={setRightPanelName}
+            messageType={splitView.messageType}
+            onMessageTypeChange={setMessageType}
           />
         ) : (
           /* Normal Single Chat View */
@@ -347,9 +374,16 @@ export default function DashboardPage() {
             {/* Centered chat area, like ChatGPT */}
             <div className="flex h-full w-full justify-center overflow-hidden">
               <div className="flex h-full w-3/4 flex-col gap-3 px-4 py-4 overflow-hidden">
-                {/* Header at top of chat column with Split View button */}
+                {/* Header at top of chat column with Split View button and MCP indicator */}
                 <div className="flex items-center justify-between gap-3">
-                  <ChatHeader currentThreadTitle={currentThread?.title ?? null} />
+                  <div className="flex items-center gap-3 flex-1">
+                    <ChatHeader currentThreadTitle={currentThread?.title ?? null} />
+                    <MCPServerIndicator
+                      connections={connections}
+                      tools={tools}
+                      isConnecting={isConnecting}
+                    />
+                  </div>
                   {selectedThreadId && (
                     <button
                       onClick={() => activateSplitView(selectedThreadId, null)}
