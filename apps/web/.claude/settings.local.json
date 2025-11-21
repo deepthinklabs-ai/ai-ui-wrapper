@@ -29,7 +29,8 @@
       "WebFetch(domain:www.listendata.com)",
       "Bash(npm run build:*)",
       "Bash(rm:*)",
-      "Bash(timeout 2 echo:*)"
+      "Bash(timeout 2 echo:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
