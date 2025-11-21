@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       console.log(`[PRO API] Found ${annotations.length} annotations:`, JSON.stringify(annotations, null, 2));
     }
 
-    const annotationCitations = annotations
+    const annotationCitations: Array<{ url: string; title?: string; cited_text?: string }> = annotations
       .filter((ann: any) => ann.type === 'url_citation' && ann.url_citation?.url)
       .map((ann: any) => ({
         url: ann.url_citation.url,

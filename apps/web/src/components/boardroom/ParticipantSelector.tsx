@@ -35,9 +35,9 @@ export default function ParticipantSelector({
   onParticipantsChange,
   userTier,
 }: ParticipantSelectorProps) {
-  const availableModels = userTier === "pro"
-    ? AVAILABLE_MODELS
-    : AVAILABLE_MODELS.filter((m) => !m.requiresPro);
+  // For now, show all models regardless of tier
+  // TODO: Add tier-based filtering if needed
+  const availableModels = AVAILABLE_MODELS;
 
   const toggleParticipant = (model: AIModel, modelLabel: string) => {
     const existing = selectedParticipants.find((p) => p.model === model);
@@ -79,15 +79,10 @@ export default function ParticipantSelector({
             <button
               key={modelOption.value}
               onClick={() => toggleParticipant(modelOption.value, modelOption.label)}
-              disabled={modelOption.requiresPro && userTier !== "pro"}
-              className={`relative rounded-lg border-2 p-4 text-left transition-all ${
+              className={`relative rounded-lg border-2 p-4 text-left transition-all cursor-pointer ${
                 selected
                   ? "border-sky-500 bg-sky-500/10"
                   : "border-slate-700 bg-slate-800 hover:border-slate-600"
-              } ${
-                modelOption.requiresPro && userTier !== "pro"
-                  ? "opacity-50 cursor-not-allowed"
-                  : "cursor-pointer"
               }`}
             >
               {/* Color indicator for selected participants */}
@@ -100,11 +95,6 @@ export default function ParticipantSelector({
 
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-sm font-medium text-slate-100">{modelOption.label}</span>
-                {modelOption.requiresPro && (
-                  <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-xs font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
-                    Pro
-                  </span>
-                )}
               </div>
               <div className="text-xs text-slate-400">{modelOption.provider}</div>
 

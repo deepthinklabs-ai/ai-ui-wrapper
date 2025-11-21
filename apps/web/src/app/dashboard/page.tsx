@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, type RefObject } from "react";
 import { redirect } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useThreads } from "@/hooks/useThreads";
@@ -146,7 +146,7 @@ export default function DashboardPage() {
     threads.find((t) => t.id === selectedThreadId) ?? null;
 
   // Text selection detection
-  const { selection, clearSelection } = useTextSelection(messagesContainerRef);
+  const { selection, clearSelection } = useTextSelection(messagesContainerRef as RefObject<HTMLElement>);
 
   // Message composition (draft, files, send handler)
   const { draft, setDraft, attachedFiles, setAttachedFiles, handleSend } =
@@ -359,12 +359,11 @@ export default function DashboardPage() {
             onModelChange={handleModelChange}
             onThreadTitleUpdated={refreshThreads}
             onCreateThread={createThread}
-            onForkThread={forkThread}
             onClose={deactivateSplitView}
             onSwapPanels={swapPanels}
             onSelectLeftThread={setLeftThread}
             onSelectRightThread={setRightThread}
-            isFeatureEnabled={isFeatureEnabled}
+            isFeatureEnabled={isFeatureEnabled as (feature: string) => boolean}
             initialSplitRatio={splitView.splitRatio}
             crossChatEnabled={splitView.crossChatEnabled}
             onToggleCrossChat={toggleCrossChat}

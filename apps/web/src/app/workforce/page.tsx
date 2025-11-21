@@ -171,7 +171,7 @@ export default function WorkforcePage() {
             const success = await updateEmployee(editingEmployee.id, {
               title: updates.title,
               role_description: updates.roleDescription,
-              model_provider: updates.modelProvider,
+              model_provider: updates.modelProvider as any,
               model_name: updates.modelName,
             });
             if (success) {

@@ -25,6 +25,20 @@ import {
   sanitizeString,
 } from "@/lib/inputValidation";
 
+// Database record type
+interface MCPCredentialRecord {
+  id: string;
+  user_id: string;
+  server_id: string;
+  server_name: string;
+  server_type: string;
+  encrypted_config: string;
+  encryption_iv: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * GET /api/mcp/credentials
  * List all MCP servers for the authenticated user
@@ -57,7 +71,7 @@ export async function GET(request: Request) {
     }
 
     // Decrypt credentials for response
-    const decryptedServers = credentials.map((cred) => {
+    const decryptedServers = (credentials as MCPCredentialRecord[] | null)?.map((cred) => {
       try {
         // Split encrypted_config into encrypted data and auth tag
         const [encryptedData, authTag] = cred.encrypted_config.split(":");
@@ -176,7 +190,7 @@ export async function POST(request: Request) {
         encrypted_config: encryptedDataWithTag,
         encryption_iv: iv,
         enabled: enabled !== undefined ? enabled : false,
-      })
+      } as any)
       .select()
       .single();
 
@@ -199,7 +213,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      serverId: data.server_id,
+      serverId: (data as MCPCredentialRecord)?.server_id,
     });
   } catch (error) {
     console.error("[MCP Credentials] Error:", error);
@@ -250,7 +264,7 @@ export async function PUT(request: Request) {
     }
 
     // Update in database
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("mcp_server_credentials")
       .update(updates)
       .eq("user_id", user.id)

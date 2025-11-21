@@ -26,7 +26,10 @@
       "Bash(timeout 3 echo:*)",
       "Bash(del .nextdevlock)",
       "WebFetch(domain:community.openai.com)",
-      "WebFetch(domain:www.listendata.com)"
+      "WebFetch(domain:www.listendata.com)",
+      "Bash(npm run build:*)",
+      "Bash(rm:*)",
+      "Bash(timeout 2 echo:*)"
     ],
     "deny": [],
     "ask": []
