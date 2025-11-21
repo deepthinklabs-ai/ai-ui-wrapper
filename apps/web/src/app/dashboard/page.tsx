@@ -62,6 +62,12 @@ export default function DashboardPage() {
     getSystemPromptAddition,
   } = useStepByStepMode();
 
+  // Web search toggle
+  const [enableWebSearch, setEnableWebSearch] = useState(true);
+  const toggleWebSearch = useCallback(() => {
+    setEnableWebSearch(prev => !prev);
+  }, []);
+
   // Auto-clear API key on logout for security
   useApiKeyCleanup();
 
@@ -133,6 +139,7 @@ export default function DashboardPage() {
     systemPromptAddition: getSystemPromptAddition(),
     userTier: tier,
     userId: user?.id,
+    enableWebSearch,
   });
 
   const currentThread =
@@ -488,6 +495,8 @@ export default function DashboardPage() {
                   isStepByStepNoExplanation={isStepByStepNoExplanation}
                   onToggleStepByStepWithExplanation={toggleStepByStepWithExplanation}
                   onToggleStepByStepNoExplanation={toggleStepByStepNoExplanation}
+                  enableWebSearch={enableWebSearch}
+                  onToggleWebSearch={toggleWebSearch}
                   userTier={tier}
                   isFeatureEnabled={isFeatureEnabled}
                 />

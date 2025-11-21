@@ -11,12 +11,14 @@ import { useMCPServers } from "./useMCPServers";
 import { formatToolsForClaude, parseClaudeToolUse, formatToolResultForClaude } from "@/lib/mcpToolFormatter";
 import { executeToolCalls } from "@/lib/toolExecutor";
 import { getMCPServers } from "@/lib/mcpStorage";
+import { getSlackTools, generateSlackSystemPrompt } from "@/lib/slackMCPIntegration";
 
 type UseMessagesOptions = {
   onThreadTitleUpdated?: () => void;
   systemPromptAddition?: string;
   userTier?: 'free' | 'pro';
   userId?: string;
+  enableWebSearch?: boolean;
 };
 
 type UseMessagesResult = {
@@ -42,7 +44,7 @@ export function useMessages(
   const [summarizeInFlight, setSummarizeInFlight] = useState(false);
 
   // Get MCP tools for tool calling
-  const { tools } = useMCPServers();
+  const { tools, isEnabled: isMCPEnabled } = useMCPServers();
 
   useEffect(() => {
     if (!threadId) {
@@ -169,11 +171,19 @@ export function useMessages(
         });
       }
 
-      // 4) Format tools for Claude if we have MCP tools
-      const claudeTools = tools.length > 0 ? formatToolsForClaude(tools) : undefined;
+      // Add web search encouragement system prompt (only if web search is enabled)
+      if (options?.enableWebSearch !== false) {
+        payloadMessages.push({
+          role: "system" as MessageRole,
+          content: `🌐 WEB SEARCH: You have real-time web search. For news/current events, always cite DIRECT article URLs (not homepages/feeds). Each story needs its own specific URL. Format: [Article Title](direct-article-url)`,
+        });
+      }
 
-      // Add MCP context information if tools are available
-      if (claudeTools && claudeTools.length > 0) {
+      // 4) Format tools for Claude if we have MCP tools AND MCP is enabled
+      const claudeTools = (tools.length > 0 && isMCPEnabled) ? formatToolsForClaude(tools) : undefined;
+
+      // Add MCP context information if tools are available AND MCP is enabled
+      if (claudeTools && claudeTools.length > 0 && isMCPEnabled) {
         // Group tools by server for better context
         const serverGroups = tools.reduce((acc, tool) => {
           const serverName = tool.serverName || 'Unknown';
@@ -231,6 +241,23 @@ Example workflow:
 DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
           });
         }
+
+        // Extract Slack tools if available
+        const slackTools = getSlackTools(tools);
+        if (slackTools.length > 0) {
+          // Get the Slack server configuration to extract team ID
+          const allServers = getMCPServers();
+          const slackServer = allServers.find(s =>
+            s.name.toLowerCase().includes('slack') && s.enabled
+          );
+
+          const teamId = slackServer?.env?.SLACK_TEAM_ID;
+
+          payloadMessages.push({
+            role: "system" as MessageRole,
+            content: generateSlackSystemPrompt(slackTools, teamId),
+          });
+        }
       }
 
       payloadMessages.push(
@@ -241,11 +268,19 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
         }
       );
 
+      // Debug: Log system prompts being sent (optional - uncomment to see what's included)
+      const systemPrompts = payloadMessages.filter(m => m.role === 'system');
+      console.log('[System Prompts]', systemPrompts.length, 'prompts:', systemPrompts.map(p => p.content.substring(0, 100) + '...'));
+      console.log('[Full System Prompts]', JSON.stringify(systemPrompts, null, 2));
+      console.log('[Total Payload Messages]', payloadMessages.length, 'messages');
+      console.log('[Full Payload]', JSON.stringify(payloadMessages, null, 2));
+
       // 5) Call unified AI client (routes to OpenAI or Claude based on selected model and user tier)
       const response = await sendUnifiedChatRequest(payloadMessages, {
         userTier: options?.userTier,
         userId: options?.userId,
         tools: claudeTools,
+        enableWebSearch: options?.enableWebSearch ?? true,
       });
 
       // 6) Check if Claude wants to use tools
@@ -286,6 +321,7 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
               userTier: options?.userTier,
               userId: options?.userId,
               tools: claudeTools,
+              enableWebSearch: options?.enableWebSearch ?? true,
             }
           );
 
@@ -310,6 +346,7 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
         total_tokens: response.usage.total_tokens,
         tool_calls: toolCalls,
         tool_results: toolResults,
+        citations: response.citations || null,
       };
 
       const result = await supabase
@@ -452,6 +489,7 @@ Be thorough and ensure you capture information from the BEGINNING, MIDDLE, and E
     const response = await sendUnifiedChatRequest(payloadMessages, {
       userTier: options?.userTier,
       userId: options?.userId,
+      enableWebSearch: options?.enableWebSearch ?? true,
     });
     return response.content;
   };

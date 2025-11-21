@@ -18,6 +18,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ value, onChange }) => {
   // Group models by provider
   const openaiModels = AVAILABLE_MODELS.filter((m) => m.provider === "openai");
   const claudeModels = AVAILABLE_MODELS.filter((m) => m.provider === "claude");
+  const grokModels = AVAILABLE_MODELS.filter((m) => m.provider === "grok");
 
   const renderModel = (model: typeof AVAILABLE_MODELS[0]) => (
     <label
@@ -45,9 +46,13 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ value, onChange }) => {
             <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-xs text-blue-300">
               OpenAI
             </span>
-          ) : (
+          ) : model.provider === "claude" ? (
             <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs text-orange-300">
               Claude
+            </span>
+          ) : (
+            <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-xs text-purple-300">
+              Grok
             </span>
           )}
 
@@ -95,6 +100,15 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ value, onChange }) => {
           Claude (Anthropic) Models
         </h3>
         <div className="space-y-3">{claudeModels.map(renderModel)}</div>
+      </div>
+
+      {/* Grok Models */}
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <span className="h-1 w-1 rounded-full bg-purple-400"></span>
+          Grok (xAI) Models
+        </h3>
+        <div className="space-y-3">{grokModels.map(renderModel)}</div>
       </div>
     </div>
   );

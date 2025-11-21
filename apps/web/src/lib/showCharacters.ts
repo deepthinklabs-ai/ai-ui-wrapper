@@ -1,11 +1,11 @@
 /**
- * Pre-defined Show Characters for "The Playground Show"
+ * Pre-defined Show Characters for "The Cable Box Show"
  *
  * Curb Your Enthusiasm style - awkward, natural, comedic interactions
  */
 
-import type { PersonalityTrait } from "@/types/playground";
-import { TRAIT_NAMES } from "@/types/playground";
+import type { PersonalityTrait } from "@/types/cablebox";
+import { TRAIT_NAMES } from "@/types/cablebox";
 
 export type ShowCharacter = {
   id: string;
@@ -14,6 +14,7 @@ export type ShowCharacter = {
   personality: PersonalityTrait[];
   customPrompt: string;
   color: string;
+  model?: string;
 };
 
 export const SHOW_CHARACTERS: ShowCharacter[] = [

@@ -10,17 +10,52 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 
 type VoiceMapping = {
-  [characterName: string]: string; // character name -> voice name pattern
+  [characterName: string]: {
+    pattern: string;
+    rate: number; // Speed: 0.1-10 (1 = normal)
+    pitch: number; // Pitch: 0-2 (1 = normal)
+    volume: number; // Volume: 0-1 (1 = full)
+  };
 };
 
-// Voice preferences for each character (Web Speech API voice patterns)
+// Voice preferences for each character with better tuning
 const CHARACTER_VOICES: VoiceMapping = {
-  Larry: "Google US English", // Male, neutral
-  Cheryl: "Google UK English Female", // Female, British
-  Jeff: "Microsoft David", // Male, anxious
-  Susie: "Google US English", // Female, aggressive
-  Leon: "Microsoft Mark", // Male, upbeat
-  Richard: "Google UK English Male", // Male, pretentious
+  Larry: {
+    pattern: "Google US English",
+    rate: 1.1, // Slightly faster, neurotic
+    pitch: 0.95, // Slightly lower, dry
+    volume: 1.0,
+  },
+  Cheryl: {
+    pattern: "Google UK English Female",
+    rate: 0.95, // Slower, measured
+    pitch: 1.1, // Higher, sharp
+    volume: 1.0,
+  },
+  Jeff: {
+    pattern: "Microsoft David",
+    rate: 1.2, // Fast, nervous energy
+    pitch: 1.05, // Slightly higher, anxious
+    volume: 0.95,
+  },
+  Susie: {
+    pattern: "Google US English",
+    rate: 1.15, // Fast, aggressive
+    pitch: 0.9, // Lower, intimidating
+    volume: 1.0,
+  },
+  Leon: {
+    pattern: "Microsoft Mark",
+    rate: 0.9, // Slower, laid back
+    pitch: 0.85, // Lower, smooth
+    volume: 1.0,
+  },
+  Richard: {
+    pattern: "Google UK English Male",
+    rate: 0.85, // Slower, pompous
+    pitch: 0.9, // Lower, authoritative
+    volume: 1.0,
+  },
 };
 
 type SpeechQueueItem = {
@@ -31,14 +66,19 @@ type SpeechQueueItem = {
 };
 
 type UseTextToSpeechResult = {
-  speak: (text: string, characterName: string, onStart?: () => void, onEnd?: () => void) => void;
+  speak: (text: string, characterName: string, onStart?: () => void, onEnd?: () => void, customVoice?: string) => void;
   isSpeaking: boolean;
   currentSpeaker: string | null;
   cancelSpeech: () => void;
   availableVoices: SpeechSynthesisVoice[];
 };
 
-export function useTextToSpeech(): UseTextToSpeechResult {
+type UseTextToSpeechProps = {
+  characterVoiceOverrides?: { [characterName: string]: string }; // Character name -> voice name
+};
+
+export function useTextToSpeech(props?: UseTextToSpeechProps): UseTextToSpeechResult {
+  const characterVoiceOverrides = props?.characterVoiceOverrides || {};
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentSpeaker, setCurrentSpeaker] = useState<string | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -67,15 +107,22 @@ export function useTextToSpeech(): UseTextToSpeechResult {
     (characterName: string): SpeechSynthesisVoice | null => {
       if (availableVoices.length === 0) return null;
 
-      const preferredPattern = CHARACTER_VOICES[characterName];
-      if (!preferredPattern) {
+      // Check if there's a custom voice override for this character
+      const customVoiceName = characterVoiceOverrides[characterName];
+      if (customVoiceName) {
+        const customVoice = availableVoices.find((voice) => voice.name === customVoiceName);
+        if (customVoice) return customVoice;
+      }
+
+      const voiceConfig = CHARACTER_VOICES[characterName];
+      if (!voiceConfig) {
         // Default to first available voice
         return availableVoices[0];
       }
 
       // Try to find voice matching pattern
       const matchingVoice = availableVoices.find((voice) =>
-        voice.name.includes(preferredPattern)
+        voice.name.includes(voiceConfig.pattern)
       );
 
       if (matchingVoice) return matchingVoice;
@@ -90,7 +137,7 @@ export function useTextToSpeech(): UseTextToSpeechResult {
 
       return genderMatch || availableVoices[0];
     },
-    [availableVoices]
+    [availableVoices, characterVoiceOverrides]
   );
 
   /**
@@ -101,8 +148,10 @@ export function useTextToSpeech(): UseTextToSpeechResult {
       return;
     }
 
+    console.log('[TTS] Processing queue, items:', speechQueueRef.current.length);
     isProcessingRef.current = true;
     const item = speechQueueRef.current.shift()!;
+    console.log('[TTS] Speaking:', item.characterName);
 
     const utterance = new SpeechSynthesisUtterance(item.text);
     const voice = findVoiceForCharacter(item.characterName);
@@ -111,10 +160,18 @@ export function useTextToSpeech(): UseTextToSpeechResult {
       utterance.voice = voice;
     }
 
-    // Configure speech parameters
-    utterance.rate = 1.0; // Normal speed
-    utterance.pitch = 1.0; // Normal pitch
-    utterance.volume = 1.0; // Full volume
+    // Configure speech parameters with character-specific tuning
+    const voiceConfig = CHARACTER_VOICES[item.characterName];
+    if (voiceConfig) {
+      utterance.rate = voiceConfig.rate;
+      utterance.pitch = voiceConfig.pitch;
+      utterance.volume = voiceConfig.volume;
+    } else {
+      // Default parameters
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+    }
 
     utterance.onstart = () => {
       setIsSpeaking(true);
@@ -150,6 +207,8 @@ export function useTextToSpeech(): UseTextToSpeechResult {
    */
   const speak = useCallback(
     (text: string, characterName: string, onStart?: () => void, onEnd?: () => void) => {
+      console.log('[TTS] Queueing speech:', { characterName, textLength: text.length });
+
       speechQueueRef.current.push({
         text,
         characterName,

@@ -1,7 +1,7 @@
 /**
  * Unified AI Client
  *
- * Routes requests to the appropriate AI provider (OpenAI or Claude)
+ * Routes requests to the appropriate AI provider (OpenAI, Claude, or Grok)
  * based on the selected model and user tier.
  *
  * - Pro users: Use backend API proxy (no API keys needed)
@@ -10,6 +10,7 @@
 
 import { sendClientChatRequest, type ChatMessage as OpenAIChatMessage } from "./clientOpenAI";
 import { sendClaudeChatRequest, type ClaudeMessage, type ClaudeContentPart } from "./clientClaude";
+import { sendGrokChatRequest, type ChatMessage as GrokChatMessage } from "./clientGrok";
 import { getSelectedModel, getModelProvider, type AIModel } from "./apiKeyStorage";
 import type { MessageRole } from "@/types/chat";
 import type { UserTier } from "@/hooks/useUserTier";
@@ -34,6 +35,9 @@ export type UnifiedChatResponse = {
     output_tokens: number;
     total_tokens: number;
   };
+  stop_reason?: string;
+  contentBlocks?: any[];
+  citations?: Array<{ url: string; title?: string; cited_text?: string }>;
 };
 
 /**
@@ -76,18 +80,29 @@ async function sendProChatRequest(
   userId: string,
   messages: UnifiedChatMessage[],
   model: AIModel,
-  provider: 'openai' | 'claude'
+  provider: 'openai' | 'claude' | 'grok',
+  tools?: any
 ): Promise<UnifiedChatResponse> {
-  const endpoint = provider === 'openai' ? '/api/pro/openai' : '/api/pro/claude';
+  const endpoint =
+    provider === 'openai' ? '/api/pro/openai' :
+    provider === 'claude' ? '/api/pro/claude' :
+    '/api/pro/grok';
+
+  const requestBody: any = {
+    userId,
+    messages,
+    model,
+  };
+
+  // Add tools if provided
+  if (tools) {
+    requestBody.tools = tools;
+  }
 
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userId,
-      messages,
-      model,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -104,6 +119,9 @@ async function sendProChatRequest(
       output_tokens: data.usage.output_tokens || data.usage.completion_tokens || 0,
       total_tokens: data.usage.total_tokens || 0,
     },
+    stop_reason: data.stop_reason,
+    contentBlocks: data.contentBlocks,
+    citations: data.citations,
   };
 }
 
@@ -120,9 +138,11 @@ export async function sendUnifiedChatRequest(
     model?: AIModel;
     userTier?: UserTier;
     userId?: string;
+    tools?: any;
+    enableWebSearch?: boolean;
   }
 ): Promise<UnifiedChatResponse> {
-  const { model, userTier = 'free', userId } = options || {};
+  const { model, userTier = 'free', userId, tools, enableWebSearch = true } = options || {};
   const selectedModel = model || getSelectedModel();
   const provider = getModelProvider(selectedModel);
 
@@ -131,7 +151,7 @@ export async function sendUnifiedChatRequest(
     if (!userId) {
       throw new Error('userId is required for Pro users');
     }
-    return sendProChatRequest(userId, messages, selectedModel, provider);
+    return sendProChatRequest(userId, messages, selectedModel, provider, tools);
   }
 
   // Free users: Direct browser calls (existing behavior)
@@ -164,7 +184,7 @@ export async function sendUnifiedChatRequest(
       });
     }
 
-    const response = await sendClaudeChatRequest(claudeMessages, selectedModel);
+    const response = await sendClaudeChatRequest(claudeMessages, selectedModel, enableWebSearch);
     return {
       content: response.content,
       usage: {
@@ -173,14 +193,14 @@ export async function sendUnifiedChatRequest(
         total_tokens: response.usage.total_tokens,
       },
     };
-  } else {
-    // OpenAI format
-    const openaiMessages: OpenAIChatMessage[] = messages.map((msg) => ({
+  } else if (provider === "grok") {
+    // Grok uses OpenAI-compatible format
+    const grokMessages: GrokChatMessage[] = messages.map((msg) => ({
       role: msg.role,
       content: msg.content,
     }));
 
-    const response = await sendClientChatRequest(openaiMessages);
+    const response = await sendGrokChatRequest(grokMessages, enableWebSearch);
     return {
       content: response.content,
       usage: {
@@ -188,6 +208,24 @@ export async function sendUnifiedChatRequest(
         output_tokens: response.usage.completion_tokens,
         total_tokens: response.usage.total_tokens,
       },
+      citations: response.citations,
+    };
+  } else {
+    // OpenAI format
+    const openaiMessages: OpenAIChatMessage[] = messages.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
+    const response = await sendClientChatRequest(openaiMessages, enableWebSearch);
+    return {
+      content: response.content,
+      usage: {
+        input_tokens: response.usage.prompt_tokens,
+        output_tokens: response.usage.completion_tokens,
+        total_tokens: response.usage.total_tokens,
+      },
+      citations: response.citations,
     };
   }
 }

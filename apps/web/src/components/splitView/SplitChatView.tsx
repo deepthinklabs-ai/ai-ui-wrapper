@@ -11,6 +11,7 @@ import React, { useState, useRef, useCallback } from "react";
 import type { AIModel } from "@/lib/apiKeyStorage";
 import type { UserTier } from "@/hooks/useUserTier";
 import type { Thread } from "@/types/chat";
+import type { MessageType, QuickSendTarget } from "@/types/splitView";
 import ChatPanel from "./ChatPanel";
 
 interface SplitChatViewProps {
@@ -32,6 +33,12 @@ interface SplitChatViewProps {
   initialSplitRatio?: number;
   crossChatEnabled?: boolean;
   onToggleCrossChat?: () => void;
+  leftPanelName: string;
+  rightPanelName: string;
+  onLeftPanelNameChange: (name: string) => void;
+  onRightPanelNameChange: (name: string) => void;
+  messageType: MessageType;
+  onMessageTypeChange: (type: MessageType) => void;
 }
 
 export default function SplitChatView({
@@ -53,6 +60,12 @@ export default function SplitChatView({
   initialSplitRatio = 50,
   crossChatEnabled = false,
   onToggleCrossChat,
+  leftPanelName,
+  rightPanelName,
+  onLeftPanelNameChange,
+  onRightPanelNameChange,
+  messageType,
+  onMessageTypeChange,
 }: SplitChatViewProps) {
   const [splitRatio, setSplitRatio] = useState(initialSplitRatio);
   const [isDragging, setIsDragging] = useState(false);
@@ -66,49 +79,78 @@ export default function SplitChatView({
   const rightSendMessageRef = useRef<((message: string, files: File[]) => Promise<void>) | null>(null);
 
   // Cross-chat: Handle AI responses from each panel
-  // LEFT (Main) → RIGHT (New): Always relay instructions
+  // LEFT → RIGHT: Always relay (instruction or chat)
   const handleLeftAIResponse = useCallback(async (content: string) => {
     if (!crossChatEnabled || !rightThreadId || !rightSendMessageRef.current) return;
 
-    console.log('[Cross-Chat] Main chat sending instruction to New chat');
-    const relayMessage = `**[Instruction from Main Chat]**\n\n${content}`;
+    // Clear the "responded" flag when sending a new message (allows right to respond to new message)
+    if (messageType === 'chat') {
+      sessionStorage.removeItem(`chatMode_${rightThreadId}_responded`);
+    }
+
+    const messageTypeLabel = messageType === 'instruction' ? 'Instruction' : 'Chat';
+    console.log(`[Cross-Chat] ${leftPanelName} sending ${messageTypeLabel.toLowerCase()} to ${rightPanelName}`);
+    const relayMessage = `**[${messageTypeLabel} from ${leftPanelName}]**\n\n${content}`;
 
     // Send to right panel
     try {
       await rightSendMessageRef.current(relayMessage, []);
     } catch (error) {
-      console.error('[Cross-Chat] Failed to send instruction to New chat:', error);
+      console.error(`[Cross-Chat] Failed to send to ${rightPanelName}:`, error);
     }
-  }, [crossChatEnabled, rightThreadId]);
+  }, [crossChatEnabled, rightThreadId, leftPanelName, rightPanelName, messageType]);
 
-  // RIGHT (New) → LEFT (Main): Only relay if it looks like a question
+  // RIGHT → LEFT: Hard-coded rules based on message type
   const handleRightAIResponse = useCallback(async (content: string) => {
     if (!crossChatEnabled || !leftThreadId || !leftSendMessageRef.current) return;
 
-    // Check if the response contains question indicators
-    const isQuestion = content.includes('?') ||
-                      content.toLowerCase().includes('clarif') ||
-                      content.toLowerCase().includes('could you') ||
-                      content.toLowerCase().includes('can you') ||
-                      content.toLowerCase().includes('please confirm') ||
-                      content.toLowerCase().includes('not sure') ||
-                      content.toLowerCase().includes('unclear');
+    // INSTRUCTION MODE: Only relay if it's a genuine clarifying question
+    if (messageType === 'instruction') {
+      // Check if the response contains question indicators
+      const isQuestion = content.includes('?') ||
+                        content.toLowerCase().includes('clarif') ||
+                        content.toLowerCase().includes('could you') ||
+                        content.toLowerCase().includes('can you') ||
+                        content.toLowerCase().includes('please confirm') ||
+                        content.toLowerCase().includes('not sure') ||
+                        content.toLowerCase().includes('unclear');
 
-    if (!isQuestion) {
-      console.log('[Cross-Chat] New chat response does not appear to be a question, not relaying');
-      return;
+      if (!isQuestion) {
+        console.log(`[Cross-Chat] INSTRUCTION MODE: ${rightPanelName} response blocked (not a question)`);
+        return; // HARD BLOCK - do not relay
+      }
+
+      console.log(`[Cross-Chat] INSTRUCTION MODE: ${rightPanelName} asking clarifying question to ${leftPanelName}`);
+      const relayMessage = `**[Question from ${rightPanelName}]**\n\n${content}`;
+
+      try {
+        await leftSendMessageRef.current(relayMessage, []);
+      } catch (error) {
+        console.error(`[Cross-Chat] Failed to send question to ${leftPanelName}:`, error);
+      }
     }
+    // CHAT MODE: Only relay the FIRST response, then block all subsequent ones
+    else if (messageType === 'chat') {
+      // Track if we've already sent one response
+      const hasResponded = sessionStorage.getItem(`chatMode_${rightThreadId}_responded`);
 
-    console.log('[Cross-Chat] New chat asking clarifying question to Main chat');
-    const relayMessage = `**[Question from New Chat]**\n\n${content}`;
+      if (hasResponded) {
+        console.log(`[Cross-Chat] CHAT MODE: ${rightPanelName} already responded once, blocking subsequent response`);
+        return; // HARD BLOCK - already sent first response
+      }
 
-    // Send to left panel
-    try {
-      await leftSendMessageRef.current(relayMessage, []);
-    } catch (error) {
-      console.error('[Cross-Chat] Failed to send question to Main chat:', error);
+      console.log(`[Cross-Chat] CHAT MODE: ${rightPanelName} sending first response to ${leftPanelName}`);
+      const relayMessage = `**[Response from ${rightPanelName}]**\n\n${content}`;
+
+      try {
+        await leftSendMessageRef.current(relayMessage, []);
+        // Mark that we've sent one response
+        sessionStorage.setItem(`chatMode_${rightThreadId}_responded`, 'true');
+      } catch (error) {
+        console.error(`[Cross-Chat] Failed to send response to ${leftPanelName}:`, error);
+      }
     }
-  }, [crossChatEnabled, leftThreadId]);
+  }, [crossChatEnabled, leftThreadId, leftPanelName, rightPanelName, messageType, rightThreadId]);
 
   // Create new thread handlers
   const handleCreateLeftThread = useCallback(async () => {
@@ -126,6 +168,45 @@ export default function SplitChatView({
     }
     return newThreadId;
   }, [onCreateThread, onSelectRightThread]);
+
+  // Quick-send: Build target lists for each panel
+  const leftQuickSendTargets: QuickSendTarget[] = rightThreadId
+    ? [{ panelId: 'right', panelName: rightPanelName, threadId: rightThreadId }]
+    : [];
+
+  const rightQuickSendTargets: QuickSendTarget[] = leftThreadId
+    ? [{ panelId: 'left', panelName: leftPanelName, threadId: leftThreadId }]
+    : [];
+
+  // Quick-send: Handle quick-send from left panel
+  const handleLeftQuickSend = useCallback(
+    async (targetPanelId: 'left' | 'right', message: string) => {
+      if (targetPanelId === 'right' && rightSendMessageRef.current) {
+        console.log(`[QuickSend] Sending from ${leftPanelName} to ${rightPanelName}:`, message);
+        try {
+          await rightSendMessageRef.current(message, []);
+        } catch (error) {
+          console.error(`[QuickSend] Failed to send to ${rightPanelName}:`, error);
+        }
+      }
+    },
+    [leftPanelName, rightPanelName]
+  );
+
+  // Quick-send: Handle quick-send from right panel
+  const handleRightQuickSend = useCallback(
+    async (targetPanelId: 'left' | 'right', message: string) => {
+      if (targetPanelId === 'left' && leftSendMessageRef.current) {
+        console.log(`[QuickSend] Sending from ${rightPanelName} to ${leftPanelName}:`, message);
+        try {
+          await leftSendMessageRef.current(message, []);
+        } catch (error) {
+          console.error(`[QuickSend] Failed to send to ${leftPanelName}:`, error);
+        }
+      }
+    },
+    [leftPanelName, rightPanelName]
+  );
 
   // Handle divider drag
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -216,6 +297,32 @@ export default function SplitChatView({
                 {crossChatEnabled ? 'Workflow Mode ON' : 'Workflow Mode OFF'}
               </button>
             )}
+            {crossChatEnabled && (
+              <div className="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-800 overflow-hidden">
+                <button
+                  onClick={() => onMessageTypeChange('instruction')}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    messageType === 'instruction'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-200 hover:bg-slate-700'
+                  }`}
+                  title="Instruction mode: Task-oriented, minimal response"
+                >
+                  Instruction
+                </button>
+                <button
+                  onClick={() => onMessageTypeChange('chat')}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    messageType === 'chat'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-200 hover:bg-slate-700'
+                  }`}
+                  title="Chat mode: Conversational, expects response"
+                >
+                  Chat
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <button
@@ -267,6 +374,14 @@ export default function SplitChatView({
               exposeSendMessage={(sendFn) => {
                 leftSendMessageRef.current = sendFn;
               }}
+              isMainChat={true}
+              panelName={leftPanelName}
+              otherPanelName={rightPanelName}
+              onPanelNameChange={onLeftPanelNameChange}
+              messageType={messageType}
+              quickSendTargets={leftQuickSendTargets}
+              onQuickSend={handleLeftQuickSend}
+              currentPanelId="left"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-slate-500">
@@ -333,6 +448,14 @@ export default function SplitChatView({
               exposeSendMessage={(sendFn) => {
                 rightSendMessageRef.current = sendFn;
               }}
+              isMainChat={false}
+              panelName={rightPanelName}
+              otherPanelName={leftPanelName}
+              onPanelNameChange={onRightPanelNameChange}
+              messageType={messageType}
+              quickSendTargets={rightQuickSendTargets}
+              onQuickSend={handleRightQuickSend}
+              currentPanelId="right"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-slate-500">

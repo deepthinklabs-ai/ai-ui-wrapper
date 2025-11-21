@@ -29,6 +29,7 @@ export type FeatureId =
 
   // Voice Input
   | 'voice_input'
+  | 'auto_voice_detection'
 
   // File Attachments
   | 'file_attachments'
@@ -166,6 +167,14 @@ export const FEATURE_DEFINITIONS: Record<FeatureId, FeatureDefinition> = {
     category: 'input_enhancements',
     defaultEnabled: true,
     icon: '🎤',
+  },
+  auto_voice_detection: {
+    id: 'auto_voice_detection',
+    name: 'Auto Voice Detection',
+    description: 'Automatically activate microphone when you start speaking. Say "send" to submit.',
+    category: 'input_enhancements',
+    defaultEnabled: false,
+    icon: '🔊',
   },
 
   // File Attachments

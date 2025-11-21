@@ -13,6 +13,9 @@ type MicrophoneButtonProps = {
   onClick: () => void;
   disabled?: boolean;
   error?: string | null;
+  autoVoiceMode?: boolean;
+  pushToTalkMode?: boolean;
+  isPushing?: boolean;
 };
 
 export default function MicrophoneButton({
@@ -21,6 +24,9 @@ export default function MicrophoneButton({
   onClick,
   disabled = false,
   error,
+  autoVoiceMode = false,
+  pushToTalkMode = false,
+  isPushing = false,
 }: MicrophoneButtonProps) {
   if (!isSupported) {
     return (
@@ -48,20 +54,45 @@ export default function MicrophoneButton({
     );
   }
 
+  // Determine button styling based on mode and state
+  const getButtonClass = () => {
+    if (pushToTalkMode && isPushing) {
+      return 'border-green-500 bg-green-500/20 text-green-400 animate-pulse';
+    }
+    if (pushToTalkMode && !isListening) {
+      return 'border-blue-500 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30';
+    }
+    if (autoVoiceMode && !isListening) {
+      return 'border-purple-500 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30';
+    }
+    if (isListening) {
+      return 'border-red-500 bg-red-500/20 text-red-400 animate-pulse';
+    }
+    return 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700';
+  };
+
+  const getTitle = () => {
+    if (pushToTalkMode && isPushing) {
+      return 'Push-to-Talk active - Release key to stop';
+    }
+    if (pushToTalkMode && !isListening) {
+      return 'Push-to-Talk mode active - Hold your configured key to speak\n\n💡 Tip: Use non-alphanumeric keys (Space, Tab, etc.) to avoid typing conflicts';
+    }
+    if (autoVoiceMode && !isListening) {
+      return 'Auto-voice mode active - Start speaking to begin';
+    }
+    if (isListening) {
+      return 'Click to stop recording';
+    }
+    return 'Click to start voice input';
+  };
+
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-all ${
-        isListening
-          ? 'border-red-500 bg-red-500/20 text-red-400 animate-pulse'
-          : 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
-      } disabled:opacity-60 disabled:cursor-not-allowed`}
-      title={
-        isListening
-          ? 'Click to stop recording'
-          : 'Click to start voice input'
-      }
+      className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-all ${getButtonClass()} disabled:opacity-60 disabled:cursor-not-allowed`}
+      title={getTitle()}
     >
       <svg
         className={`h-4 w-4 ${isListening ? 'animate-pulse' : ''}`}
@@ -91,8 +122,14 @@ export default function MicrophoneButton({
           />
         )}
       </svg>
-      {isListening ? (
+      {isPushing ? (
+        <span className="font-medium">🎙️ Recording...</span>
+      ) : pushToTalkMode ? (
+        <span className="font-medium">🎙️ Push-to-Talk</span>
+      ) : isListening ? (
         <span className="font-medium">Listening...</span>
+      ) : autoVoiceMode ? (
+        <span className="font-medium">🔊 Auto-voice</span>
       ) : (
         <span>Voice input</span>
       )}

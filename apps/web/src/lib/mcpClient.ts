@@ -8,6 +8,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { supabase } from "./supabaseClient";
 import type { MCPServerConfig } from "./mcpStorage";
 
 export type MCPTool = {
@@ -44,6 +45,23 @@ export type MCPConnection = {
   status: "connected" | "disconnected" | "error";
   error?: string;
 };
+
+/**
+ * Get authentication headers for API requests
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+
+  if (session?.access_token) {
+    headers["Authorization"] = `Bearer ${session.access_token}`;
+  }
+
+  return headers;
+}
 
 class MCPClientManager {
   private connections: Map<string, MCPConnection> = new Map();
@@ -85,13 +103,15 @@ class MCPClientManager {
         }
 
         // Use backend proxy for stdio transport
+        const headers = await getAuthHeaders();
         const response = await fetch("/api/mcp/stdio", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             action: "connect",
             serverId: config.id,
             config: {
+              name: config.name, // Pass server name for env sanitization
               command: config.command,
               args: config.args,
               env: config.env,
@@ -245,9 +265,10 @@ class MCPClientManager {
 
       if (isStdioProxy) {
         // Use backend proxy for stdio servers
+        const headers = await getAuthHeaders();
         const response = await fetch("/api/mcp/stdio", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             action: "request",
             serverId,

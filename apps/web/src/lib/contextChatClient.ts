@@ -8,6 +8,7 @@
 
 import { sendUnifiedChatRequest, type UnifiedContentPart } from "./unifiedAIClient";
 import type { MessageRole } from "@/types/chat";
+import type { UserTier } from "@/hooks/useUserTier";
 import { processFiles, formatFilesForMessage } from "./fileProcessor";
 
 /**
@@ -17,13 +18,17 @@ import { processFiles, formatFilesForMessage } from "./fileProcessor";
  * @param contextSections - The highlighted/selected text sections to provide context
  * @param threadMessages - Optional array of previous messages from the thread for additional context
  * @param files - Optional files to include with the question
+ * @param userTier - The user's tier (free or pro)
+ * @param userId - The user's ID (required for pro users)
  * @returns The LLM's response
  */
 export async function askContextQuestion(
   question: string,
   contextSections: string[],
   threadMessages?: { role: MessageRole; content: string }[],
-  files?: File[]
+  files?: File[],
+  userTier?: UserTier,
+  userId?: string
 ): Promise<string> {
   // Process files if provided
   const processedFiles = files && files.length > 0 ? await processFiles(files) : [];
@@ -89,6 +94,9 @@ IMPORTANT: Provide your answer directly without showing your reasoning process, 
     messages.push({ role: "user", content: questionWithFiles });
   }
 
-  const response = await sendUnifiedChatRequest(messages);
+  const response = await sendUnifiedChatRequest(messages, {
+    userTier,
+    userId,
+  });
   return response.content;
 }

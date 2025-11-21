@@ -24,17 +24,26 @@ export type ChatResponse = {
     completion_tokens: number;
     total_tokens: number;
   };
+  citations?: Array<{ url: string; title?: string; cited_text?: string }>;
+};
+
+// Map models to their search-enabled variants
+const SEARCH_ENABLED_MODELS: Record<string, string> = {
+  'gpt-5': 'gpt-5-search-api-2025-10-14',
+  'gpt-4o': 'gpt-4o-search-preview',
 };
 
 /**
  * Send a chat request directly to OpenAI from the browser
  *
  * @param messages - Array of chat messages
+ * @param enableWebSearch - Enable web search for supported models (default: true)
  * @returns The assistant's response text and token usage
  * @throws Error if no API key is set or if the API call fails
  */
 export async function sendClientChatRequest(
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  enableWebSearch: boolean = true
 ): Promise<ChatResponse> {
   const apiKey = getApiKey();
 
@@ -44,7 +53,20 @@ export async function sendClientChatRequest(
     );
   }
 
-  const model = getSelectedModel();
+  const baseModel = getSelectedModel();
+
+  // Use search-enabled model if available and requested
+  const model = enableWebSearch && SEARCH_ENABLED_MODELS[baseModel]
+    ? SEARCH_ENABLED_MODELS[baseModel]
+    : baseModel;
+
+  const requestBody: any = {
+    model,
+    messages,
+  };
+
+  // Note: For GPT-5 and GPT-4o search models, web search is built-in
+  // No need to add tools - the model automatically searches when needed
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -53,10 +75,7 @@ export async function sendClientChatRequest(
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -92,6 +111,49 @@ export async function sendClientChatRequest(
       total_tokens: 0,
     };
 
+    // Extract citations from annotations (for search-enabled models)
+    const message = data.choices?.[0]?.message;
+    const annotations = message?.annotations || [];
+    const annotationCitations = annotations
+      .filter((ann: any) => ann.type === 'url_citation' && ann.url_citation?.url)
+      .map((ann: any) => ({
+        url: ann.url_citation.url,
+        title: ann.url_citation.title || undefined,
+        cited_text: ann.url_citation.text || undefined,
+      }));
+
+    // Also extract inline markdown links from the response text
+    // This catches URLs the AI explicitly formatted in its response
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const inlineLinks: Array<{ url: string; title?: string }> = [];
+    let match;
+
+    while ((match = markdownLinkRegex.exec(reply)) !== null) {
+      const [, title, url] = match;
+      // Only include http/https URLs, skip relative links
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        inlineLinks.push({ url, title });
+      }
+    }
+
+    // Combine both sources of citations, preferring inline links (more specific)
+    // Use a Map to deduplicate by URL
+    const citationMap = new Map<string, { url: string; title?: string; cited_text?: string }>();
+
+    // Add inline links first (higher priority)
+    inlineLinks.forEach(link => {
+      citationMap.set(link.url, { url: link.url, title: link.title });
+    });
+
+    // Add annotation citations (only if URL not already present)
+    annotationCitations.forEach(citation => {
+      if (!citationMap.has(citation.url)) {
+        citationMap.set(citation.url, citation);
+      }
+    });
+
+    const citations = Array.from(citationMap.values());
+
     return {
       content: reply,
       usage: {
@@ -99,6 +161,7 @@ export async function sendClientChatRequest(
         completion_tokens: usage.completion_tokens,
         total_tokens: usage.total_tokens,
       },
+      citations: citations.length > 0 ? citations : undefined,
     };
   } catch (error) {
     if (error instanceof Error) {

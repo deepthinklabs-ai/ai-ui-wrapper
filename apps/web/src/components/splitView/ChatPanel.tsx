@@ -14,6 +14,7 @@ import MessageList from "@/components/dashboard/MessageList";
 import MessageComposer from "@/components/dashboard/MessageComposer";
 import RevertUndoButton from "@/components/dashboard/RevertUndoButton";
 import RevertWithDraftUndoButton from "@/components/dashboard/RevertWithDraftUndoButton";
+import QuickSendButtons from "@/components/splitView/QuickSendButtons";
 import { useMessages } from "@/hooks/useMessages";
 import { useMessageComposition } from "@/hooks/useMessageComposition";
 import { useMessageActions } from "@/hooks/useMessageActions";
@@ -21,6 +22,7 @@ import { useRevertWithDraft } from "@/hooks/useRevertWithDraft";
 import { useTextConversion } from "@/hooks/useTextConversion";
 import { useStepByStepMode } from "@/hooks/useStepByStepMode";
 import type { Thread } from "@/types/chat";
+import type { MessageType, QuickSendTarget } from "@/types/splitView";
 
 interface ChatPanelProps {
   threadId: string | null;
@@ -38,6 +40,14 @@ interface ChatPanelProps {
   onAIResponse?: (content: string) => void; // Called when AI responds (for cross-chat)
   crossChatEnabled?: boolean; // Whether cross-chat is active
   exposeSendMessage?: (sendFn: (message: string, files: File[]) => Promise<void>) => void; // Expose sendMessage function
+  isMainChat?: boolean; // Is this the main (left) chat panel?
+  panelName?: string; // Custom name for this panel
+  otherPanelName?: string; // Name of the other panel (for system prompt)
+  onPanelNameChange?: (newName: string) => void; // Callback when name is edited
+  messageType?: MessageType; // Type of message being sent
+  quickSendTargets?: QuickSendTarget[]; // Available targets for quick-send buttons
+  onQuickSend?: (targetPanelId: 'left' | 'right', message: string) => void; // Handler for quick-send
+  currentPanelId?: 'left' | 'right'; // Current panel ID for quick-send
 }
 
 export default function ChatPanel({
@@ -56,6 +66,14 @@ export default function ChatPanel({
   onAIResponse,
   crossChatEnabled = false,
   exposeSendMessage,
+  isMainChat = false,
+  panelName = "Chat",
+  otherPanelName = "Other Chat",
+  onPanelNameChange,
+  messageType = "instruction",
+  quickSendTargets = [],
+  onQuickSend,
+  currentPanelId = 'left',
 }: ChatPanelProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +85,38 @@ export default function ChatPanel({
     toggleStepByStepNoExplanation,
     getSystemPromptAddition,
   } = useStepByStepMode();
+
+  // Web search toggle
+  const [enableWebSearch, setEnableWebSearch] = React.useState(true);
+  const toggleWebSearch = useCallback(() => {
+    setEnableWebSearch(prev => !prev);
+  }, []);
+
+  // Build system prompt with workflow mode instructions
+  const buildSystemPrompt = useCallback(() => {
+    let prompt = getSystemPromptAddition();
+
+    // Add workflow mode instructions
+    if (crossChatEnabled && isMainChat) {
+      if (messageType === 'instruction') {
+        const workflowInstruction = `\n\nWORKFLOW MODE (INSTRUCTION): You are "${panelName}" in a split-view interface. When the user asks you to send a message or instruction to "${otherPanelName}", your ENTIRE response will be automatically sent to them. DO NOT format it as a message or add any meta-commentary. Just write EXACTLY what you want ${otherPanelName} to receive. For example, if the user says "send a message to ${otherPanelName}: hello world", you should respond ONLY with "hello world" - nothing else. Your response IS the message that will be sent. ${otherPanelName} is in INSTRUCTION MODE and will execute without responding unless they need clarification.`;
+        prompt += workflowInstruction;
+      } else {
+        const workflowInstruction = `\n\nWORKFLOW MODE (CHAT): You are "${panelName}" in a split-view interface. When the user asks you to send a message to "${otherPanelName}", your ENTIRE response will be automatically sent to them. DO NOT format it as a message or add any meta-commentary. Just write EXACTLY what you want ${otherPanelName} to receive. Your response IS the message. ${otherPanelName} is in CHAT MODE and will respond conversationally once, then wait for user feedback.`;
+        prompt += workflowInstruction;
+      }
+    } else if (crossChatEnabled && !isMainChat) {
+      if (messageType === 'instruction') {
+        const workflowInstruction = `\n\nWORKFLOW MODE (INSTRUCTION): You are "${panelName}" - a fully capable AI assistant with all standard capabilities including web search, code execution, and any tools you normally have access to. You may receive instructions from "${otherPanelName}" (visible on the left). These will be marked with "[Instruction from ${otherPanelName}]". The user will refer to you as "${panelName}" and the other AI as "${otherPanelName}". Work on these instructions independently using ALL your available capabilities. DO NOT respond back to ${otherPanelName} unless you genuinely need clarifying questions for accuracy. Execute the task, show your work to the user, and use any tools/capabilities you need to complete the task.`;
+        prompt += workflowInstruction;
+      } else {
+        const workflowInstruction = `\n\nWORKFLOW MODE (CHAT): You are "${panelName}" - a fully capable AI assistant with all standard capabilities. You may receive messages from "${otherPanelName}" (visible on the left). These will be marked with "[Chat from ${otherPanelName}]". The user will refer to you as "${panelName}" and the other AI as "${otherPanelName}". Respond conversationally to ${otherPanelName} using all your available capabilities. After your FIRST response, STOP and wait for the user to provide feedback or guidance before continuing the conversation.`;
+        prompt += workflowInstruction;
+      }
+    }
+
+    return prompt;
+  }, [getSystemPromptAddition, crossChatEnabled, isMainChat, panelName, otherPanelName, messageType]);
 
   // Messages
   const {
@@ -80,9 +130,10 @@ export default function ChatPanel({
     refreshMessages,
   } = useMessages(threadId, {
     onThreadTitleUpdated,
-    systemPromptAddition: getSystemPromptAddition(),
+    systemPromptAddition: buildSystemPrompt(),
     userTier,
     userId,
+    enableWebSearch,
   });
 
   // Message composition
@@ -175,10 +226,29 @@ export default function ChatPanel({
 
   // Cross-chat: Detect new AI responses and relay to other panel
   const lastMessageCountRef = useRef(0);
+  const isInitialLoadRef = useRef(true);
+  const lastCrossChatStateRef = useRef(crossChatEnabled);
+
   useEffect(() => {
+    // Initialize the ref when messages first load
+    if (isInitialLoadRef.current && messages.length > 0) {
+      lastMessageCountRef.current = messages.length;
+      isInitialLoadRef.current = false;
+      return; // Don't relay on initial load
+    }
+
+    // If workflow mode just got enabled, update the count to prevent relaying old messages
+    if (crossChatEnabled && !lastCrossChatStateRef.current) {
+      lastMessageCountRef.current = messages.length;
+      lastCrossChatStateRef.current = crossChatEnabled;
+      return; // Don't relay when workflow mode is first enabled
+    }
+
+    lastCrossChatStateRef.current = crossChatEnabled;
+
     if (!crossChatEnabled || !onAIResponse) return;
 
-    // Check if new assistant message was added
+    // Only detect truly NEW messages (count increased)
     if (messages.length > lastMessageCountRef.current) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage && lastMessage.role === "assistant") {
@@ -189,6 +259,12 @@ export default function ChatPanel({
 
     lastMessageCountRef.current = messages.length;
   }, [messages, crossChatEnabled, onAIResponse]);
+
+  // Reset initial load flag when thread changes
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    lastMessageCountRef.current = 0;
+  }, [threadId]);
 
   // Expose sendMessage function to parent for cross-chat
   useEffect(() => {
@@ -211,6 +287,20 @@ export default function ChatPanel({
           </h2>
         </div>
       )}
+
+      {/* Panel Name Editor */}
+      <div className="flex-shrink-0 border-b border-slate-800/50 bg-slate-900/30 px-4 py-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-400">Panel Name:</span>
+          <input
+            type="text"
+            value={panelName}
+            onChange={(e) => onPanelNameChange?.(e.target.value)}
+            className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Enter panel name..."
+          />
+        </div>
+      </div>
 
       {/* Error display */}
       {messagesError && (
@@ -253,6 +343,17 @@ export default function ChatPanel({
           />
         </div>
 
+        {/* Quick Send Buttons */}
+        {quickSendTargets.length > 0 && onQuickSend && (
+          <QuickSendButtons
+            targets={quickSendTargets}
+            currentDraft={draft}
+            onQuickSend={onQuickSend}
+            disabled={sendInFlight}
+            currentPanelId={currentPanelId}
+          />
+        )}
+
         {/* Composer */}
         <div className="border-t border-slate-800 px-4 py-3">
           <MessageComposer
@@ -279,6 +380,8 @@ export default function ChatPanel({
             isStepByStepNoExplanation={isStepByStepNoExplanation}
             onToggleStepByStepWithExplanation={toggleStepByStepWithExplanation}
             onToggleStepByStepNoExplanation={toggleStepByStepNoExplanation}
+            enableWebSearch={enableWebSearch}
+            onToggleWebSearch={toggleWebSearch}
             userTier={userTier}
             isFeatureEnabled={isFeatureEnabled}
           />

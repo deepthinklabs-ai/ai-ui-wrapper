@@ -40,12 +40,14 @@ const CLAUDE_API_MODEL_MAP: Record<string, string> = {
  *
  * @param messages - Array of chat messages
  * @param model - The Claude model to use
+ * @param enableWebSearch - Enable web search tool (default: true)
  * @returns The assistant's response text and token usage
  * @throws Error if no API key is set or if the API call fails
  */
 export async function sendClaudeChatRequest(
   messages: ClaudeMessage[],
-  model: string
+  model: string,
+  enableWebSearch: boolean = true
 ): Promise<ClaudeResponse> {
   const apiKey = getClaudeApiKey();
 
@@ -81,6 +83,17 @@ export async function sendClaudeChatRequest(
   // Add system prompt if provided
   if (systemPrompt) {
     requestBody.system = systemPrompt;
+  }
+
+  // Add web search tool if enabled
+  if (enableWebSearch) {
+    requestBody.tools = [
+      {
+        type: "web_search_20250514",
+        name: "web_search",
+      },
+      ...(requestBody.tools || [])
+    ];
   }
 
   try {

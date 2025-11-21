@@ -8,7 +8,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { NewsItem } from "@/types/playground";
+import type { NewsItem } from "@/types/cablebox";
 
 type UseNewsIntegrationResult = {
   currentNews: NewsItem[];

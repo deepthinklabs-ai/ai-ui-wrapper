@@ -21,7 +21,7 @@ const CLAUDE_API_MODEL_MAP: Record<string, string> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, messages, model = 'claude-sonnet-4-5', systemPrompt } = body;
+    const { userId, messages, model = 'claude-sonnet-4-5', systemPrompt, tools, enableWebSearch = true } = body;
 
     // Validate required fields
     if (!userId) {
@@ -150,6 +150,22 @@ export async function POST(req: NextRequest) {
       requestBody.system = finalSystemPrompt;
     }
 
+    // Add web search tool if enabled
+    if (enableWebSearch) {
+      requestBody.tools = [
+        {
+          type: "web_search_20250514",
+          name: "web_search",
+        },
+        ...(requestBody.tools || [])
+      ];
+    }
+
+    // Add tools if provided (for MCP tool calling)
+    if (tools && Array.isArray(tools) && tools.length > 0) {
+      requestBody.tools = [...(requestBody.tools || []), ...tools];
+    }
+
     // Make request to Claude API
     const startTime = Date.now();
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -183,14 +199,19 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
 
-    // Extract the text content from Claude's response
-    const content = data.content?.[0]?.text;
+    // Check if response contains tool use (Claude can return tool_use blocks)
+    const hasToolUse = data.content?.some((block: any) => block.type === 'tool_use');
 
-    if (!content) {
-      return NextResponse.json(
-        { error: 'No response from Claude' },
-        { status: 500 }
-      );
+    // Extract the text content from Claude's response (if any)
+    let content = '';
+    if (!hasToolUse) {
+      content = data.content?.[0]?.text;
+      if (!content) {
+        return NextResponse.json(
+          { error: 'No response from Claude' },
+          { status: 500 }
+        );
+      }
     }
 
     // Extract token usage
@@ -217,11 +238,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       content: content,
+      contentBlocks: data.content, // Include full content blocks for tool use
       usage: {
         input_tokens: usage.input_tokens,
         output_tokens: usage.output_tokens,
         total_tokens: usage.input_tokens + usage.output_tokens,
       },
+      stop_reason: data.stop_reason, // Include stop reason (can be 'tool_use')
     });
   } catch (error: any) {
     console.error('Error in /api/pro/claude:', error);

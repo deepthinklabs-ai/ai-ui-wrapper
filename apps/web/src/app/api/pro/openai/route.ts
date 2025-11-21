@@ -15,10 +15,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Map models to their search-enabled variants
+const SEARCH_ENABLED_MODELS: Record<string, string> = {
+  'gpt-5': 'gpt-5-search-api-2025-10-14',
+  'gpt-4o': 'gpt-4o-search-preview',
+};
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, messages, model = 'gpt-4o' } = body;
+    const { userId, messages, model = 'gpt-4o', enableWebSearch = true } = body;
 
     // Validate required fields
     if (!userId) {
@@ -65,12 +71,25 @@ export async function POST(req: NextRequest) {
     // TODO: Rate limiting check (coming soon)
     // For now, we'll rely on OpenAI's rate limits
 
+    // Use search-enabled model if available and requested
+    const actualModel = enableWebSearch && SEARCH_ENABLED_MODELS[model]
+      ? SEARCH_ENABLED_MODELS[model]
+      : model;
+
+    const completionParams: any = {
+      model: actualModel,
+      messages,
+    };
+
+    // Note: For GPT-5 and GPT-4o search models, web search is built-in
+    // No need to add tools - the model automatically searches when needed
+
     // Make request to OpenAI
     const startTime = Date.now();
-    const completion = await openai.chat.completions.create({
-      model,
-      messages,
-    });
+    const completion = await openai.chat.completions.create(completionParams);
+
+    // Debug log: See the full message structure
+    console.log('[PRO API] Full message object:', JSON.stringify(completion.choices?.[0]?.message, null, 2));
 
     const reply = completion.choices?.[0]?.message?.content;
 
@@ -100,6 +119,61 @@ export async function POST(req: NextRequest) {
     //   latency_ms: latency,
     // });
 
+    // Extract citations from annotations (for search-enabled models)
+    const message = completion.choices?.[0]?.message;
+    const annotations = (message as any)?.annotations || [];
+
+    // Debug logging to see what we're getting
+    if (annotations.length > 0) {
+      console.log(`[PRO API] Found ${annotations.length} annotations:`, JSON.stringify(annotations, null, 2));
+    }
+
+    const annotationCitations = annotations
+      .filter((ann: any) => ann.type === 'url_citation' && ann.url_citation?.url)
+      .map((ann: any) => ({
+        url: ann.url_citation.url,
+        title: ann.url_citation.title || undefined,
+        cited_text: ann.url_citation.text || undefined,
+      }));
+
+    // Also extract inline markdown links from the response text
+    // This catches URLs the AI explicitly formatted in its response
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const inlineLinks: Array<{ url: string; title?: string }> = [];
+    let match;
+
+    while ((match = markdownLinkRegex.exec(reply)) !== null) {
+      const [, title, url] = match;
+      // Only include http/https URLs, skip relative links
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        inlineLinks.push({ url, title });
+      }
+    }
+
+    console.log(`[PRO API] Found ${inlineLinks.length} inline markdown links in response`);
+
+    // Combine both sources of citations, preferring inline links (more specific)
+    // Use a Map to deduplicate by URL
+    const citationMap = new Map<string, { url: string; title?: string; cited_text?: string }>();
+
+    // Add inline links first (higher priority)
+    inlineLinks.forEach(link => {
+      citationMap.set(link.url, { url: link.url, title: link.title });
+    });
+
+    // Add annotation citations (only if URL not already present)
+    annotationCitations.forEach(citation => {
+      if (!citationMap.has(citation.url)) {
+        citationMap.set(citation.url, citation);
+      }
+    });
+
+    const citations = Array.from(citationMap.values());
+
+    if (citations.length > 0) {
+      console.log(`[PRO API] Final ${citations.length} citations (combined):`, JSON.stringify(citations, null, 2));
+    }
+
     return NextResponse.json({
       content: reply,
       usage: {
@@ -107,12 +181,26 @@ export async function POST(req: NextRequest) {
         completion_tokens: usage.completion_tokens,
         total_tokens: usage.total_tokens,
       },
+      citations: citations.length > 0 ? citations : undefined,
     });
   } catch (error: any) {
     console.error('Error in /api/pro/openai:', error);
 
     // Handle OpenAI API errors
     if (error?.status === 429) {
+      // Check if it's a token limit error vs rate limit
+      const errorMessage = error?.message || '';
+      const isTokenLimitError = errorMessage.includes('tokens per min') || errorMessage.includes('TPM');
+
+      if (isTokenLimitError) {
+        return NextResponse.json(
+          {
+            error: 'Request too large: The conversation history plus your message exceeds the OpenAI token limit. Try starting a new thread or using a shorter message.'
+          },
+          { status: 429 }
+        );
+      }
+
       return NextResponse.json(
         { error: 'Rate limit exceeded. Please try again in a moment.' },
         { status: 429 }

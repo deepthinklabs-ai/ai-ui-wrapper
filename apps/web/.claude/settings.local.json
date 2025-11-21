@@ -13,7 +13,20 @@
       "Bash(dir:*)",
       "Bash(findstr:*)",
       "Bash(del srchooksuseResizablePanel.ts)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm uninstall:*)",
+      "WebFetch(domain:elevenlabs.io)",
+      "Bash(netstat:*)",
+      "Bash(cat:*)",
+      "Bash(node -e:*)",
+      "WebFetch(domain:auth0.com)",
+      "WebFetch(domain:assets.ctfassets.net)",
+      "WebFetch(domain:community.auth0.com)",
+      "WebFetch(domain:www.piiano.com)",
+      "Bash(timeout 3 echo:*)",
+      "Bash(del .nextdevlock)",
+      "WebFetch(domain:community.openai.com)",
+      "WebFetch(domain:www.listendata.com)"
     ],
     "deny": [],
     "ask": []

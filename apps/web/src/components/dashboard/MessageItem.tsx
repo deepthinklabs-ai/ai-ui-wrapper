@@ -16,6 +16,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MessageActions from "./MessageActions";
 import CodeBlock from "@/components/markdown/CodeBlock";
+import { ToolCallDisplay } from "./ToolCallDisplay";
 
 type MessageItemProps = {
   message: Message;
@@ -129,11 +130,50 @@ const MessageItem: React.FC<MessageItemProps> = ({
                     </CodeBlock>
                   );
                 },
+                a({ node, children, href, ...props }) {
+                  return (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors"
+                      {...props}
+                    >
+                      {children}
+                    </a>
+                  );
+                },
               }}
             >
               {m.content}
             </ReactMarkdown>
           </div>
+
+          {/* Show tool calls if present */}
+          {m.tool_calls && m.tool_results && m.tool_calls.length > 0 && (
+            <ToolCallDisplay toolCalls={m.tool_calls} toolResults={m.tool_results} />
+          )}
+
+          {/* Show citations if present */}
+          {m.citations && m.citations.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-700/50">
+              <div className="text-xs text-slate-400 mb-2">Sources:</div>
+              <div className="flex flex-col gap-1">
+                {m.citations.map((citation, idx) => (
+                  <a
+                    key={idx}
+                    href={citation.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-400 hover:text-blue-300 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors flex items-start gap-1"
+                  >
+                    <span className="opacity-60">[{idx + 1}]</span>
+                    <span className="flex-1 break-all">{citation.title || citation.url}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -147,6 +187,8 @@ export default memo(MessageItem, (prevProps, nextProps) => {
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.content === nextProps.message.content &&
+    prevProps.message.tool_calls === nextProps.message.tool_calls &&
+    prevProps.message.tool_results === nextProps.message.tool_results &&
     prevProps.index === nextProps.index &&
     prevProps.totalMessages === nextProps.totalMessages &&
     prevProps.currentModel === nextProps.currentModel &&

@@ -10,6 +10,9 @@ import type { FeatureId } from "@/types/features";
 import { getFileUploadWarning } from "@/lib/modelCapabilities";
 import { useResizableComposer } from "@/hooks/useResizableComposer";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
+import { useAutoSendDetection } from "@/hooks/useAutoSendDetection";
+import { usePushToTalk } from "@/hooks/usePushToTalk";
 
 type MessageComposerProps = {
   value: string;
@@ -36,6 +39,9 @@ type MessageComposerProps = {
   isStepByStepNoExplanation?: boolean;
   onToggleStepByStepWithExplanation?: () => void;
   onToggleStepByStepNoExplanation?: () => void;
+  // Web search toggle
+  enableWebSearch?: boolean;
+  onToggleWebSearch?: () => void;
   userTier?: "free" | "pro";
   isFeatureEnabled?: (featureId: FeatureId) => boolean;
 };
@@ -64,6 +70,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   isStepByStepNoExplanation = false,
   onToggleStepByStepWithExplanation,
   onToggleStepByStepNoExplanation,
+  enableWebSearch = true,
+  onToggleWebSearch,
   userTier,
   isFeatureEnabled,
 }) => {
@@ -71,6 +79,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
 
   // Check if voice input feature is enabled (defaults to true if not provided)
   const voiceInputEnabled = isFeatureEnabled ? isFeatureEnabled('voice_input') : true;
+  // Check if auto voice detection feature is enabled (defaults to false if not provided)
+  const autoVoiceDetectionEnabled = isFeatureEnabled ? isFeatureEnabled('auto_voice_detection') : false;
   // Check if file attachments feature is enabled (defaults to true if not provided)
   const fileAttachmentsEnabled = isFeatureEnabled ? isFeatureEnabled('file_attachments') : true;
   // Check if model selection feature is enabled (defaults to true if not provided)
@@ -111,10 +121,78 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
     isSupported,
     error: speechError,
     toggleListening,
+    transcript,
+    startListening,
+    stopListening,
   } = useSpeechRecognition({
     onTranscript: handleTranscript,
     continuous: true,
     interimResults: true,
+  });
+
+  // Push-to-Talk functionality
+  const { isPushing, isEnabled: isPushToTalkEnabled } = usePushToTalk({
+    onPushStart: () => {
+      console.log('[Push-to-Talk] Key pressed - starting voice input');
+      if (!isListening && voiceInputEnabled) {
+        startListening();
+      }
+    },
+    onPushEnd: () => {
+      console.log('[Push-to-Talk] Key released - stopping voice input');
+      if (isListening) {
+        stopListening();
+      }
+    },
+    disabled: !voiceInputEnabled || autoVoiceDetectionEnabled, // Disable PTT when voice input is off or auto-detection is on
+  });
+
+  // Voice Activity Detection - automatically start/stop microphone
+  const { isSpeaking: vadIsSpeaking } = useVoiceActivityDetection({
+    enabled: autoVoiceDetectionEnabled && !isListening && !isPushToTalkEnabled, // Disabled when PTT is enabled
+    onSpeakingStart: () => {
+      console.log('[Auto Voice] User started speaking - activating microphone');
+      if (!isListening) {
+        startListening();
+      }
+    },
+    onSpeakingStop: () => {
+      console.log('[Auto Voice] User stopped speaking');
+      // Don't stop listening here - let auto-send detection handle it
+    },
+  });
+
+  // Auto-send detection - detect "send" command
+  useAutoSendDetection({
+    enabled: autoVoiceDetectionEnabled && isListening,
+    transcript: transcript || '',
+    onSendDetected: () => {
+      console.log('[Auto Voice] Send command detected - submitting message');
+
+      // Remove the "send" trigger word from the message
+      const triggerWords = ['send', 'submit', 'send it', 'submit it'];
+      let cleanedValue = value;
+
+      triggerWords.forEach(word => {
+        const regex = new RegExp(`\\s*${word}[.!?]?\\s*$`, 'i');
+        cleanedValue = cleanedValue.replace(regex, '').trim();
+      });
+
+      // Update the value without the trigger word
+      if (cleanedValue !== value) {
+        onChange(cleanedValue);
+      }
+
+      // Stop listening
+      stopListening();
+
+      // Send the message after a brief delay to let the value update
+      setTimeout(() => {
+        if (cleanedValue.trim() || attachedFiles.length > 0) {
+          onSend();
+        }
+      }, 100);
+    },
   });
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -322,9 +400,41 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 isListening={isListening}
                 isSupported={isSupported}
                 onClick={toggleListening}
-                disabled={disabled}
+                disabled={disabled || isPushToTalkEnabled}
                 error={speechError}
+                autoVoiceMode={autoVoiceDetectionEnabled}
+                pushToTalkMode={isPushToTalkEnabled}
+                isPushing={isPushing}
               />
+            )}
+
+            {/* Web Search Toggle */}
+            {onToggleWebSearch && (
+              <button
+                onClick={onToggleWebSearch}
+                disabled={disabled}
+                className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-all ${
+                  enableWebSearch
+                    ? "border-emerald-600 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30"
+                    : "border-slate-600 bg-slate-800 text-slate-400 hover:bg-slate-700"
+                } disabled:opacity-60`}
+                title={enableWebSearch ? "Web search enabled - AI can search the web for current information" : "Web search disabled - AI will only use its training data"}
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                  />
+                </svg>
+                {enableWebSearch ? "Web search ON" : "Web search OFF"}
+              </button>
             )}
           </div>
 

@@ -22,9 +22,13 @@ export type AIModel =
   | 'claude-sonnet-4'
   | 'claude-opus-4-1'
   | 'claude-haiku-4-5'
-  | 'claude-haiku-3-5';
+  | 'claude-haiku-3-5'
+  // Grok Models
+  | 'grok-code-fast-1'
+  | 'grok-4-fast-reasoning'
+  | 'grok-4-fast-non-reasoning';
 
-export type ModelProvider = 'openai' | 'claude';
+export type ModelProvider = 'openai' | 'claude' | 'grok';
 
 export type ModelCapabilities = {
   supportsImages: boolean;
@@ -44,7 +48,7 @@ export const AVAILABLE_MODELS: {
   {
     value: 'claude-sonnet-4-5',
     label: 'Claude Sonnet 4.5',
-    description: 'Most intelligent Claude model, best for coding and complex agents • Supports images',
+    description: 'Most intelligent Claude model, best for coding and complex agents • Supports images • Web search enabled',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 200000,
@@ -52,7 +56,7 @@ export const AVAILABLE_MODELS: {
   {
     value: 'claude-sonnet-4',
     label: 'Claude Sonnet 4',
-    description: 'Powerful model for advanced reasoning and analysis • Supports images',
+    description: 'Powerful model for advanced reasoning and analysis • Supports images • Web search enabled',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 200000,
@@ -60,7 +64,7 @@ export const AVAILABLE_MODELS: {
   {
     value: 'claude-opus-4-1',
     label: 'Claude Opus 4.1',
-    description: 'Highest intelligence model for complex tasks and deep analysis • Supports images',
+    description: 'Highest intelligence model for complex tasks and deep analysis • Supports images • Web search enabled',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 200000,
@@ -68,7 +72,7 @@ export const AVAILABLE_MODELS: {
   {
     value: 'claude-haiku-4-5',
     label: 'Claude Haiku 4.5',
-    description: 'Fast and cost-effective, great balance of speed and capability • Supports images',
+    description: 'Fast and cost-effective, great balance of speed and capability • Supports images • Web search enabled',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 200000,
@@ -76,7 +80,7 @@ export const AVAILABLE_MODELS: {
   {
     value: 'claude-haiku-3-5',
     label: 'Claude Haiku 3.5',
-    description: 'Ultra-fast and cheapest Claude option • Supports images',
+    description: 'Ultra-fast and cheapest Claude option • Supports images • Web search enabled',
     provider: 'claude',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 200000,
@@ -85,7 +89,7 @@ export const AVAILABLE_MODELS: {
   {
     value: 'gpt-5',
     label: 'GPT-5',
-    description: 'Latest OpenAI model, best for coding and agentic tasks, 272K context • Supports images',
+    description: 'Latest OpenAI model, best for coding and agentic tasks, 272K context • Supports images • Web search enabled',
     provider: 'openai',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 272000,
@@ -109,7 +113,7 @@ export const AVAILABLE_MODELS: {
   {
     value: 'gpt-4o',
     label: 'GPT-4o',
-    description: 'Previous generation flagship • Supports images',
+    description: 'Previous generation flagship • Supports images • Web search enabled',
     provider: 'openai',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 128000,
@@ -137,6 +141,31 @@ export const AVAILABLE_MODELS: {
     provider: 'openai',
     capabilities: { supportsImages: false, supportsFiles: false },
     contextWindow: 16385,
+  },
+  // Grok Models (xAI)
+  {
+    value: 'grok-code-fast-1',
+    label: 'Grok Code Fast 1',
+    description: 'Optimized for coding tasks with fast response times • Supports images • Live web & X search',
+    provider: 'grok',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 256000,
+  },
+  {
+    value: 'grok-4-fast-reasoning',
+    label: 'Grok 4 Fast Reasoning',
+    description: 'Advanced reasoning capabilities with real-time knowledge • Supports images • Live web & X search',
+    provider: 'grok',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 2000000,
+  },
+  {
+    value: 'grok-4-fast-non-reasoning',
+    label: 'Grok 4 Fast Non-Reasoning',
+    description: 'Fast responses for general tasks without deep reasoning • Supports images • Live web & X search',
+    provider: 'grok',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 2000000,
   },
 ];
 

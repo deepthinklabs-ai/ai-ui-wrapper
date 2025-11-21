@@ -8,12 +8,13 @@
 "use client";
 
 import { useCallback } from "react";
-import type { Character, NewsItem, DialogueMessage } from "@/types/playground";
-import { generatePersonalityPrompt } from "@/lib/playgroundPresets";
+import type { Character, NewsItem, DialogueMessage } from "@/types/cablebox";
+import { generatePersonalityPrompt } from "@/lib/cableBoxPresets";
 
 type UseCharacterAIProps = {
   userId: string;
   userTier: "free" | "pro";
+  unhingedMode?: boolean; // Enable wilder, more creative responses for Grok
 };
 
 type UseCharacterAIResult = {
@@ -36,18 +37,32 @@ type UseCharacterAIResult = {
   ) => Promise<string>;
 };
 
-export function useCharacterAI({ userId, userTier }: UseCharacterAIProps): UseCharacterAIResult {
+export function useCharacterAI({ userId, userTier, unhingedMode = false }: UseCharacterAIProps): UseCharacterAIResult {
   /**
    * Call AI API to generate character dialogue
    */
   const callAI = useCallback(
-    async (systemPrompt: string, userPrompt: string): Promise<string> => {
+    async (systemPrompt: string, userPrompt: string, model?: string): Promise<string> => {
       try {
-        // Use the unified API route based on user tier
-        const apiRoute = userTier === "pro" ? "/api/pro/claude" : "/api/chat";
+        // Determine which model to use
+        const modelToUse = model || "gpt-5";
+        const isGrok = modelToUse.startsWith("grok");
+        const isClaude = modelToUse.startsWith("claude");
 
-        // Format request based on API tier
-        const requestBody = userTier === "pro"
+        // Determine API route based on user tier and model
+        let apiRoute = "/api/chat";
+        if (userTier === "pro") {
+          if (isGrok) {
+            apiRoute = "/api/pro/grok";
+          } else if (isClaude) {
+            apiRoute = "/api/pro/claude";
+          } else {
+            apiRoute = "/api/pro/openai";
+          }
+        }
+
+        // Format request based on API provider
+        const requestBody = isClaude && userTier === "pro"
           ? {
               // Claude API format - system as separate parameter
               system: systemPrompt,
@@ -57,10 +72,11 @@ export function useCharacterAI({ userId, userTier }: UseCharacterAIProps): UseCh
                   content: userPrompt,
                 },
               ],
-              model: "claude-sonnet-4.5",
+              model: modelToUse,
+              userId,
             }
           : {
-              // OpenAI API format - system in messages array
+              // OpenAI/Grok API format - system in messages array
               messages: [
                 {
                   role: "system",
@@ -71,7 +87,10 @@ export function useCharacterAI({ userId, userTier }: UseCharacterAIProps): UseCh
                   content: userPrompt,
                 },
               ],
-              model: "gpt-4o-mini",
+              model: modelToUse,
+              ...(userTier === "pro" && { userId }),
+              // Add unhinged mode for Grok models
+              ...(isGrok && unhingedMode && { unhinged: true }),
             };
 
         const response = await fetch(apiRoute, {
@@ -103,7 +122,7 @@ export function useCharacterAI({ userId, userTier }: UseCharacterAIProps): UseCh
         return "..."; // Silent failure - character just stays quiet
       }
     },
-    [userTier]
+    [userTier, unhingedMode]
   );
 
   /**
@@ -135,7 +154,7 @@ ${dialogueContext}
 
 Make a brief comment about this to start a conversation. Keep it SHORT (1-2 sentences). Be natural and conversational. Stay in character.`;
 
-      return await callAI(systemPrompt, userPrompt);
+      return await callAI(systemPrompt, userPrompt, character.model);
     },
     [callAI]
   );
@@ -167,7 +186,7 @@ ${messageToReactTo.characterName} just said: "${messageToReactTo.text}"
 
 Respond naturally to what they just said, like you're in a conversation with them. React to their comment, not the original topic. You can agree, disagree, question, interrupt, or build on what they said. Keep it conversational (1-2 sentences). Stay in character.`;
 
-      return await callAI(systemPrompt, userPrompt);
+      return await callAI(systemPrompt, userPrompt, character.model);
     },
     [callAI]
   );
@@ -208,7 +227,7 @@ Respond naturally to what they just said, like you're in a conversation with the
 
 Based on recent events and conversations, make a spontaneous comment or observation. 1-3 sentences. Stay in character.`;
 
-      return await callAI(systemPrompt, userPrompt);
+      return await callAI(systemPrompt, userPrompt, character.model);
     },
     [callAI]
   );

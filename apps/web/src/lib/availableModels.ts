@@ -9,6 +9,7 @@
 import { AVAILABLE_MODELS, type AIModel, type ModelProvider } from "./apiKeyStorage";
 import { hasApiKey } from "./apiKeyStorage";
 import { hasClaudeApiKey } from "./apiKeyStorage.claude";
+import { hasGrokApiKey } from "./apiKeyStorage.grok";
 
 /**
  * Get which providers the user has API keys for
@@ -17,7 +18,7 @@ import { hasClaudeApiKey } from "./apiKeyStorage.claude";
 export function getAvailableProviders(userTier?: "free" | "pro"): ModelProvider[] {
   // Pro users have access to all providers via backend API keys
   if (userTier === "pro") {
-    return ["openai", "claude"];
+    return ["openai", "claude", "grok"];
   }
 
   // Free users only get models for providers they have API keys for
@@ -29,6 +30,10 @@ export function getAvailableProviders(userTier?: "free" | "pro"): ModelProvider[
 
   if (hasClaudeApiKey()) {
     providers.push("claude");
+  }
+
+  if (hasGrokApiKey()) {
+    providers.push("grok");
   }
 
   return providers;
@@ -63,5 +68,5 @@ export function hasAccessToModel(model: AIModel): boolean {
  * Check if the user has any API keys configured
  */
 export function hasAnyApiKey(): boolean {
-  return hasApiKey() || hasClaudeApiKey();
+  return hasApiKey() || hasClaudeApiKey() || hasGrokApiKey();
 }

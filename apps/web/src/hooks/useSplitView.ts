@@ -8,7 +8,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { SplitViewState } from "@/types/splitView";
+import type { SplitViewState, MessageType } from "@/types/splitView";
 
 interface UseSplitViewResult {
   splitView: SplitViewState;
@@ -19,6 +19,9 @@ interface UseSplitViewResult {
   setLeftThread: (threadId: string) => void;
   setRightThread: (threadId: string) => void;
   toggleCrossChat: () => void;
+  setLeftPanelName: (name: string) => void;
+  setRightPanelName: (name: string) => void;
+  setMessageType: (type: MessageType) => void;
 }
 
 export function useSplitView(): UseSplitViewResult {
@@ -28,6 +31,9 @@ export function useSplitView(): UseSplitViewResult {
     rightThreadId: null,
     splitRatio: 50, // 50/50 split by default
     crossChatEnabled: false,
+    leftPanelName: "Main Chat",
+    rightPanelName: "Assistant",
+    messageType: "instruction", // Default to instruction mode
   });
 
   /**
@@ -39,6 +45,10 @@ export function useSplitView(): UseSplitViewResult {
       leftThreadId,
       rightThreadId,
       splitRatio: 50,
+      crossChatEnabled: false,
+      leftPanelName: "Main Chat",
+      rightPanelName: "Assistant",
+      messageType: "instruction",
     });
   }, []);
 
@@ -51,6 +61,10 @@ export function useSplitView(): UseSplitViewResult {
       leftThreadId: null,
       rightThreadId: null,
       splitRatio: 50,
+      crossChatEnabled: false,
+      leftPanelName: "Main Chat",
+      rightPanelName: "Assistant",
+      messageType: "instruction",
     });
   }, []);
 
@@ -106,6 +120,36 @@ export function useSplitView(): UseSplitViewResult {
     }));
   }, []);
 
+  /**
+   * Set the left panel name
+   */
+  const setLeftPanelName = useCallback((name: string) => {
+    setSplitView((prev) => ({
+      ...prev,
+      leftPanelName: name,
+    }));
+  }, []);
+
+  /**
+   * Set the right panel name
+   */
+  const setRightPanelName = useCallback((name: string) => {
+    setSplitView((prev) => ({
+      ...prev,
+      rightPanelName: name,
+    }));
+  }, []);
+
+  /**
+   * Set the message type (instruction or chat)
+   */
+  const setMessageType = useCallback((type: MessageType) => {
+    setSplitView((prev) => ({
+      ...prev,
+      messageType: type,
+    }));
+  }, []);
+
   return {
     splitView,
     activateSplitView,
@@ -115,5 +159,8 @@ export function useSplitView(): UseSplitViewResult {
     setLeftThread,
     setRightThread,
     toggleCrossChat,
+    setLeftPanelName,
+    setRightPanelName,
+    setMessageType,
   };
 }

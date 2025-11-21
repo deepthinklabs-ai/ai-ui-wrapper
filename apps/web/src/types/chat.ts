@@ -17,6 +17,27 @@ export type AttachmentMetadata = {
   isImage: boolean;
 };
 
+export type ToolCall = {
+  id: string;
+  name: string;
+  input: Record<string, any>;
+  serverId?: string;
+  serverName?: string;
+};
+
+export type ToolResult = {
+  toolCallId: string;
+  toolName: string;
+  result: any;
+  isError: boolean;
+};
+
+export type Citation = {
+  url: string;
+  title?: string;
+  cited_text?: string;
+};
+
 export type Message = {
   id: string;
   thread_id: string;
@@ -29,4 +50,9 @@ export type Message = {
   input_tokens?: number | null;
   output_tokens?: number | null;
   total_tokens?: number | null;
+  // MCP tool calling (for assistant messages)
+  tool_calls?: ToolCall[] | null;
+  tool_results?: ToolResult[] | null;
+  // Web search citations (for assistant messages with web search)
+  citations?: Citation[] | null;
 };

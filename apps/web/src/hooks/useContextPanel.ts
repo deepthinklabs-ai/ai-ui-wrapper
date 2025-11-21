@@ -9,11 +9,14 @@
 
 import { useState } from "react";
 import { askContextQuestion } from "@/lib/contextChatClient";
+import type { UserTier } from "@/hooks/useUserTier";
 
 type UseContextPanelOptions = {
   selection: { text: string; x: number; y: number } | null;
   clearSelection: () => void;
   threadMessages: { role: "user" | "assistant"; content: string }[];
+  userTier?: UserTier;
+  userId?: string;
 };
 
 type UseContextPanelResult = {
@@ -31,7 +34,7 @@ type UseContextPanelResult = {
 };
 
 export function useContextPanel(options: UseContextPanelOptions): UseContextPanelResult {
-  const { selection, clearSelection, threadMessages } = options;
+  const { selection, clearSelection, threadMessages, userTier, userId } = options;
 
   const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
   const [selectedContextSections, setSelectedContextSections] = useState<string[]>([]);
@@ -76,7 +79,7 @@ export function useContextPanel(options: UseContextPanelOptions): UseContextPane
     try {
       // Use provided thread messages or fall back to the hook's thread messages
       const messagesToUse = threadMessagesParam || threadMessages;
-      const response = await askContextQuestion(question, contextSections, messagesToUse, files);
+      const response = await askContextQuestion(question, contextSections, messagesToUse, files, userTier, userId);
       return response;
     } catch (error) {
       console.error("Error in context question:", error);

@@ -15,12 +15,20 @@ import {
   setClaudeApiKey,
   clearClaudeApiKey,
 } from "@/lib/apiKeyStorage.claude";
+import {
+  getGrokApiKey,
+  setGrokApiKey,
+  clearGrokApiKey,
+} from "@/lib/apiKeyStorage.grok";
 import ApiKeyInput from "@/components/settings/ApiKeyInput";
 import ModelSelector from "@/components/settings/ModelSelector";
 import SecurityWarning from "@/components/settings/SecurityWarning";
 import SubscriptionManagement from "@/components/settings/SubscriptionManagement";
 import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal";
 import FeatureToggles from "@/components/settings/FeatureToggles";
+import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
+import MCPServerSettings from "@/components/settings/MCPServerSettings";
+import MCPMigrationBanner from "@/components/settings/MCPMigrationBanner";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useUserTier } from "@/hooks/useUserTier";
 
@@ -31,12 +39,15 @@ export default function SettingsPage() {
   const { tier } = useUserTier(user?.id);
   const [openaiApiKey, setOpenaiApiKeyState] = useState("");
   const [claudeApiKey, setClaudeApiKeyState] = useState("");
+  const [grokApiKey, setGrokApiKeyState] = useState("");
   const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5");
   const [isTesting, setIsTesting] = useState(false);
   const [isTestingClaude, setIsTestingClaude] = useState(false);
+  const [isTestingGrok, setIsTestingGrok] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isOpenaiKeySaved, setIsOpenaiKeySaved] = useState(false);
   const [isClaudeKeySaved, setIsClaudeKeySaved] = useState(false);
+  const [isGrokKeySaved, setIsGrokKeySaved] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   const isPro = tier === 'pro';
@@ -53,6 +64,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const existingOpenAIKey = getApiKey();
     const existingClaudeKey = getClaudeApiKey();
+    const existingGrokKey = getGrokApiKey();
     const existingModel = getSelectedModel();
 
     if (existingOpenAIKey) {
@@ -60,6 +72,9 @@ export default function SettingsPage() {
     }
     if (existingClaudeKey) {
       setIsClaudeKeySaved(true);
+    }
+    if (existingGrokKey) {
+      setIsGrokKeySaved(true);
     }
     setSelectedModelState(existingModel);
   }, []);
@@ -165,6 +180,30 @@ export default function SettingsPage() {
     }
   };
 
+  const handleGrokKeyChange = (value: string) => {
+    setGrokApiKeyState(value);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSaveGrokKey = () => {
+    if (grokApiKey.trim()) {
+      setGrokApiKey(grokApiKey.trim());
+      setIsGrokKeySaved(true);
+      setGrokApiKeyState("");
+      setHasUnsavedChanges(false);
+      alert("Grok API key saved successfully!");
+    }
+  };
+
+  const handleClearGrokKey = () => {
+    if (confirm("Are you sure you want to remove your Grok API key?")) {
+      clearGrokApiKey();
+      setGrokApiKeyState("");
+      setIsGrokKeySaved(false);
+      setHasUnsavedChanges(false);
+    }
+  };
+
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-50 overflow-hidden">
       {/* Onboarding Welcome Modal */}
@@ -206,6 +245,9 @@ export default function SettingsPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto px-6 py-8">
         <div className="mx-auto max-w-4xl space-y-8">
+
+          {/* MCP Credentials Migration Banner */}
+          <MCPMigrationBanner />
 
           {/* Security Best Practices Warning */}
           <SecurityWarning />
@@ -496,6 +538,139 @@ export default function SettingsPage() {
             )}
           </section>
 
+          {/* Grok (xAI) API Key Section */}
+          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-slate-100">Grok (xAI) API Key</h2>
+              {isPro ? (
+                <div className="mt-4 rounded-lg border border-purple-500/20 bg-purple-500/10 p-4">
+                  <div className="flex items-center gap-3">
+                    <svg className="h-6 w-6 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <div className="text-sm font-semibold text-purple-300">Grok API Access Included with Pro</div>
+                      <div className="text-xs text-purple-400/80 mt-1">No need to provide your own API key. Enjoy unlimited access to Grok models!</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">
+                  Optional: Add your xAI Grok API key to use Grok models with real-time knowledge.
+                </p>
+              )}
+            </div>
+
+            {!isPro && (
+              <>
+
+            {/* Instructions */}
+            <div className="mb-6 rounded-lg border border-purple-500/20 bg-purple-500/10 p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-purple-300">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                How to get your Grok API key
+              </h3>
+              <a
+                href="https://console.x.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+                Get Your Grok API Key
+              </a>
+            </div>
+
+            {/* Grok API Key Status or Input */}
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-slate-200">
+                Grok API Key
+              </label>
+
+              {isGrokKeySaved && !grokApiKey ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-800 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <div>
+                        <div className="text-sm font-medium text-slate-200">Grok API Key Configured</div>
+                        <div className="text-xs text-slate-400">xai-••••••••••••••••••••••••••</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleClearGrokKey}
+                      className="rounded-md px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Your Grok API key is securely stored in your browser.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <input
+                        type="password"
+                        value={grokApiKey}
+                        onChange={(e) => handleGrokKeyChange(e.target.value)}
+                        placeholder="xai-..."
+                        className="w-full rounded-md border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    {grokApiKey && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSaveGrokKey}
+                          className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
+                        >
+                          Save Grok Key
+                        </button>
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-400">
+                      Your Grok API key will be stored locally in your browser and never sent to our servers.
+                    </p>
+                  </div>
+                  {isGrokKeySaved && grokApiKey && (
+                    <button
+                      onClick={() => {
+                        setGrokApiKeyState("");
+                        setHasUnsavedChanges(false);
+                      }}
+                      className="mt-3 text-sm text-slate-400 hover:text-slate-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+            </>
+            )}
+          </section>
+
           {/* Model Selection Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <div className="mb-6">
@@ -522,6 +697,16 @@ export default function SettingsPage() {
                 for details. You'll be charged directly by OpenAI based on your usage.
               </p>
             </div>
+          </section>
+
+          {/* Push-to-Talk Settings Section */}
+          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+            <PushToTalkSettings />
+          </section>
+
+          {/* MCP Servers Section */}
+          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+            <MCPServerSettings />
           </section>
 
           {/* Feature Toggles Section */}

@@ -52,6 +52,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
   // Group models by provider
   const openaiModels = availableModels.filter((m) => m.provider === "openai");
   const claudeModels = availableModels.filter((m) => m.provider === "claude");
+  const grokModels = availableModels.filter((m) => m.provider === "grok");
 
   if (availableModels.length === 0) {
     return (
@@ -65,6 +66,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
     <div className="relative" ref={dropdownRef}>
       {/* Dropdown Button */}
       <button
+        type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700 disabled:opacity-60 transition-colors"
@@ -75,9 +77,13 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
           <span className="flex h-4 w-4 items-center justify-center rounded bg-blue-500/20 text-blue-300 text-[10px] font-bold">
             O
           </span>
-        ) : (
+        ) : selectedModelInfo?.provider === "claude" ? (
           <span className="flex h-4 w-4 items-center justify-center rounded bg-orange-500/20 text-orange-300 text-[10px] font-bold">
             C
+          </span>
+        ) : (
+          <span className="flex h-4 w-4 items-center justify-center rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold">
+            G
           </span>
         )}
 
@@ -147,7 +153,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
 
             {/* Claude Models */}
             {claudeModels.length > 0 && (
-              <div>
+              <div className="mb-3">
                 <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                   Claude Models
                 </div>
@@ -171,6 +177,37 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                             Latest
                           </span>
                         )}
+                      </div>
+                      <div className="text-[10px] text-slate-400 leading-tight">
+                        {model.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Grok Models */}
+            {grokModels.length > 0 && (
+              <div>
+                <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Grok Models
+                </div>
+                <div className="space-y-1">
+                  {grokModels.map((model) => (
+                    <button
+                      key={model.value}
+                      onClick={() => handleModelSelect(model.value)}
+                      className={`w-full rounded-md px-3 py-2 text-left transition-colors ${
+                        selectedModel === model.value
+                          ? "bg-purple-600/20 border border-purple-500/30"
+                          : "hover:bg-slate-800 border border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-slate-100">
+                          {model.label}
+                        </span>
                       </div>
                       <div className="text-[10px] text-slate-400 leading-tight">
                         {model.description}
