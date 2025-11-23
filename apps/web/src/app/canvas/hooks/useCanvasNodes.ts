@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 import type {
   CanvasNode,
   CanvasNodeType,
@@ -18,11 +18,6 @@ import type {
   UseCanvasNodesResult,
 } from '../types';
 import { createDefaultNode } from '../lib/nodeRegistry';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult {
   const [nodes, setNodes] = useState<CanvasNode[]>([]);

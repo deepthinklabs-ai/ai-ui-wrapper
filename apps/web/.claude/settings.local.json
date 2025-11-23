@@ -30,7 +30,11 @@
       "Bash(npm run build:*)",
       "Bash(rm:*)",
       "Bash(timeout 2 echo:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(src/hooks/useMessages.ts)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(src/app/api/pro/claude/route.ts)",
+      "WebFetch(domain:docs.x.ai)"
     ],
     "deny": [],
     "ask": []

@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     if (enableWebSearch) {
       requestBody.tools = [
         {
-          type: "web_search_20250514",
+          type: "web_search_20250305",
           name: "web_search",
         },
         ...(requestBody.tools || [])
@@ -255,3 +255,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+// force recompile

@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS boardroom_messages (
   participant_node_id UUID NOT NULL REFERENCES canvas_nodes(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   round INTEGER NOT NULL,
-  references UUID[], -- Array of message IDs
+  message_references UUID[], -- Array of message IDs (renamed from 'references' to avoid keyword conflict)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

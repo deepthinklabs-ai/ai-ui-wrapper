@@ -24,9 +24,9 @@ export type AIModel =
   | 'claude-haiku-4-5'
   | 'claude-haiku-3-5'
   // Grok Models
-  | 'grok-code-fast-1'
-  | 'grok-4-fast-reasoning'
-  | 'grok-4-fast-non-reasoning';
+  | 'grok-4-1-fast-reasoning'
+  | 'grok-4-1-fast-non-reasoning'
+  | 'grok-code-fast-1';
 
 export type ModelProvider = 'openai' | 'claude' | 'grok';
 
@@ -144,28 +144,28 @@ export const AVAILABLE_MODELS: {
   },
   // Grok Models (xAI)
   {
+    value: 'grok-4-1-fast-reasoning',
+    label: 'Grok 4.1 Fast Reasoning',
+    description: 'Frontier multimodal model optimized for high-performance agentic tool calling • Supports images • Live web & X search',
+    provider: 'grok',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 131072,
+  },
+  {
+    value: 'grok-4-1-fast-non-reasoning',
+    label: 'Grok 4.1 Fast Non-Reasoning',
+    description: 'Fast responses without deep reasoning • Supports images • Live web & X search',
+    provider: 'grok',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 131072,
+  },
+  {
     value: 'grok-code-fast-1',
     label: 'Grok Code Fast 1',
     description: 'Optimized for coding tasks with fast response times • Supports images • Live web & X search',
     provider: 'grok',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 256000,
-  },
-  {
-    value: 'grok-4-fast-reasoning',
-    label: 'Grok 4 Fast Reasoning',
-    description: 'Advanced reasoning capabilities with real-time knowledge • Supports images • Live web & X search',
-    provider: 'grok',
-    capabilities: { supportsImages: true, supportsFiles: true },
-    contextWindow: 2000000,
-  },
-  {
-    value: 'grok-4-fast-non-reasoning',
-    label: 'Grok 4 Fast Non-Reasoning',
-    description: 'Fast responses for general tasks without deep reasoning • Supports images • Live web & X search',
-    provider: 'grok',
-    capabilities: { supportsImages: true, supportsFiles: true },
-    contextWindow: 2000000,
   },
 ];
 

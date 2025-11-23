@@ -22,6 +22,20 @@ import type {
 } from '../types';
 
 // ============================================================================
+// CATEGORY DEFINITIONS
+// ============================================================================
+
+// Category list for node palette organization
+export const NODE_CATEGORIES = [
+  { id: 'bot' as const, label: 'Bots', icon: '🤖' },
+  { id: 'training' as const, label: 'Training', icon: '🎓' },
+  { id: 'collaboration' as const, label: 'Collaboration', icon: '🏛️' },
+  { id: 'trigger' as const, label: 'Triggers', icon: '⚡' },
+  { id: 'tool' as const, label: 'Tools', icon: '🔧' },
+  { id: 'other' as const, label: 'Other', icon: '⭐' },
+];
+
+// ============================================================================
 // NODE PORT DEFINITIONS
 // ============================================================================
 

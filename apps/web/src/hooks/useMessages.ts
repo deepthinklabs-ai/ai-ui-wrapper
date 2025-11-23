@@ -19,6 +19,7 @@ type UseMessagesOptions = {
   userTier?: 'free' | 'pro';
   userId?: string;
   enableWebSearch?: boolean;
+  disableMCPTools?: boolean;
 };
 
 type UseMessagesResult = {
@@ -179,11 +180,18 @@ export function useMessages(
         });
       }
 
-      // 4) Format tools for Claude if we have MCP tools AND MCP is enabled
-      const claudeTools = (tools.length > 0 && isMCPEnabled) ? formatToolsForClaude(tools) : undefined;
+      // 4) Format tools for Claude if we have MCP tools AND MCP is enabled AND not disabled via options
+      const shouldUseMCPTools = tools.length > 0 && isMCPEnabled && !options?.disableMCPTools;
+      console.log('[MCP Tools Debug]', {
+        toolsLength: tools.length,
+        isMCPEnabled,
+        disableMCPTools: options?.disableMCPTools,
+        shouldUseMCPTools,
+      });
+      const claudeTools = shouldUseMCPTools ? formatToolsForClaude(tools) : undefined;
 
-      // Add MCP context information if tools are available AND MCP is enabled
-      if (claudeTools && claudeTools.length > 0 && isMCPEnabled) {
+      // Add MCP context information if tools are available AND MCP is enabled AND not disabled
+      if (claudeTools && claudeTools.length > 0 && shouldUseMCPTools) {
         // Group tools by server for better context
         const serverGroups = tools.reduce((acc, tool) => {
           const serverName = tool.serverName || 'Unknown';
@@ -541,3 +549,4 @@ Be thorough and ensure you capture information from the BEGINNING, MIDDLE, and E
     refreshMessages,
   };
 }
+

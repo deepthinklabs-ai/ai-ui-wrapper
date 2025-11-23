@@ -99,15 +99,18 @@ export async function POST(req: NextRequest) {
       stream: false,
     };
 
-    // Add live search parameters if enabled
-    if (enableWebSearch) {
-      requestBody.search_parameters = {
-        mode: "auto",
-        sources: ["web", "x"],
-        max_search_results: 20,
-        return_citations: true,
-      };
-    }
+    // Note: Live Search API is deprecated as of Dec 15, 2025
+    // Web search is now handled through the new Agent Tools API
+    // For now, we'll disable search_parameters to avoid 422 errors
+    // TODO: Implement Agent Tools API for web search
+    // if (enableWebSearch) {
+    //   requestBody.search_parameters = {
+    //     mode: "auto",
+    //     sources: ["web", "x"],
+    //     max_search_results: 20,
+    //     return_citations: true,
+    //   };
+    // }
 
     // Add unhinged mode if enabled (fun mode parameter for Grok)
     // Grok API supports: temperature (0-2), top_p (0-1), and max_tokens

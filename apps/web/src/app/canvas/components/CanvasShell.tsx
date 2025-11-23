@@ -24,6 +24,9 @@ import NodePalette from './NodePalette';
 import CanvasViewport from './CanvasViewport';
 import NodeInspector from './NodeInspector';
 import WorkflowControls from './WorkflowControls';
+import CanvasDebugOverlay from './CanvasDebugOverlay';
+import { CanvasProvider } from '../context/CanvasContext';
+import { useAuthSession } from '@/hooks/useAuthSession';
 
 interface CanvasShellProps {
   // Canvas management
@@ -69,10 +72,14 @@ export default function CanvasShell({
   onDeleteEdge,
   loading,
 }: CanvasShellProps) {
+  const { user } = useAuthSession();
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
   const [showNodePalette, setShowNodePalette] = useState(true);
   const [showInspector, setShowInspector] = useState(true);
   const [workflowMode, setWorkflowMode] = useState(false);
+
+  // Check if user is admin
+  const isAdmin = user?.email === 'dave@deepthinklabs.ai';
 
   // Get selected node
   const selectedNode = selectedNodeId
@@ -140,41 +147,62 @@ export default function CanvasShell({
         {/* Center - Canvas Viewport */}
         <div className="flex-1 relative">
           {currentCanvas ? (
-            <CanvasViewport
-              nodes={nodes}
-              edges={edges}
-              selectedNodeId={selectedNodeId}
-              onNodeClick={handleNodeClick}
-              onCanvasClick={handleCanvasClick}
-              onNodesChange={(changes) => {
-                // Handle node position changes
-                changes.forEach((change) => {
-                  if (change.type === 'position' && change.position) {
-                    onUpdateNode(change.id, { position: change.position });
-                  } else if (change.type === 'remove') {
-                    onDeleteNode(change.id);
-                  }
-                });
+            <CanvasProvider
+              value={{
+                nodes,
+                edges,
+                onAddNode,
+                onUpdateNode,
+                onDeleteNode,
+                onDuplicateNode,
+                onAddEdge,
+                onUpdateEdge,
+                onDeleteEdge,
               }}
-              onEdgesChange={(changes) => {
-                // Handle edge changes
-                changes.forEach((change) => {
-                  if (change.type === 'remove') {
-                    onDeleteEdge(change.id);
-                  }
-                });
-              }}
-              onConnect={(connection) => {
-                // Handle new edge connection
-                if (connection.source && connection.target) {
-                  onAddEdge(connection.source, connection.target, {
-                    from_port: connection.sourceHandle || undefined,
-                    to_port: connection.targetHandle || undefined,
+            >
+              <CanvasViewport
+                nodes={nodes}
+                edges={edges}
+                selectedNodeId={selectedNodeId}
+                onNodeClick={handleNodeClick}
+                onCanvasClick={handleCanvasClick}
+                onNodesChange={(changes) => {
+                  // Handle node position changes
+                  changes.forEach((change) => {
+                    if (change.type === 'position' && change.position) {
+                      onUpdateNode(change.id, { position: change.position });
+                    } else if (change.type === 'remove') {
+                      onDeleteNode(change.id);
+                    }
                   });
-                }
-              }}
-              workflowMode={workflowMode}
-            />
+                }}
+                onEdgesChange={(changes) => {
+                  // Handle edge changes
+                  changes.forEach((change) => {
+                    if (change.type === 'remove') {
+                      onDeleteEdge(change.id);
+                    }
+                  });
+                }}
+                onConnect={(connection) => {
+                  // Handle new edge connection
+                  if (connection.source && connection.target) {
+                    onAddEdge(connection.source, connection.target, {
+                      from_port: connection.sourceHandle || undefined,
+                      to_port: connection.targetHandle || undefined,
+                    });
+                  }
+                }}
+                workflowMode={workflowMode}
+              />
+
+              {/* Admin Debug Overlay */}
+              <CanvasDebugOverlay
+                nodes={nodes}
+                edges={edges}
+                isAdmin={isAdmin}
+              />
+            </CanvasProvider>
           ) : (
             <div className="flex h-full items-center justify-center">
               <p className="text-slate-400">No canvas selected</p>

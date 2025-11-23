@@ -57,15 +57,18 @@ export async function sendGrokChatRequest(
     stream: false,
   };
 
-  // Add live search parameters if enabled
-  if (enableWebSearch) {
-    requestBody.search_parameters = {
-      mode: "auto", // Model decides when to search
-      sources: ["web", "x"], // Search web and X (Twitter)
-      max_search_results: 20,
-      return_citations: true,
-    };
-  }
+  // Note: Live Search API is deprecated as of Dec 15, 2025
+  // Web search is now handled through the new Agent Tools API
+  // For now, we'll disable search_parameters to avoid 422 errors
+  // TODO: Implement Agent Tools API for web search
+  // if (enableWebSearch) {
+  //   requestBody.search_parameters = {
+  //     mode: "auto", // Model decides when to search
+  //     sources: ["web", "x"], // Search web and X (Twitter)
+  //     max_search_results: 20,
+  //     return_citations: true,
+  //   };
+  // }
 
   try {
     const response = await fetch("https://api.x.ai/v1/chat/completions", {

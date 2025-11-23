@@ -48,15 +48,33 @@ Visual n8n-style workflow builder for orchestrating Genesis Bots, Training Sessi
 ### Dependencies
 - ✅ Installed `@xyflow/react` for visual workflow builder
 
-## 🚧 Phase 2: Core Components (IN PROGRESS)
+## ✅ Phase 2: Core Components (COMPLETED)
+
+### Essential Components
+- ✅ **NodePalette.tsx** - Left sidebar with node type cards (click to add)
+  - Organized by category (bot, training, collaboration, etc.)
+  - Shows node icons, descriptions, and port counts
+  - Hover effects with color-coded highlights
+- ✅ **CanvasViewport.tsx** - React Flow canvas integration
+  - Visual node-and-edge workflow builder
+  - Drag nodes to reposition
+  - Connect nodes with edges
+  - Background grid, minimap, zoom controls
+  - Workflow mode with animated edges
+- ✅ **NodeInspector.tsx** - Right sidebar for node configuration
+  - Shows selected node details
+  - Edit node label
+  - View position and ports
+  - Duplicate and delete actions
+  - Empty state when no selection
+- ✅ **WorkflowControls.tsx** - Top toolbar with controls
+  - Canvas selector dropdown
+  - Run/Stop workflow buttons
+  - Workflow mode toggle
+  - View toggles (palette, inspector)
+  - Delete canvas with confirmation
 
 ### Remaining Components Needed:
-
-#### Essential Components
-1. **NodePalette.tsx** - Left sidebar with draggable node types
-2. **CanvasViewport.tsx** - React Flow integration
-3. **NodeInspector.tsx** - Right sidebar for node configuration
-4. **WorkflowControls.tsx** - Top toolbar with controls
 
 #### Node Components (8 types)
 5. **GenesisBotNode.tsx** - AI bot configuration
@@ -226,13 +244,7 @@ User creates canvas
 
 ## Next Steps
 
-1. **Complete Core Components**
-   - Implement NodePalette with drag-and-drop
-   - Build CanvasViewport with React Flow
-   - Create NodeInspector for configuration
-   - Add WorkflowControls toolbar
-
-2. **Build Node Components**
+1. **Build Node Components**
    - Start with GenesisBotNode (most important)
    - Then TrainingSessionNode
    - Then BoardroomNode
@@ -258,10 +270,10 @@ src/app/canvas/
 ├── types/index.ts                    # ✅ TypeScript types
 ├── components/
 │   ├── CanvasShell.tsx              # ✅ Main layout
-│   ├── NodePalette.tsx              # 🚧 TODO
-│   ├── CanvasViewport.tsx           # 🚧 TODO
-│   ├── NodeInspector.tsx            # 🚧 TODO
-│   ├── WorkflowControls.tsx         # 🚧 TODO
+│   ├── NodePalette.tsx              # ✅ Node palette sidebar
+│   ├── CanvasViewport.tsx           # ✅ React Flow canvas
+│   ├── NodeInspector.tsx            # ✅ Inspector sidebar
+│   ├── WorkflowControls.tsx         # ✅ Top toolbar
 │   ├── nodes/                       # 🚧 All TODO
 │   ├── panels/                      # 🚧 All TODO
 │   └── modals/

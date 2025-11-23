@@ -10,13 +10,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 import type { Canvas, CanvasId, CreateCanvasInput, UseCanvasResult } from '../types';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export function useCanvas(userId: string | undefined): UseCanvasResult {
   const [canvases, setCanvases] = useState<Canvas[]>([]);
@@ -46,7 +41,10 @@ export function useCanvas(userId: string | undefined): UseCanvasResult {
         .eq('user_id', userId)
         .order('updated_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('[useCanvas] Supabase error:', fetchError);
+        throw fetchError;
+      }
 
       setCanvases(data || []);
 
@@ -56,7 +54,13 @@ export function useCanvas(userId: string | undefined): UseCanvasResult {
       }
     } catch (err: any) {
       console.error('[useCanvas] Error fetching canvases:', err);
-      setError(err.message || 'Failed to load canvases');
+      console.error('[useCanvas] Error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint,
+      });
+      setError(err.message || err.code || 'Failed to load canvases');
     } finally {
       setLoading(false);
     }
