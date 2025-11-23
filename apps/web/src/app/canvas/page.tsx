@@ -55,7 +55,18 @@ export default function CanvasPage() {
     addEdge,
     updateEdge,
     deleteEdge,
+    refreshEdges,
   } = useCanvasEdges(currentCanvas?.id || null);
+
+  // Wrapper for deleteNode that also refreshes edges (cascade delete coordination)
+  const handleDeleteNode = async (nodeId: string): Promise<boolean> => {
+    const success = await deleteNode(nodeId);
+    if (success) {
+      // Refresh edges to remove any that were cascade deleted
+      await refreshEdges();
+    }
+    return success;
+  };
 
   // Show loading state while auth is loading
   if (loadingUser) {
@@ -176,7 +187,7 @@ export default function CanvasPage() {
         nodes={nodes}
         onAddNode={addNode}
         onUpdateNode={updateNode}
-        onDeleteNode={deleteNode}
+        onDeleteNode={handleDeleteNode}
         onDuplicateNode={duplicateNode}
         // Edges
         edges={edges}

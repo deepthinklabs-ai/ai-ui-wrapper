@@ -69,7 +69,7 @@ export function useCanvasEdges(canvasId: CanvasId | null): UseCanvasEdgesResult 
       setLoading(true);
 
       try {
-        // Check if edge already exists
+        // Check if edge already exists (prevent duplicates)
         const existingEdge = edges.find(
           e =>
             e.from_node_id === from &&
@@ -79,8 +79,9 @@ export function useCanvasEdges(canvasId: CanvasId | null): UseCanvasEdgesResult 
         );
 
         if (existingEdge) {
-          console.warn('[useCanvasEdges] Edge already exists');
-          return existingEdge;
+          console.warn('[useCanvasEdges] Edge already exists - duplicate prevention');
+          // Return null to signal duplicate (caller should show user feedback)
+          return null;
         }
 
         const newEdge = {

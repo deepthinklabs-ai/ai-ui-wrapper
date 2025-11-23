@@ -25,6 +25,7 @@ import CanvasViewport from './CanvasViewport';
 import NodeInspector from './NodeInspector';
 import WorkflowControls from './WorkflowControls';
 import CanvasDebugOverlay from './CanvasDebugOverlay';
+import CanvasHelpTooltip from './CanvasHelpTooltip';
 import { CanvasProvider } from '../context/CanvasContext';
 import { useAuthSession } from '@/hooks/useAuthSession';
 
@@ -77,6 +78,9 @@ export default function CanvasShell({
   const [showNodePalette, setShowNodePalette] = useState(true);
   const [showInspector, setShowInspector] = useState(true);
   const [workflowMode, setWorkflowMode] = useState(false);
+
+  // Toast notification state for duplicate edge prevention
+  const [showDuplicateToast, setShowDuplicateToast] = useState(false);
 
   // Check if user is admin
   const isAdmin = user?.email === 'dave@deepthinklabs.ai';
@@ -184,13 +188,19 @@ export default function CanvasShell({
                     }
                   });
                 }}
-                onConnect={(connection) => {
+                onConnect={async (connection) => {
                   // Handle new edge connection
                   if (connection.source && connection.target) {
-                    onAddEdge(connection.source, connection.target, {
+                    const newEdge = await onAddEdge(connection.source, connection.target, {
                       from_port: connection.sourceHandle || undefined,
                       to_port: connection.targetHandle || undefined,
                     });
+
+                    // Show duplicate toast if edge creation returned null
+                    if (newEdge === null) {
+                      setShowDuplicateToast(true);
+                      setTimeout(() => setShowDuplicateToast(false), 3000);
+                    }
                   }
                 }}
                 workflowMode={workflowMode}
@@ -202,6 +212,9 @@ export default function CanvasShell({
                 edges={edges}
                 isAdmin={isAdmin}
               />
+
+              {/* Help Tooltip */}
+              <CanvasHelpTooltip />
             </CanvasProvider>
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -248,6 +261,21 @@ export default function CanvasShell({
           </div>
         )}
       </div>
+
+      {/* Duplicate Edge Toast Notification */}
+      {showDuplicateToast && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[10000] animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-yellow-600/50 bg-yellow-500/10 px-4 py-3 shadow-lg backdrop-blur-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500/20">
+              <span className="text-lg">⚠️</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-yellow-200">Connection Already Exists</p>
+              <p className="text-xs text-yellow-300/80">These nodes are already connected</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

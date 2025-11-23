@@ -179,7 +179,7 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
   );
 
   /**
-   * Delete a node
+   * Delete a node (with cascade delete for connected edges)
    */
   const deleteNode = useCallback(
     async (id: NodeId): Promise<boolean> => {
@@ -188,6 +188,30 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
       setLoading(true);
 
       try {
+        // CRITICAL: Delete connected edges FIRST (cascade delete)
+        // Delete edges where this node is the source
+        const { error: edgeSourceError } = await supabase
+          .from('canvas_edges')
+          .delete()
+          .eq('from_node_id', id);
+
+        if (edgeSourceError) {
+          console.error('[useCanvasNodes] Error deleting source edges:', edgeSourceError);
+          throw edgeSourceError;
+        }
+
+        // Delete edges where this node is the target
+        const { error: edgeTargetError } = await supabase
+          .from('canvas_edges')
+          .delete()
+          .eq('to_node_id', id);
+
+        if (edgeTargetError) {
+          console.error('[useCanvasNodes] Error deleting target edges:', edgeTargetError);
+          throw edgeTargetError;
+        }
+
+        // Now delete the node itself
         const { error } = await supabase
           .from('canvas_nodes')
           .delete()
@@ -198,6 +222,8 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
 
         // Remove from local state
         setNodes(prev => prev.filter(node => node.id !== id));
+
+        console.log(`[useCanvasNodes] Deleted node ${id} and all connected edges`);
 
         return true;
       } catch (err) {

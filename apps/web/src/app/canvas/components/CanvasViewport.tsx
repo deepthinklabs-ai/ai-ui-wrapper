@@ -77,8 +77,9 @@ export default function CanvasViewport({
   const [reactFlowEdges, setReactFlowEdges] = useState<Edge[]>([]);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
-  // Track drag end timer for debounced database updates
-  const dragEndTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Track drag end timers PER NODE for debounced database updates
+  // CRITICAL: Use Map to track multiple nodes independently (prevents data loss)
+  const dragEndTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Convert CanvasNode[] to React Flow Node[] when props change
   useEffect(() => {
@@ -157,20 +158,34 @@ export default function CanvasViewport({
       // Apply changes to local React Flow state immediately for smooth dragging
       setReactFlowNodes((nds) => applyNodeChanges(changes, nds));
 
-      // Debounce database updates for position changes
+      // Debounce database updates for position changes (per-node tracking)
       changes.forEach((change) => {
         if (change.type === 'position' && change.position && change.dragging === false) {
           // Only update database when drag ends
-          if (dragEndTimerRef.current) {
-            clearTimeout(dragEndTimerRef.current);
+          // CRITICAL: Clear timer for THIS SPECIFIC NODE (not all nodes)
+          const existingTimer = dragEndTimersRef.current.get(change.id);
+          if (existingTimer) {
+            clearTimeout(existingTimer);
           }
 
-          dragEndTimerRef.current = setTimeout(() => {
+          // Set new timer for THIS NODE
+          const newTimer = setTimeout(() => {
             onNodesChange([change]);
+            // Clean up timer after execution
+            dragEndTimersRef.current.delete(change.id);
           }, 500); // 500ms debounce
+
+          // Store timer for THIS NODE
+          dragEndTimersRef.current.set(change.id, newTimer);
         } else if (change.type === 'remove') {
           // Handle node removal immediately
           onNodesChange([change]);
+          // Clean up any pending timer for this node
+          const existingTimer = dragEndTimersRef.current.get(change.id);
+          if (existingTimer) {
+            clearTimeout(existingTimer);
+            dragEndTimersRef.current.delete(change.id);
+          }
         }
       });
     },
