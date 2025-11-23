@@ -101,7 +101,7 @@ export default function CanvasViewport({
           nodeType: node.type,
         },
         selected: isSelected,
-        deletable: false, // Prevent node deletion via Delete key (only edges can be deleted)
+        deletable: true, // Allow node deletion via Delete key when selected
         // Only apply style for default nodes (custom nodes have their own styling)
         ...(nodeType === 'default' && {
           style: {
@@ -189,6 +189,11 @@ export default function CanvasViewport({
   // Handle canvas click (deselect)
   const handlePaneClick = useCallback(() => {
     setSelectedEdgeId(null); // Deselect edge
+    // Restore node deletability when canvas is clicked
+    setReactFlowNodes((nds) => nds.map((node) => ({
+      ...node,
+      deletable: true
+    })));
     onCanvasClick(); // Deselect node in parent
   }, [onCanvasClick]);
 
@@ -198,7 +203,7 @@ export default function CanvasViewport({
       // Apply changes to local React Flow state immediately for smooth interaction
       setReactFlowEdges((eds) => applyEdgeChanges(changes, eds));
 
-      // Track edge selection
+      // Track edge selection and handle deletion
       changes.forEach((change) => {
         if (change.type === 'select') {
           console.log('[CanvasViewport] Edge selection change:', change);
@@ -206,16 +211,29 @@ export default function CanvasViewport({
           if (change.selected) {
             // Edge selected - deselect all nodes and track selected edge
             setSelectedEdgeId(change.id);
-            setReactFlowNodes((nds) => nds.map((node) => ({ ...node, selected: false })));
+            setReactFlowNodes((nds) => nds.map((node) => ({
+              ...node,
+              selected: false,
+              deletable: false // Prevent node deletion when edge is selected
+            })));
             onCanvasClick(); // Deselect node in parent
           } else {
-            // Edge deselected
+            // Edge deselected - restore node deletability
             setSelectedEdgeId(null);
+            setReactFlowNodes((nds) => nds.map((node) => ({
+              ...node,
+              deletable: true
+            })));
           }
         } else if (change.type === 'remove') {
           // Handle edge removal
           console.log('[CanvasViewport] Edge removal:', change.id);
           onEdgesChange([change]);
+          // Restore node deletability after edge is deleted
+          setReactFlowNodes((nds) => nds.map((node) => ({
+            ...node,
+            deletable: true
+          })));
         }
       });
     },
