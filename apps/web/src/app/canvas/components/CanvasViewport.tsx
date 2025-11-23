@@ -72,8 +72,10 @@ export default function CanvasViewport({
     []
   );
 
-  // Internal state for React Flow nodes (for proper dragging)
+  // Internal state for React Flow nodes and edges (for proper dragging and selection)
   const [reactFlowNodes, setReactFlowNodes] = useState<Node[]>([]);
+  const [reactFlowEdges, setReactFlowEdges] = useState<Edge[]>([]);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   // Track drag end timer for debounced database updates
   const dragEndTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -99,6 +101,7 @@ export default function CanvasViewport({
           nodeType: node.type,
         },
         selected: isSelected,
+        deletable: false, // Prevent node deletion via Delete key (only edges can be deleted)
         // Only apply style for default nodes (custom nodes have their own styling)
         ...(nodeType === 'default' && {
           style: {
@@ -117,29 +120,36 @@ export default function CanvasViewport({
     setReactFlowNodes(convertedNodes);
   }, [nodes, selectedNodeId, nodeTypes]);
 
-  // Convert CanvasEdge[] to React Flow Edge[]
-  const reactFlowEdges: Edge[] = useMemo(() => {
-    return edges.map(edge => ({
-      id: edge.id,
-      source: edge.from_node_id,
-      target: edge.to_node_id,
-      sourceHandle: edge.from_port || undefined,
-      targetHandle: edge.to_port || undefined,
-      type: 'deletable', // Use custom deletable edge
-      animated: workflowMode,
-      deletable: true, // Allow edge deletion
-      style: {
-        stroke: workflowMode ? '#3b82f6' : '#64748b',
-        strokeWidth: 2,
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 20,
-        height: 20,
-        color: workflowMode ? '#3b82f6' : '#64748b',
-      },
-    }));
-  }, [edges, workflowMode]);
+  // Convert CanvasEdge[] to React Flow Edge[] when props change
+  useEffect(() => {
+    const convertedEdges: Edge[] = edges.map(edge => {
+      const isSelected = edge.id === selectedEdgeId;
+
+      return {
+        id: edge.id,
+        source: edge.from_node_id,
+        target: edge.to_node_id,
+        sourceHandle: edge.from_port || undefined,
+        targetHandle: edge.to_port || undefined,
+        type: 'deletable', // Use custom deletable edge
+        selected: isSelected, // CRITICAL: Set selected state
+        animated: workflowMode,
+        deletable: true, // Allow edge deletion
+        interactionWidth: 20, // Wider click area for easier selection
+        style: {
+          stroke: workflowMode ? '#3b82f6' : '#64748b',
+          strokeWidth: 2,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 20,
+          height: 20,
+          color: workflowMode ? '#3b82f6' : '#64748b',
+        },
+      };
+    });
+    setReactFlowEdges(convertedEdges);
+  }, [edges, workflowMode, selectedEdgeId]);
 
   // Handle node changes (dragging, etc.)
   const handleNodesChange = useCallback(
@@ -170,6 +180,7 @@ export default function CanvasViewport({
   // Handle node click
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
+      setSelectedEdgeId(null); // Deselect edge when node is clicked
       onNodeClick(node.id);
     },
     [onNodeClick]
@@ -177,8 +188,47 @@ export default function CanvasViewport({
 
   // Handle canvas click (deselect)
   const handlePaneClick = useCallback(() => {
-    onCanvasClick();
+    setSelectedEdgeId(null); // Deselect edge
+    onCanvasClick(); // Deselect node in parent
   }, [onCanvasClick]);
+
+  // Handle edge changes (selection, removal, etc.)
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      // Apply changes to local React Flow state immediately for smooth interaction
+      setReactFlowEdges((eds) => applyEdgeChanges(changes, eds));
+
+      // Track edge selection
+      changes.forEach((change) => {
+        if (change.type === 'select') {
+          console.log('[CanvasViewport] Edge selection change:', change);
+
+          if (change.selected) {
+            // Edge selected - deselect all nodes and track selected edge
+            setSelectedEdgeId(change.id);
+            setReactFlowNodes((nds) => nds.map((node) => ({ ...node, selected: false })));
+            onCanvasClick(); // Deselect node in parent
+          } else {
+            // Edge deselected
+            setSelectedEdgeId(null);
+          }
+        } else if (change.type === 'remove') {
+          // Handle edge removal
+          console.log('[CanvasViewport] Edge removal:', change.id);
+          onEdgesChange([change]);
+        }
+      });
+    },
+    [onEdgesChange, onCanvasClick]
+  );
+
+  // Handle edge click (for selection)
+  const handleEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      console.log('[CanvasViewport] Edge clicked:', edge.id);
+    },
+    []
+  );
 
   return (
     <div className="h-full w-full bg-slate-950">
@@ -188,9 +238,10 @@ export default function CanvasViewport({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         onNodesChange={handleNodesChange}
-        onEdgesChange={onEdgesChange}
+        onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
         defaultViewport={{ x: 0, y: 0, zoom: 0.75 }}
         minZoom={0.1}
@@ -199,9 +250,16 @@ export default function CanvasViewport({
           type: 'deletable',
           animated: false,
         }}
-        // Enable deletion
-        deleteKeyCode="Delete" // Delete key
+        // Selection configuration
+        nodesDraggable={true}
+        nodesConnectable={true}
+        nodesFocusable={true}
+        edgesFocusable={true}
+        edgesReconnectable={false}
         elementsSelectable={true}
+        selectNodesOnDrag={false}
+        // Deletion - only edges, not nodes
+        deleteKeyCode="Delete"
         // Styling
         className="canvas-viewport"
         proOptions={{ hideAttribution: true }}
