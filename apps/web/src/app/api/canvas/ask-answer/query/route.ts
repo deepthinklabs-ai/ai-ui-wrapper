@@ -6,7 +6,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUnifiedClient } from '@/lib/unifiedAIClient';
 import type { GenesisBotNodeConfig } from '@/app/canvas/types';
 
 interface QueryRequestBody {
@@ -16,6 +15,7 @@ interface QueryRequestBody {
   edgeId: string;
   query: string;
   queryId: string;
+  userId: string; // User making the request
   fromNodeConfig: GenesisBotNodeConfig;
   toNodeConfig: GenesisBotNodeConfig;
 }
@@ -32,12 +32,13 @@ export async function POST(request: NextRequest) {
       edgeId,
       query,
       queryId,
+      userId,
       fromNodeConfig,
       toNodeConfig,
     } = body;
 
     // Validation
-    if (!query || !fromNodeConfig || !toNodeConfig) {
+    if (!query || !fromNodeConfig || !toNodeConfig || !userId) {
       return NextResponse.json(
         {
           success: false,
@@ -59,13 +60,7 @@ Question from ${fromNodeConfig.name}: "${query}"
 
 Please provide a helpful, accurate answer based on your capabilities and knowledge.`;
 
-    // Get AI client for Node B's configuration
-    const client = getUnifiedClient(
-      toNodeConfig.model_provider,
-      toNodeConfig.model_name
-    );
-
-    // Generate answer using Node B's AI
+    // Prepare messages for Node B
     const messages = [
       {
         role: 'user' as const,
@@ -78,15 +73,51 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
     console.log(`  To: ${toNodeId} (${toNodeConfig.name})`);
     console.log(`  Model: ${toNodeConfig.model_provider}/${toNodeConfig.model_name}`);
 
-    const response = await client.sendMessage({
-      messages,
-      systemPrompt,
-      temperature: toNodeConfig.temperature,
-      maxTokens: toNodeConfig.max_tokens,
-      stream: false, // No streaming for Ask/Answer
+    // Route to appropriate Pro API based on provider
+    const provider = toNodeConfig.model_provider;
+    const apiEndpoint =
+      provider === 'openai' ? '/api/pro/openai' :
+      provider === 'claude' ? '/api/pro/claude' :
+      provider === 'grok' ? '/api/pro/grok' :
+      null;
+
+    if (!apiEndpoint) {
+      return NextResponse.json(
+        {
+          success: false,
+          queryId,
+          error: `Unsupported provider: ${provider}`,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
+    // Call the Pro API route
+    const apiUrl = new URL(apiEndpoint, request.url);
+    const apiResponse = await fetch(apiUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        messages,
+        model: toNodeConfig.model_name,
+        systemPrompt,
+        temperature: toNodeConfig.temperature,
+        maxTokens: toNodeConfig.max_tokens,
+        enableWebSearch: false, // Disable web search for Ask/Answer
+      }),
     });
 
-    const answer = response.content;
+    if (!apiResponse.ok) {
+      const errorData = await apiResponse.json();
+      throw new Error(errorData.error || 'API request failed');
+    }
+
+    const apiData = await apiResponse.json();
+    const answer = apiData.content || apiData.message || '';
     const duration_ms = Date.now() - startTime;
 
     console.log(`[Ask/Answer] Query completed in ${duration_ms}ms`);

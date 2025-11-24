@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { useCanvasContext } from '../../../context/CanvasStateContext';
+import { useAuthSession } from '@/hooks/useAuthSession';
 import type {
   UseAskAnswerResult,
   AskAnswerQueryParams,
@@ -27,6 +28,7 @@ import {
 
 export function useAskAnswer(): UseAskAnswerResult {
   const { nodes, edges } = useCanvasContext();
+  const { user } = useAuthSession();
   const [isSendingQuery, setIsSendingQuery] = useState(false);
   const [isProcessingQuery, setIsProcessingQuery] = useState(false);
 
@@ -255,6 +257,7 @@ export function useAskAnswer(): UseAskAnswerResult {
             edgeId,
             query: sanitized,
             queryId,
+            userId: user?.id,
             fromNodeConfig: fromNode?.config,
             toNodeConfig: toNode?.config,
           }),
