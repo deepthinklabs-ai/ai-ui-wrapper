@@ -14,6 +14,7 @@ import GenesisBotConfigPanel from './config/GenesisBotConfigPanel';
 import { useCanvasContext } from '../context/CanvasStateContext';
 import { useAskAnswer, QueryInput, QueryReviewPanel, AskAnswerToggle } from '../features/ask-answer';
 import { findEdgeBetweenNodes } from '../features/ask-answer/lib/validation';
+import { FEATURE_FLAGS } from '@/lib/featureFlags';
 
 interface NodeInspectorProps {
   node: CanvasNode | null;
@@ -202,7 +203,7 @@ export default function NodeInspector({
           </div>
 
           {/* Ask/Answer Connections - Only for Genesis Bot nodes */}
-          {node.type === 'GENESIS_BOT' && allGenesisBotConnections.length > 0 && (
+          {FEATURE_FLAGS.ASK_ANSWER && node.type === 'GENESIS_BOT' && allGenesisBotConnections.length > 0 && (
             <div>
               <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Ask/Answer Connections
@@ -238,7 +239,7 @@ export default function NodeInspector({
           )}
 
           {/* Ask/Answer Communication - Only show if Ask/Answer is enabled */}
-          {node.type === 'GENESIS_BOT' && askAnswerConnections.length > 0 && (
+          {FEATURE_FLAGS.ASK_ANSWER && node.type === 'GENESIS_BOT' && askAnswerConnections.length > 0 && (
             <div>
               <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Active Conversations
