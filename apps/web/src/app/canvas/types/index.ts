@@ -91,6 +91,7 @@ export interface GenesisBotNodeConfig {
   // UI options
   streaming_enabled?: boolean;
   show_thinking?: boolean;
+  web_search_enabled?: boolean;
 }
 
 /**

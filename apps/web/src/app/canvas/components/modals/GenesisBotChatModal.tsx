@@ -164,7 +164,7 @@ export default function GenesisBotChatModal({
     userId: user?.id,
     userTier: tier,
     systemPromptAddition: botConfig.system_prompt,
-    enableWebSearch: false, // Canvas bots don't use web search by default
+    enableWebSearch: botConfig.web_search_enabled !== false, // Enabled by default, can be disabled
     disableMCPTools: true, // Canvas bots are isolated and don't use MCP tools
   });
 

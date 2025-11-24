@@ -107,7 +107,7 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
         systemPrompt,
         temperature: toNodeConfig.temperature,
         maxTokens: toNodeConfig.max_tokens,
-        enableWebSearch: false, // Disable web search for Ask/Answer
+        enableWebSearch: toNodeConfig.web_search_enabled !== false, // Use node's web search setting
       }),
     });
 

@@ -246,6 +246,18 @@ export default function GenesisBotConfigPanel({
             />
             <span className="text-sm text-slate-300">Enable Memory (Context Retention)</span>
           </label>
+
+          {/* Web Search */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.web_search_enabled !== false}
+              onChange={(e) => handleChange('web_search_enabled', e.target.checked)}
+              onBlur={() => handleBlur('web_search_enabled')}
+              className="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-2 focus:ring-blue-500/50"
+            />
+            <span className="text-sm text-slate-300">Enable Web Search (Real-time Information)</span>
+          </label>
         </div>
       </div>
     </div>
