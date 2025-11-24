@@ -3,6 +3,9 @@
 /**
  * Canvas Shell
  *
+ * Phase 3: Refactored to use Context API instead of props drilling.
+ * All Canvas state and operations are now accessed via useCanvasContext().
+ *
  * Main container for the Canvas feature with:
  * - Left sidebar: Canvas list + Node palette
  * - Center: React Flow canvas
@@ -12,12 +15,7 @@
 
 import React, { useState, useCallback } from 'react';
 import type {
-  Canvas,
-  CanvasNode,
-  CanvasEdge,
-  CanvasId,
   NodeId,
-  EdgeId,
   CanvasNodeType,
 } from '../types';
 import NodePalette from './NodePalette';
@@ -27,52 +25,12 @@ import WorkflowControls from './WorkflowControls';
 import CanvasDebugOverlay from './CanvasDebugOverlay';
 import CanvasHelpTooltip from './CanvasHelpTooltip';
 import { CanvasProvider } from '../context/CanvasContext';
+import { useCanvasContext } from '../context/CanvasStateContext';
 import { useAuthSession } from '@/hooks/useAuthSession';
 
-interface CanvasShellProps {
-  // Canvas management
-  canvases: Canvas[];
-  currentCanvas: Canvas | null;
-  onSelectCanvas: (canvas: Canvas | null) => void;
-  onCreateCanvas: () => void;
-  onUpdateCanvas: (id: CanvasId, updates: Partial<Canvas>) => Promise<boolean>;
-  onDeleteCanvas: (id: CanvasId) => Promise<boolean>;
-
-  // Nodes
-  nodes: CanvasNode[];
-  onAddNode: (type: CanvasNodeType, position: { x: number; y: number }, config?: any) => Promise<CanvasNode | null>;
-  onUpdateNode: (id: NodeId, updates: Partial<CanvasNode>) => Promise<boolean>;
-  onDeleteNode: (id: NodeId) => Promise<boolean>;
-  onDuplicateNode: (id: NodeId) => Promise<CanvasNode | null>;
-
-  // Edges
-  edges: CanvasEdge[];
-  onAddEdge: (from: NodeId, to: NodeId, config?: Partial<CanvasEdge>) => Promise<CanvasEdge | null>;
-  onUpdateEdge: (id: EdgeId, updates: Partial<CanvasEdge>) => Promise<boolean>;
-  onDeleteEdge: (id: EdgeId) => Promise<boolean>;
-
-  // Loading
-  loading?: boolean;
-}
-
-export default function CanvasShell({
-  canvases,
-  currentCanvas,
-  onSelectCanvas,
-  onCreateCanvas,
-  onUpdateCanvas,
-  onDeleteCanvas,
-  nodes,
-  onAddNode,
-  onUpdateNode,
-  onDeleteNode,
-  onDuplicateNode,
-  edges,
-  onAddEdge,
-  onUpdateEdge,
-  onDeleteEdge,
-  loading,
-}: CanvasShellProps) {
+export default function CanvasShell() {
+  // Phase 3: Get all Canvas state and operations from context
+  const { canvas, nodes: nodeOps, edges: edgeOps, state } = useCanvasContext();
   const { user } = useAuthSession();
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
   const [showNodePalette, setShowNodePalette] = useState(true);
@@ -87,7 +45,7 @@ export default function CanvasShell({
 
   // Get selected node
   const selectedNode = selectedNodeId
-    ? nodes.find(n => n.id === selectedNodeId) || null
+    ? nodeOps.list.find(n => n.id === selectedNodeId) || null
     : null;
 
   // Handle node selection
@@ -110,13 +68,13 @@ export default function CanvasShell({
       const centerX = window.innerWidth / 2;
       const centerY = window.innerHeight / 2;
 
-      const newNode = await onAddNode(type, { x: centerX, y: centerY });
+      const newNode = await nodeOps.add(type, { x: centerX, y: centerY });
       if (newNode) {
         setSelectedNodeId(newNode.id);
         setShowInspector(true);
       }
     },
-    [onAddNode]
+    [nodeOps]
   );
 
   return (
@@ -124,12 +82,12 @@ export default function CanvasShell({
       {/* Top Toolbar */}
       <div className="border-b border-slate-800 bg-slate-900 px-4 py-3">
         <WorkflowControls
-          currentCanvas={currentCanvas}
-          canvases={canvases}
-          onSelectCanvas={onSelectCanvas}
-          onCreateCanvas={onCreateCanvas}
-          onUpdateCanvas={onUpdateCanvas}
-          onDeleteCanvas={onDeleteCanvas}
+          currentCanvas={canvas.current}
+          canvases={canvas.list}
+          onSelectCanvas={canvas.select}
+          onCreateCanvas={canvas.create}
+          onUpdateCanvas={canvas.update}
+          onDeleteCanvas={canvas.delete}
           workflowMode={workflowMode}
           onToggleWorkflowMode={() => setWorkflowMode(!workflowMode)}
           onToggleNodePalette={() => setShowNodePalette(!showNodePalette)}
@@ -150,23 +108,23 @@ export default function CanvasShell({
 
         {/* Center - Canvas Viewport */}
         <div className="flex-1 relative">
-          {currentCanvas ? (
+          {canvas.current ? (
             <CanvasProvider
               value={{
-                nodes,
-                edges,
-                onAddNode,
-                onUpdateNode,
-                onDeleteNode,
-                onDuplicateNode,
-                onAddEdge,
-                onUpdateEdge,
-                onDeleteEdge,
+                nodes: nodeOps.list,
+                edges: edgeOps.list,
+                onAddNode: nodeOps.add,
+                onUpdateNode: nodeOps.update,
+                onDeleteNode: nodeOps.delete,
+                onDuplicateNode: nodeOps.duplicate,
+                onAddEdge: edgeOps.add,
+                onUpdateEdge: edgeOps.update,
+                onDeleteEdge: edgeOps.delete,
               }}
             >
               <CanvasViewport
-                nodes={nodes}
-                edges={edges}
+                nodes={nodeOps.list}
+                edges={edgeOps.list}
                 selectedNodeId={selectedNodeId}
                 onNodeClick={handleNodeClick}
                 onCanvasClick={handleCanvasClick}
@@ -174,9 +132,9 @@ export default function CanvasShell({
                   // Handle node position changes
                   changes.forEach((change) => {
                     if (change.type === 'position' && change.position) {
-                      onUpdateNode(change.id, { position: change.position });
+                      nodeOps.update(change.id, { position: change.position });
                     } else if (change.type === 'remove') {
-                      onDeleteNode(change.id);
+                      nodeOps.delete(change.id);
                     }
                   });
                 }}
@@ -184,14 +142,14 @@ export default function CanvasShell({
                   // Handle edge changes
                   changes.forEach((change) => {
                     if (change.type === 'remove') {
-                      onDeleteEdge(change.id);
+                      edgeOps.delete(change.id);
                     }
                   });
                 }}
                 onConnect={async (connection) => {
                   // Handle new edge connection
                   if (connection.source && connection.target) {
-                    const newEdge = await onAddEdge(connection.source, connection.target, {
+                    const newEdge = await edgeOps.add(connection.source, connection.target, {
                       from_port: connection.sourceHandle || undefined,
                       to_port: connection.targetHandle || undefined,
                     });
@@ -208,8 +166,8 @@ export default function CanvasShell({
 
               {/* Admin Debug Overlay */}
               <CanvasDebugOverlay
-                nodes={nodes}
-                edges={edges}
+                nodes={nodeOps.list}
+                edges={edgeOps.list}
                 isAdmin={isAdmin}
               />
 
@@ -223,7 +181,7 @@ export default function CanvasShell({
           )}
 
           {/* Loading Overlay */}
-          {loading && (
+          {state.isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
               <div className="rounded-lg border border-slate-700 bg-slate-900 px-6 py-4">
                 <div className="flex items-center gap-3">
@@ -242,18 +200,18 @@ export default function CanvasShell({
               node={selectedNode}
               onUpdateNode={(updates) => {
                 if (selectedNode) {
-                  onUpdateNode(selectedNode.id, updates);
+                  nodeOps.update(selectedNode.id, updates);
                 }
               }}
               onDeleteNode={() => {
                 if (selectedNode) {
-                  onDeleteNode(selectedNode.id);
+                  nodeOps.delete(selectedNode.id);
                   setSelectedNodeId(null);
                 }
               }}
               onDuplicateNode={() => {
                 if (selectedNode) {
-                  onDuplicateNode(selectedNode.id);
+                  nodeOps.duplicate(selectedNode.id);
                 }
               }}
               onClose={() => setSelectedNodeId(null)}
