@@ -13,11 +13,7 @@
  * - Top toolbar: Controls + mode toggles
  */
 
-import React, { useState, useCallback } from 'react';
-import type {
-  NodeId,
-  CanvasNodeType,
-} from '../types';
+import React, { useState } from 'react';
 import NodePalette from './NodePalette';
 import CanvasViewport from './CanvasViewport';
 import NodeInspector from './NodeInspector';
@@ -26,19 +22,33 @@ import CanvasDebugOverlay from './CanvasDebugOverlay';
 import CanvasHelpTooltip from './CanvasHelpTooltip';
 import { CanvasProvider } from '../context/CanvasContext';
 import { useCanvasContext } from '../context/CanvasStateContext';
+import { useCanvasOperations } from '../hooks/useCanvasOperations';
 import { useAuthSession } from '@/hooks/useAuthSession';
 
 export default function CanvasShell() {
   // Phase 3: Get all Canvas state and operations from context
   const { canvas, nodes: nodeOps, edges: edgeOps, state } = useCanvasContext();
   const { user } = useAuthSession();
-  const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
+
+  // UI state
   const [showNodePalette, setShowNodePalette] = useState(true);
   const [showInspector, setShowInspector] = useState(true);
   const [workflowMode, setWorkflowMode] = useState(false);
 
-  // Toast notification state for duplicate edge prevention
-  const [showDuplicateToast, setShowDuplicateToast] = useState(false);
+  // Phase 3, Fix #2: Centralized event handlers
+  const {
+    selectedNodeId,
+    showDuplicateToast,
+    handleNodeClick,
+    handleCanvasClick,
+    handleAddNodeFromPalette,
+    handleNodesChange,
+    handleEdgesChange,
+    handleConnect,
+    handleUpdateSelectedNode,
+    handleDeleteSelectedNode,
+    handleDuplicateSelectedNode,
+  } = useCanvasOperations({ showInspector, setShowInspector });
 
   // Check if user is admin
   const isAdmin = user?.email === 'dave@deepthinklabs.ai';
@@ -47,35 +57,6 @@ export default function CanvasShell() {
   const selectedNode = selectedNodeId
     ? nodeOps.list.find(n => n.id === selectedNodeId) || null
     : null;
-
-  // Handle node selection
-  const handleNodeClick = useCallback((nodeId: NodeId) => {
-    setSelectedNodeId(nodeId);
-    if (!showInspector) {
-      setShowInspector(true);
-    }
-  }, [showInspector]);
-
-  // Handle canvas click (deselect)
-  const handleCanvasClick = useCallback(() => {
-    setSelectedNodeId(null);
-  }, []);
-
-  // Handle node addition from palette
-  const handleAddNodeFromPalette = useCallback(
-    async (type: CanvasNodeType) => {
-      // Add node at center of viewport
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
-
-      const newNode = await nodeOps.add(type, { x: centerX, y: centerY });
-      if (newNode) {
-        setSelectedNodeId(newNode.id);
-        setShowInspector(true);
-      }
-    },
-    [nodeOps]
-  );
 
   return (
     <div className="flex h-screen flex-col bg-slate-950">
@@ -128,39 +109,9 @@ export default function CanvasShell() {
                 selectedNodeId={selectedNodeId}
                 onNodeClick={handleNodeClick}
                 onCanvasClick={handleCanvasClick}
-                onNodesChange={(changes) => {
-                  // Handle node position changes
-                  changes.forEach((change) => {
-                    if (change.type === 'position' && change.position) {
-                      nodeOps.update(change.id, { position: change.position });
-                    } else if (change.type === 'remove') {
-                      nodeOps.delete(change.id);
-                    }
-                  });
-                }}
-                onEdgesChange={(changes) => {
-                  // Handle edge changes
-                  changes.forEach((change) => {
-                    if (change.type === 'remove') {
-                      edgeOps.delete(change.id);
-                    }
-                  });
-                }}
-                onConnect={async (connection) => {
-                  // Handle new edge connection
-                  if (connection.source && connection.target) {
-                    const newEdge = await edgeOps.add(connection.source, connection.target, {
-                      from_port: connection.sourceHandle || undefined,
-                      to_port: connection.targetHandle || undefined,
-                    });
-
-                    // Show duplicate toast if edge creation returned null
-                    if (newEdge === null) {
-                      setShowDuplicateToast(true);
-                      setTimeout(() => setShowDuplicateToast(false), 3000);
-                    }
-                  }
-                }}
+                onNodesChange={handleNodesChange}
+                onEdgesChange={handleEdgesChange}
+                onConnect={handleConnect}
                 workflowMode={workflowMode}
               />
 
@@ -198,23 +149,10 @@ export default function CanvasShell() {
           <div className="w-80 flex-shrink-0 border-l border-slate-800 bg-slate-900">
             <NodeInspector
               node={selectedNode}
-              onUpdateNode={(updates) => {
-                if (selectedNode) {
-                  nodeOps.update(selectedNode.id, updates);
-                }
-              }}
-              onDeleteNode={() => {
-                if (selectedNode) {
-                  nodeOps.delete(selectedNode.id);
-                  setSelectedNodeId(null);
-                }
-              }}
-              onDuplicateNode={() => {
-                if (selectedNode) {
-                  nodeOps.duplicate(selectedNode.id);
-                }
-              }}
-              onClose={() => setSelectedNodeId(null)}
+              onUpdateNode={handleUpdateSelectedNode}
+              onDeleteNode={handleDeleteSelectedNode}
+              onDuplicateNode={handleDuplicateSelectedNode}
+              onClose={handleCanvasClick}
             />
           </div>
         )}
