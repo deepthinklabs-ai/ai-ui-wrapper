@@ -11,6 +11,9 @@ import React, { useState } from 'react';
 import type { CanvasNode, GenesisBotNodeConfig } from '../types';
 import { NODE_DEFINITIONS } from '../lib/nodeRegistry';
 import GenesisBotConfigPanel from './config/GenesisBotConfigPanel';
+import { useCanvasContext } from '../context/CanvasStateContext';
+import { useAskAnswer, QueryInput, QueryReviewPanel, AskAnswerToggle } from '../features/ask-answer';
+import { findEdgeBetweenNodes } from '../features/ask-answer/lib/validation';
 
 interface NodeInspectorProps {
   node: CanvasNode | null;
@@ -29,6 +32,31 @@ export default function NodeInspector({
 }: NodeInspectorProps) {
   const [label, setLabel] = useState(node?.label || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Ask/Answer integration
+  const { nodes, edges } = useCanvasContext();
+  const askAnswer = useAskAnswer();
+
+  // Find ALL connected Genesis Bot nodes (for toggle section)
+  const allGenesisBotConnections = node && node.type === 'GENESIS_BOT'
+    ? edges.list
+        .filter(edge => edge.from_node_id === node.id || edge.to_node_id === node.id)
+        .map(edge => {
+          const isOutgoing = edge.from_node_id === node.id;
+          const connectedNodeId = isOutgoing ? edge.to_node_id : edge.from_node_id;
+          const connectedNode = nodes.list.find(n => n.id === connectedNodeId);
+          return {
+            edge,
+            isOutgoing,
+            connectedNode,
+            enabled: askAnswer.isEnabled(edge.id),
+          };
+        })
+        .filter(conn => conn.connectedNode?.type === 'GENESIS_BOT')
+    : [];
+
+  // Find connected Genesis Bot nodes with Ask/Answer ENABLED (for communication section)
+  const askAnswerConnections = allGenesisBotConnections.filter(conn => conn.enabled);
 
   if (!node) {
     return (
@@ -172,6 +200,130 @@ export default function NodeInspector({
               </div>
             )}
           </div>
+
+          {/* Ask/Answer Connections - Only for Genesis Bot nodes */}
+          {node.type === 'GENESIS_BOT' && allGenesisBotConnections.length > 0 && (
+            <div>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Ask/Answer Connections
+              </h4>
+
+              <div className="space-y-3">
+                {allGenesisBotConnections.map(({ edge, isOutgoing, connectedNode, enabled }) => {
+                  if (!connectedNode) return null;
+
+                  return (
+                    <div key={edge.id}>
+                      <div className="mb-2 text-xs text-slate-500">
+                        {isOutgoing ? 'Can ask' : 'Can answer'}: {connectedNode.label}
+                      </div>
+                      <AskAnswerToggle
+                        edgeId={edge.id}
+                        fromNodeId={edge.from_node_id}
+                        toNodeId={edge.to_node_id}
+                        enabled={enabled}
+                        onToggle={async (newEnabled) => {
+                          if (newEnabled) {
+                            await askAnswer.enableAskAnswer(edge.id);
+                          } else {
+                            await askAnswer.disableAskAnswer(edge.id);
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Ask/Answer Communication - Only show if Ask/Answer is enabled */}
+          {node.type === 'GENESIS_BOT' && askAnswerConnections.length > 0 && (
+            <div>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Active Conversations
+              </h4>
+
+              <div className="space-y-4">
+                {askAnswerConnections.map(({ edge, isOutgoing, connectedNode }) => {
+                  if (!connectedNode) return null;
+
+                  // Check if there's a pending answer to review
+                  const pendingAnswer = isOutgoing
+                    ? askAnswer.getPendingAnswer(node.id, edge.id)
+                    : null;
+
+                  return (
+                    <div key={edge.id} className="rounded-lg border border-slate-700 bg-slate-800/30 p-3">
+                      {/* Connection Header */}
+                      <div className="mb-3 flex items-center gap-2">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
+                          <span className="text-lg">💬</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-slate-300">
+                            {isOutgoing ? 'Ask' : 'Answer'} Mode
+                          </div>
+                          <div className="text-xs text-slate-500 truncate">
+                            {isOutgoing ? `→ ${connectedNode.label}` : `← ${connectedNode.label}`}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Outgoing: Can send questions */}
+                      {isOutgoing && (
+                        <div className="space-y-3">
+                          {/* Show pending answer if available */}
+                          {pendingAnswer && (
+                            <QueryReviewPanel
+                              pendingAnswer={pendingAnswer}
+                              onClear={() => askAnswer.clearAnswer(node.id, pendingAnswer.queryId)}
+                              onSendNewQuery={(query) =>
+                                askAnswer.sendQuery({
+                                  fromNodeId: node.id,
+                                  toNodeId: connectedNode.id,
+                                  edgeId: edge.id,
+                                  query,
+                                })
+                              }
+                            />
+                          )}
+
+                          {/* Show query input if no pending answer */}
+                          {!pendingAnswer && (
+                            <QueryInput
+                              fromNodeId={node.id}
+                              toNodeId={connectedNode.id}
+                              edgeId={edge.id}
+                              onSendQuery={(query) =>
+                                askAnswer.sendQuery({
+                                  fromNodeId: node.id,
+                                  toNodeId: connectedNode.id,
+                                  edgeId: edge.id,
+                                  query,
+                                })
+                              }
+                              disabled={askAnswer.isSendingQuery}
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Incoming: This node answers questions */}
+                      {!isOutgoing && (
+                        <div className="rounded-md bg-slate-900/50 border border-slate-700 px-3 py-2">
+                          <p className="text-xs text-slate-400">
+                            This node will answer questions from{' '}
+                            <span className="font-medium text-slate-300">{connectedNode.label}</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Ports */}
           <div>
