@@ -7,7 +7,7 @@
  * - Delete edge
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type {
   CanvasEdge,
@@ -21,20 +21,28 @@ export function useCanvasEdges(canvasId: CanvasId | null): UseCanvasEdgesResult 
   const [edges, setEdges] = useState<CanvasEdge[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Phase 2: Race condition prevention - track current canvas request
+  const currentCanvasIdRef = useRef<CanvasId | null>(null);
+
   // Fetch edges when canvas changes
   useEffect(() => {
     if (!canvasId) {
       setEdges([]);
+      currentCanvasIdRef.current = null;
       return;
     }
+    currentCanvasIdRef.current = canvasId;
     refreshEdges();
   }, [canvasId]);
 
   /**
-   * Fetch all edges for the current canvas
+   * Fetch all edges for the current canvas (with race condition prevention)
    */
   const refreshEdges = useCallback(async () => {
     if (!canvasId) return;
+
+    // Store the canvas ID we're fetching for
+    const fetchingForCanvasId = canvasId;
 
     setLoading(true);
 
@@ -46,6 +54,12 @@ export function useCanvasEdges(canvasId: CanvasId | null): UseCanvasEdgesResult 
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+
+      // CRITICAL: Check if canvas changed while fetching (race condition prevention)
+      if (currentCanvasIdRef.current !== fetchingForCanvasId) {
+        console.log('[useCanvasEdges] Canvas changed during fetch, discarding stale data');
+        return;
+      }
 
       setEdges(data || []);
     } catch (err) {

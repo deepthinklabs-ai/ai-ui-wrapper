@@ -13,8 +13,10 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 import { useCanvas } from './hooks/useCanvas';
 import { useCanvasNodes } from './hooks/useCanvasNodes';
 import { useCanvasEdges } from './hooks/useCanvasEdges';
+import { useCanvasState } from './hooks/useCanvasState';
 import CanvasShell from './components/CanvasShell';
 import CreateCanvasModal from './components/modals/CreateCanvasModal';
+import CanvasNotifications from './components/CanvasNotifications';
 
 export default function CanvasPage() {
   const { user, loadingUser } = useAuthSession();
@@ -58,14 +60,27 @@ export default function CanvasPage() {
     refreshEdges,
   } = useCanvasEdges(currentCanvas?.id || null);
 
+  // Phase 2: Unified state management
+  const canvasState = useCanvasState();
+
   // Wrapper for deleteNode that also refreshes edges (cascade delete coordination)
   const handleDeleteNode = async (nodeId: string): Promise<boolean> => {
-    const success = await deleteNode(nodeId);
-    if (success) {
-      // Refresh edges to remove any that were cascade deleted
-      await refreshEdges();
+    canvasState.setLoading('node', 'deleting', nodeId);
+    try {
+      const success = await deleteNode(nodeId);
+      if (success) {
+        // Refresh edges to remove any that were cascade deleted
+        await refreshEdges();
+        canvasState.clearLoading();
+        return true;
+      } else {
+        canvasState.setError('node', 'deleting', 'Failed to delete node', nodeId, true);
+        return false;
+      }
+    } catch (err) {
+      canvasState.setError('node', 'deleting', err instanceof Error ? err.message : 'Unknown error', nodeId, true);
+      return false;
     }
-    return success;
   };
 
   // Show loading state while auth is loading
@@ -211,6 +226,17 @@ export default function CanvasPage() {
           }}
         />
       )}
+
+      {/* Phase 2: Centralized Notifications */}
+      <CanvasNotifications
+        loading={canvasState.loading}
+        error={canvasState.error}
+        onClearError={canvasState.clearError}
+        onRetry={() => {
+          // Retry logic can be added based on the operation
+          canvasState.clearError();
+        }}
+      />
     </>
   );
 }

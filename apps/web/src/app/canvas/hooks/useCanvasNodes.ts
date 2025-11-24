@@ -8,7 +8,7 @@
  * - Duplicate node
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type {
   CanvasNode,
@@ -23,20 +23,28 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
   const [nodes, setNodes] = useState<CanvasNode[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Phase 2: Race condition prevention - track current canvas request
+  const currentCanvasIdRef = useRef<CanvasId | null>(null);
+
   // Fetch nodes when canvas changes
   useEffect(() => {
     if (!canvasId) {
       setNodes([]);
+      currentCanvasIdRef.current = null;
       return;
     }
+    currentCanvasIdRef.current = canvasId;
     refreshNodes();
   }, [canvasId]);
 
   /**
-   * Fetch all nodes for the current canvas
+   * Fetch all nodes for the current canvas (with race condition prevention)
    */
   const refreshNodes = useCallback(async () => {
     if (!canvasId) return;
+
+    // Store the canvas ID we're fetching for
+    const fetchingForCanvasId = canvasId;
 
     setLoading(true);
 
@@ -48,6 +56,12 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+
+      // CRITICAL: Check if canvas changed while fetching (race condition prevention)
+      if (currentCanvasIdRef.current !== fetchingForCanvasId) {
+        console.log('[useCanvasNodes] Canvas changed during fetch, discarding stale data');
+        return;
+      }
 
       // Transform DB format to CanvasNode format
       const transformedNodes: CanvasNode[] = (data || []).map(node => ({
