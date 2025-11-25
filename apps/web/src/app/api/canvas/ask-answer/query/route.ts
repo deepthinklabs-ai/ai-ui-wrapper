@@ -22,6 +22,13 @@ import {
 import { executeGmailToolCallsServer } from '@/app/canvas/features/gmail-oauth/lib/gmailToolExecutorServer';
 import { executeSheetsToolCallsServer } from '@/app/canvas/features/sheets-oauth/lib/sheetsToolExecutorServer';
 
+interface ConversationHistoryEntry {
+  id: string;
+  query: string;
+  answer: string;
+  timestamp: string;
+}
+
 interface QueryRequestBody {
   canvasId: string;
   fromNodeId: string;
@@ -32,6 +39,7 @@ interface QueryRequestBody {
   userId: string; // User making the request
   fromNodeConfig: GenesisBotNodeConfig;
   toNodeConfig: GenesisBotNodeConfig;
+  conversationHistory?: ConversationHistoryEntry[]; // Previous Q&A for context
 }
 
 export async function POST(request: NextRequest) {
@@ -49,6 +57,7 @@ export async function POST(request: NextRequest) {
       userId,
       fromNodeConfig,
       toNodeConfig,
+      conversationHistory = [],
     } = body;
 
     // Validation
@@ -112,11 +121,9 @@ export async function POST(request: NextRequest) {
     // Node B receives the query with context about Node A
     let systemPrompt = `${toNodeConfig.system_prompt}
 
-CONTEXT: You are receiving a question from another AI agent (${fromNodeConfig.name}).
-
-Question from ${fromNodeConfig.name}: "${query}"
-
-Please provide a helpful, accurate answer based on your capabilities and knowledge.`;
+CONTEXT: You are receiving questions from another AI agent (${fromNodeConfig.name}).
+You are having an ongoing conversation with this agent. Use the conversation history to provide contextually relevant responses.
+Remember previous exchanges and build upon them when answering follow-up questions.`;
 
     // Add Gmail capabilities to system prompt if enabled
     if (gmailSystemPrompt) {
@@ -128,18 +135,40 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
       systemPrompt += `\n\n${sheetsSystemPrompt}`;
     }
 
-    // Prepare messages for Node B
-    let messages: Array<{ role: string; content: any }> = [
-      {
-        role: 'user' as const,
-        content: query,
-      },
-    ];
+    // Build messages array with conversation history
+    // Each history entry becomes a user/assistant message pair
+    let messages: Array<{ role: string; content: any }> = [];
+
+    // Add conversation history as context
+    if (conversationHistory.length > 0) {
+      console.log(`[Ask/Answer] Including ${conversationHistory.length} previous exchanges for context`);
+
+      for (const entry of conversationHistory) {
+        // Add the previous query as user message
+        messages.push({
+          role: 'user',
+          content: entry.query,
+        });
+        // Add the previous answer as assistant message
+        messages.push({
+          role: 'assistant',
+          content: entry.answer,
+        });
+      }
+    }
+
+    // Add the current query
+    messages.push({
+      role: 'user',
+      content: query,
+    });
 
     console.log(`[Ask/Answer] Processing query ${queryId}`);
     console.log(`  From: ${fromNodeId} (${fromNodeConfig.name})`);
     console.log(`  To: ${toNodeId} (${toNodeConfig.name})`);
     console.log(`  Model: ${toNodeConfig.model_provider}/${toNodeConfig.model_name}`);
+    console.log(`  History: ${conversationHistory.length} previous exchanges`);
+    console.log(`  Total Messages: ${messages.length}`);
     console.log(`  Gmail Tools: ${hasGmailTools ? gmailTools.length : 0}`);
     console.log(`  Sheets Tools: ${hasSheetsTools ? sheetsTools.length : 0}`);
     console.log(`  Total Tools: ${allTools.length}`);

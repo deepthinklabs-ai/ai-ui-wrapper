@@ -246,6 +246,9 @@ export function useAskAnswer(): UseAskAnswerResult {
           },
         });
 
+        // Get existing conversation history for context
+        const existingHistory = edge!.metadata?.askAnswerMetadata?.queryHistory || [];
+
         // Call API to process query
         const response = await fetch('/api/canvas/ask-answer/query', {
           method: 'POST',
@@ -260,6 +263,8 @@ export function useAskAnswer(): UseAskAnswerResult {
             userId: user?.id,
             fromNodeConfig: fromNode?.config,
             toNodeConfig: toNode?.config,
+            // Include conversation history for context
+            conversationHistory: existingHistory.slice(-10), // Last 10 exchanges for context
           }),
         });
 
