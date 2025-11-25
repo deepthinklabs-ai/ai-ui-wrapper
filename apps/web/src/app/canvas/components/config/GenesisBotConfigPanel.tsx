@@ -14,6 +14,8 @@ import { GmailOAuthPanel } from '../../features/gmail-oauth/components/GmailOAut
 import { DEFAULT_GMAIL_CONFIG, type GmailOAuthConfig } from '../../features/gmail-oauth/types';
 import { SheetsOAuthPanel } from '../../features/sheets-oauth/components/SheetsOAuthPanel';
 import { DEFAULT_SHEETS_CONFIG, type SheetsOAuthConfig } from '../../features/sheets-oauth/types';
+import { DocsOAuthPanel } from '../../features/docs-oauth/components/DocsOAuthPanel';
+import { DEFAULT_DOCS_CONFIG, type DocsOAuthConfig } from '../../features/docs-oauth/types';
 
 interface GenesisBotConfigPanelProps {
   config: GenesisBotNodeConfig;
@@ -291,6 +293,19 @@ export default function GenesisBotConfigPanel({
             handleChange('sheets', sheetsConfig);
             // Save immediately when Sheets config changes
             onUpdate({ sheets: sheetsConfig });
+          }}
+        />
+
+        {/* Divider */}
+        <div className="my-4 border-t border-white/10" />
+
+        {/* Docs OAuth Panel */}
+        <DocsOAuthPanel
+          config={formData.docs || DEFAULT_DOCS_CONFIG}
+          onConfigChange={(docsConfig: DocsOAuthConfig) => {
+            handleChange('docs', docsConfig);
+            // Save immediately when Docs config changes
+            onUpdate({ docs: docsConfig });
           }}
         />
       </div>

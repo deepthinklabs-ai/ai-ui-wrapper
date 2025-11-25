@@ -8,6 +8,7 @@
 import type { AIModel } from '@/lib/apiKeyStorage';
 import type { GmailOAuthConfig } from '../features/gmail-oauth/types';
 import type { SheetsOAuthConfig } from '../features/sheets-oauth/types';
+import type { DocsOAuthConfig } from '../features/docs-oauth/types';
 
 // ============================================================================
 // CANVAS
@@ -100,6 +101,9 @@ export interface GenesisBotNodeConfig {
 
   // Google Sheets Integration
   sheets?: SheetsOAuthConfig;
+
+  // Google Docs Integration
+  docs?: DocsOAuthConfig;
 }
 
 /**

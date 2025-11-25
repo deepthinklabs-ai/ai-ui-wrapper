@@ -18,9 +18,17 @@ import {
   toClaudeToolFormat as sheetsToClaudeToolFormat,
   generateSheetsSystemPrompt,
 } from '@/app/canvas/features/sheets-oauth';
+import {
+  getEnabledDocsTools,
+  toClaudeToolFormat as docsToClaudeToolFormat,
+  generateDocsSystemPrompt,
+} from '@/app/canvas/features/docs-oauth/lib/docsTools';
 // Import server-side executors directly (uses googleapis, server-only)
 import { executeGmailToolCallsServer } from '@/app/canvas/features/gmail-oauth/lib/gmailToolExecutorServer';
 import { executeSheetsToolCallsServer } from '@/app/canvas/features/sheets-oauth/lib/sheetsToolExecutorServer';
+import { executeDocsToolCallsServer } from '@/app/canvas/features/docs-oauth/lib/docsToolExecutorServer';
+// Import OAuth connection lookup for fallback when connectionId not in config
+import { getOAuthConnection } from '@/lib/googleTokenStorage';
 
 interface ConversationHistoryEntry {
   id: string;
@@ -114,8 +122,47 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if target node has Docs integration enabled
+    // Docs uses same Google OAuth as Gmail/Sheets
+    const docsConfig = toNodeConfig.docs;
+    let docsConnectionId = docsConfig?.connectionId || gmailConnectionId || sheetsConnectionId;
+    let docsTools: any[] = [];
+    let docsSystemPrompt = '';
+
+    // If Docs is enabled but no connectionId, try to look up the Google OAuth connection directly
+    if (docsConfig?.enabled && !docsConnectionId) {
+      try {
+        const googleConnection = await getOAuthConnection(userId, 'google');
+        if (googleConnection) {
+          docsConnectionId = googleConnection.id;
+          console.log(`[Ask/Answer] Found Google OAuth connection for Docs: ${docsConnectionId}`);
+        }
+      } catch (error) {
+        console.log(`[Ask/Answer] Failed to lookup Google OAuth connection:`, error);
+      }
+    }
+
+    const hasDocsTools = docsConfig?.enabled && docsConnectionId;
+
+    console.log(`[Ask/Answer] Docs config:`, {
+      enabled: docsConfig?.enabled,
+      connectionId: docsConfig?.connectionId,
+      resolvedConnectionId: docsConnectionId,
+      hasDocsTools,
+      permissions: docsConfig?.permissions
+    });
+
+    if (hasDocsTools) {
+      const enabledTools = getEnabledDocsTools(docsConfig.permissions);
+      if (enabledTools.length > 0) {
+        docsTools = docsToClaudeToolFormat(enabledTools);
+        docsSystemPrompt = generateDocsSystemPrompt(docsConfig);
+        console.log(`[Ask/Answer] Docs tools enabled: ${enabledTools.map(t => t.name).join(', ')}`);
+      }
+    }
+
     // Combine all tools
-    const allTools = [...gmailTools, ...sheetsTools];
+    const allTools = [...gmailTools, ...sheetsTools, ...docsTools];
 
     // Build context for Node B
     // Node B receives the query with context about Node A
@@ -133,6 +180,11 @@ Remember previous exchanges and build upon them when answering follow-up questio
     // Add Sheets capabilities to system prompt if enabled
     if (sheetsSystemPrompt) {
       systemPrompt += `\n\n${sheetsSystemPrompt}`;
+    }
+
+    // Add Docs capabilities to system prompt if enabled
+    if (docsSystemPrompt) {
+      systemPrompt += `\n\n${docsSystemPrompt}`;
     }
 
     // Build messages array with conversation history
@@ -171,6 +223,7 @@ Remember previous exchanges and build upon them when answering follow-up questio
     console.log(`  Total Messages: ${messages.length}`);
     console.log(`  Gmail Tools: ${hasGmailTools ? gmailTools.length : 0}`);
     console.log(`  Sheets Tools: ${hasSheetsTools ? sheetsTools.length : 0}`);
+    console.log(`  Docs Tools: ${hasDocsTools ? docsTools.length : 0}`);
     console.log(`  Total Tools: ${allTools.length}`);
 
     // Route to appropriate Pro API based on provider
@@ -248,9 +301,17 @@ Remember previous exchanges and build upon them when answering follow-up questio
           input: b.input,
         }));
 
-      if (gmailToolCalls.length === 0 && sheetsToolCalls.length === 0) {
+      const docsToolCalls = toolUseBlocks
+        .filter((b: any) => b.name?.startsWith('docs_'))
+        .map((b: any) => ({
+          id: b.id,
+          name: b.name,
+          input: b.input,
+        }));
+
+      if (gmailToolCalls.length === 0 && sheetsToolCalls.length === 0 && docsToolCalls.length === 0) {
         // No tools to execute, break out
-        console.log(`[Ask/Answer] No Gmail/Sheets tools in tool_use response, using text content`);
+        console.log(`[Ask/Answer] No Gmail/Sheets/Docs tools in tool_use response, using text content`);
         break;
       }
 
@@ -278,6 +339,18 @@ Remember previous exchanges and build upon them when answering follow-up questio
           sheetsConfig!.permissions
         );
         allToolResults.push(...sheetsResults);
+      }
+
+      // Execute Docs tools if any
+      if (docsToolCalls.length > 0 && hasDocsTools) {
+        console.log(`[Ask/Answer] Executing ${docsToolCalls.length} Docs tools (server-side)`);
+        const docsResults = await executeDocsToolCallsServer(
+          docsToolCalls,
+          userId,
+          toNodeId,
+          docsConfig!.permissions
+        );
+        allToolResults.push(...docsResults);
       }
 
       // Format tool results for Claude
