@@ -28,6 +28,7 @@ import type { CanvasNode, CanvasEdge, NodeId } from '../types';
 import { NODE_DEFINITIONS } from '../lib/nodeRegistry';
 import GenesisBotNode from './nodes/GenesisBotNode';
 import DeletableEdge from './edges/DeletableEdge';
+import CanvasDebugOverlay from './CanvasDebugOverlay';
 
 interface CanvasViewportProps {
   nodes: CanvasNode[];
@@ -39,6 +40,7 @@ interface CanvasViewportProps {
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
   workflowMode?: boolean;
+  isAdmin?: boolean;
 }
 
 export default function CanvasViewport({
@@ -51,8 +53,9 @@ export default function CanvasViewport({
   onEdgesChange,
   onConnect,
   workflowMode = false,
+  isAdmin = false,
 }: CanvasViewportProps) {
-  // Define custom node types
+  // Define custom node types - cast to any to avoid strict xyflow typing issues
   const nodeTypes = useMemo(
     () => ({
       GENESIS_BOT: GenesisBotNode,
@@ -60,7 +63,7 @@ export default function CanvasViewport({
       // TRAINING_SESSION: TrainingSessionNode,
       // BOARDROOM: BoardroomNode,
       // etc.
-    }),
+    } as any),
     []
   );
 
@@ -339,6 +342,13 @@ export default function CanvasViewport({
             border: '1px solid #475569',
             borderRadius: '8px',
           }}
+        />
+
+        {/* Admin Debug Overlay - Inside ReactFlow for viewport access */}
+        <CanvasDebugOverlay
+          nodes={nodes}
+          edges={edges}
+          isAdmin={isAdmin}
         />
       </ReactFlow>
 

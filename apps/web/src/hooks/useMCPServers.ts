@@ -244,16 +244,16 @@ export function useMCPServers(): UseMCPServersResult {
 
   // Cleanup only on true unmount
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     return () => {
       // Only disconnect if we're truly unmounting (not a React Strict Mode remount)
-      const timeoutId = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         if (!shouldStayConnectedRef.current) {
           console.log('[MCP] Component truly unmounting, disconnecting...');
           disconnectAll();
         }
       }, 200);
-
-      return () => clearTimeout(timeoutId);
     };
   }, [disconnectAll]);
 

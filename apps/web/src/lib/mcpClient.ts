@@ -261,7 +261,7 @@ class MCPClientManager {
       // Check if this is a stdio server (proxied through backend)
       // We can tell by checking if tools came from backend proxy
       const isStdioProxy = connection.capabilities.tools &&
-                          !connection.client._transport;
+                          !(connection.client as any)._transport;
 
       if (isStdioProxy) {
         // Use backend proxy for stdio servers

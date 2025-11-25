@@ -279,14 +279,14 @@ export default function NodeInspector({
                             <QueryReviewPanel
                               pendingAnswer={pendingAnswer}
                               onClear={() => askAnswer.clearAnswer(node.id, pendingAnswer.queryId)}
-                              onSendNewQuery={(query) =>
-                                askAnswer.sendQuery({
+                              onSendNewQuery={async (query) => {
+                                await askAnswer.sendQuery({
                                   fromNodeId: node.id,
                                   toNodeId: connectedNode.id,
                                   edgeId: edge.id,
                                   query,
-                                })
-                              }
+                                });
+                              }}
                             />
                           )}
 
@@ -296,14 +296,14 @@ export default function NodeInspector({
                               fromNodeId={node.id}
                               toNodeId={connectedNode.id}
                               edgeId={edge.id}
-                              onSendQuery={(query) =>
-                                askAnswer.sendQuery({
+                              onSendQuery={async (query) => {
+                                await askAnswer.sendQuery({
                                   fromNodeId: node.id,
                                   toNodeId: connectedNode.id,
                                   edgeId: edge.id,
                                   query,
-                                })
-                              }
+                                });
+                              }}
                               disabled={askAnswer.isSendingQuery}
                             />
                           )}

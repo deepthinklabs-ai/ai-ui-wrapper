@@ -18,7 +18,6 @@ import NodePalette from './NodePalette';
 import CanvasViewport from './CanvasViewport';
 import NodeInspector from './NodeInspector';
 import WorkflowControls from './WorkflowControls';
-import CanvasDebugOverlay from './CanvasDebugOverlay';
 import CanvasHelpTooltip from './CanvasHelpTooltip';
 import { CanvasProvider } from '../context/CanvasContext';
 import { useCanvasContext } from '../context/CanvasStateContext';
@@ -113,12 +112,6 @@ export default function CanvasShell() {
                 onEdgesChange={handleEdgesChange}
                 onConnect={handleConnect}
                 workflowMode={workflowMode}
-              />
-
-              {/* Admin Debug Overlay */}
-              <CanvasDebugOverlay
-                nodes={nodeOps.list}
-                edges={edgeOps.list}
                 isAdmin={isAdmin}
               />
 

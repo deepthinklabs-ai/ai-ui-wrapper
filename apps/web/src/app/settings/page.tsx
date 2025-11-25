@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   getApiKey,
@@ -32,7 +32,7 @@ import MCPMigrationBanner from "@/components/settings/MCPMigrationBanner";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useUserTier } from "@/hooks/useUserTier";
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthSession();
@@ -717,5 +717,22 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function SettingsPageLoading() {
+  return (
+    <div className="flex h-screen flex-col items-center justify-center bg-slate-950 text-slate-50">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+      <p className="mt-4 text-slate-400">Loading settings...</p>
+    </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<SettingsPageLoading />}>
+      <SettingsPageContent />
+    </Suspense>
   );
 }

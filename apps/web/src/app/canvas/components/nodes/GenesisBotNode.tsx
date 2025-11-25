@@ -13,13 +13,16 @@ import type { NodeProps } from '@xyflow/react';
 import type { GenesisBotNodeConfig } from '../../types';
 import GenesisBotChatModal from '../modals/GenesisBotChatModal';
 
-interface GenesisBotNodeData {
+export interface GenesisBotNodeData {
   label: string;
   config: GenesisBotNodeConfig;
   nodeType: string;
 }
 
-export default function GenesisBotNode({ id, data, selected }: NodeProps<GenesisBotNodeData>) {
+// Use any for NodeProps to avoid strict typing issues with @xyflow/react
+export default function GenesisBotNode({ id, data, selected }: NodeProps<any>) {
+  // Cast data for type safety internally
+  const nodeData = data as GenesisBotNodeData;
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -47,8 +50,8 @@ export default function GenesisBotNode({ id, data, selected }: NodeProps<Genesis
           <GenesisBotChatModal
             isOpen={true}
             onClose={() => setIsExpanded(false)}
-            botConfig={data.config}
-            botLabel={data.label}
+            botConfig={nodeData.config}
+            botLabel={nodeData.label}
             nodeId={id}
             inlineMode={true}
           />
@@ -60,10 +63,10 @@ export default function GenesisBotNode({ id, data, selected }: NodeProps<Genesis
               <div className="text-3xl">🤖</div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-slate-100 text-sm truncate">
-                  {data.label}
+                  {nodeData.label}
                 </div>
                 <div className="text-xs text-slate-400">
-                  {data.config.model_name}
+                  {nodeData.config.model_name}
                 </div>
               </div>
             </div>
@@ -72,12 +75,12 @@ export default function GenesisBotNode({ id, data, selected }: NodeProps<Genesis
             <div className="space-y-1 text-xs">
               <div className="flex items-center justify-between text-slate-500">
                 <span>Provider:</span>
-                <span className="text-slate-300 capitalize">{data.config.model_provider}</span>
+                <span className="text-slate-300 capitalize">{nodeData.config.model_provider}</span>
               </div>
-              {data.config.temperature !== undefined && (
+              {nodeData.config.temperature !== undefined && (
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Temperature:</span>
-                  <span className="text-slate-300">{data.config.temperature}</span>
+                  <span className="text-slate-300">{nodeData.config.temperature}</span>
                 </div>
               )}
             </div>

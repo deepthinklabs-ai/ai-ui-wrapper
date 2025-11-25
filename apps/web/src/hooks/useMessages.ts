@@ -210,7 +210,7 @@ export function useMessages(
         // Merge Gmail tools with existing tools
         claudeTools = [
           ...(claudeTools || []),
-          ...gmailConfig.tools,
+          ...(gmailConfig.tools as any[]),
         ];
 
         // Add Gmail system prompt
@@ -310,7 +310,10 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
 
       // Debug: Log system prompts being sent (optional - uncomment to see what's included)
       const systemPrompts = payloadMessages.filter(m => m.role === 'system');
-      console.log('[System Prompts]', systemPrompts.length, 'prompts:', systemPrompts.map(p => p.content.substring(0, 100) + '...'));
+      console.log('[System Prompts]', systemPrompts.length, 'prompts:', systemPrompts.map(p => {
+        const content = typeof p.content === 'string' ? p.content : JSON.stringify(p.content);
+        return content.substring(0, 100) + '...';
+      }));
       console.log('[Full System Prompts]', JSON.stringify(systemPrompts, null, 2));
       console.log('[Total Payload Messages]', payloadMessages.length, 'messages');
       console.log('[Full Payload]', JSON.stringify(payloadMessages, null, 2));
@@ -351,7 +354,12 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
           let gmailResults: ToolResult[] = [];
           if (gmailToolCalls.length > 0 && gmailConfig?.executor) {
             console.log("[Gmail Tool Calling] Executing Gmail tools:", gmailToolCalls.map(t => t.name));
-            gmailResults = await gmailConfig.executor(gmailToolCalls);
+            const rawGmailResults = await gmailConfig.executor(gmailToolCalls);
+            // Map results to include toolName if missing
+            gmailResults = rawGmailResults.map((r: any, idx: number) => ({
+              ...r,
+              toolName: r.toolName || gmailToolCalls[idx]?.name || 'unknown_gmail_tool',
+            }));
             console.log("[Gmail Tool Calling] Tool execution results:", gmailResults);
           }
 

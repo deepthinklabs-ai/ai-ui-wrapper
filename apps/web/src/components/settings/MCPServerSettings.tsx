@@ -142,7 +142,7 @@ export default function MCPServerSettings() {
           serverData.env = JSON.parse(formEnv);
 
           // Validate that placeholder credentials have been replaced
-          const envValues = Object.values(serverData.env);
+          const envValues = Object.values(serverData.env || {});
           const hasPlaceholders = envValues.some((val: any) =>
             typeof val === 'string' && (
               val.includes('YOUR_TOKEN_HERE') ||

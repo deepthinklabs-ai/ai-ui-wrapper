@@ -119,10 +119,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                code({ node, inline, className, children, ...props }) {
+                code({ node, className, children, ...props }: any) {
+                  // Check if it's inline code (no language/className or single line)
+                  const isInline = !className;
                   return (
                     <CodeBlock
-                      inline={inline}
+                      inline={isInline}
                       className={className}
                       {...props}
                     >

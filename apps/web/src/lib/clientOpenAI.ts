@@ -146,7 +146,7 @@ export async function sendClientChatRequest(
     });
 
     // Add annotation citations (only if URL not already present)
-    annotationCitations.forEach(citation => {
+    annotationCitations.forEach((citation: any) => {
       if (!citationMap.has(citation.url)) {
         citationMap.set(citation.url, citation);
       }

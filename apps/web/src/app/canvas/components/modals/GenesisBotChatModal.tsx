@@ -300,16 +300,9 @@ export default function GenesisBotChatModal({
           ) : (
             <MessageList
               messages={messages}
-              streamingMessageId={null}
-              streamingContent=""
-              onDeleteMessage={() => {}}
-              onRegenerateMessage={() => {}}
-              onRevertFromMessage={() => {}}
-              onRevertWithDraft={() => {}}
-              onForkThread={() => {}}
-              onConvertToMarkdown={() => {}}
-              onConvertToJSON={() => {}}
-              textSelectionEnabled={false}
+              loading={false}
+              thinking={false}
+              messageActionsDisabled={true}
               isFeatureEnabled={() => false}
             />
           )}
@@ -455,16 +448,9 @@ export default function GenesisBotChatModal({
             ) : (
               <MessageList
                 messages={messages}
-                streamingMessageId={null}
-                streamingContent=""
-                onDeleteMessage={() => {}}
-                onRegenerateMessage={() => {}}
-                onRevertFromMessage={() => {}}
-                onRevertWithDraft={() => {}}
-                onForkThread={() => {}}
-                onConvertToMarkdown={() => {}}
-                onConvertToJSON={() => {}}
-                textSelectionEnabled={false}
+                loading={false}
+                thinking={false}
+                messageActionsDisabled={true}
                 isFeatureEnabled={() => false}
               />
             )}

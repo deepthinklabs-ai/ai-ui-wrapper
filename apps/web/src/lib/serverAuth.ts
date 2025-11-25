@@ -94,7 +94,7 @@ export async function getAuthenticatedSupabaseClient(request: Request): Promise<
   );
 
   return {
-    supabase,
+    supabase: supabase as any,
     user: authResult.user,
   };
 }

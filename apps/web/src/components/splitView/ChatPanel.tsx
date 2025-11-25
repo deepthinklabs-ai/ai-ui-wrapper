@@ -173,8 +173,8 @@ export default function ChatPanel({
     currentThreadTitle: thread?.title ?? null,
     messages,
     refreshMessages,
-    forkThread: onForkThread || (async () => null),
-    refreshThreads: onThreadTitleUpdated || (() => {}),
+    forkThread: onForkThread as any || (async () => null),
+    refreshThreads: onThreadTitleUpdated as any || (async () => {}),
     onModelChange,
     currentModel: selectedModel,
   });

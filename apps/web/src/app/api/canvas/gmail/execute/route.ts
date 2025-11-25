@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
             { status: 403 }
           );
         }
-        result = await executeSearch(gmail, parameters as GmailSearchParams);
+        result = await executeSearch(gmail, parameters as unknown as GmailSearchParams);
         break;
 
       case 'gmail_read':

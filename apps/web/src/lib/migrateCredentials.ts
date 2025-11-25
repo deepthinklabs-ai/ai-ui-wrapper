@@ -290,6 +290,7 @@ export async function rollbackMigration(): Promise<{
           args: [],
           env: dbServer.env || {},
           enabled: dbServer.enabled,
+          createdAt: new Date().toISOString(),
         } as MCPServerConfig);
       }
     }

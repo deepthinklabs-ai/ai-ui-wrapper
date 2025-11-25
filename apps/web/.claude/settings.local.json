@@ -34,7 +34,8 @@
       "Bash(src/hooks/useMessages.ts)",
       "Bash(if exist .next rmdir /s /q .next)",
       "Bash(src/app/api/pro/claude/route.ts)",
-      "WebFetch(domain:docs.x.ai)"
+      "WebFetch(domain:docs.x.ai)",
+      "Bash(if exist .nextdevlock del /f .nextdevlock)"
     ],
     "deny": [],
     "ask": []

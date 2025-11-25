@@ -83,7 +83,7 @@ export async function executeGmailToolCallServer(
             isError: true,
           };
         }
-        result = await executeSearch(gmail, toolCall.input as GmailSearchParams);
+        result = await executeSearch(gmail, toolCall.input as unknown as GmailSearchParams);
         break;
 
       case 'gmail_read':

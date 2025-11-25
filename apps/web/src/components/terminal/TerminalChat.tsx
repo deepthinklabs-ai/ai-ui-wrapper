@@ -159,9 +159,10 @@ export default function TerminalChat({ messages, isProcessing }: TerminalChatPro
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      code({ node, inline, className, children, ...props }) {
+                      code({ node, className, children, ...props }: any) {
+                        const isInline = !className;
                         return (
-                          <CodeBlock inline={inline} className={className} {...props}>
+                          <CodeBlock inline={isInline} className={className} {...props}>
                             {String(children).replace(/\n$/, "")}
                           </CodeBlock>
                         );

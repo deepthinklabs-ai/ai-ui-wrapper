@@ -3,18 +3,24 @@
  *
  * Processes queries from Node A and generates answers using Node B's AI configuration.
  * Properly segmented - doesn't pollute existing API routes.
- * Supports Gmail tool calling for nodes with Gmail integration.
+ * Supports Gmail and Sheets tool calling for nodes with integrations enabled.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { GenesisBotNodeConfig } from '@/app/canvas/types';
 import {
   getEnabledGmailTools,
-  toClaudeToolFormat,
+  toClaudeToolFormat as gmailToClaudeToolFormat,
   generateGmailSystemPrompt,
 } from '@/app/canvas/features/gmail-oauth';
-// Import server-side executor directly (uses googleapis, server-only)
+import {
+  getEnabledSheetsTools,
+  toClaudeToolFormat as sheetsToClaudeToolFormat,
+  generateSheetsSystemPrompt,
+} from '@/app/canvas/features/sheets-oauth';
+// Import server-side executors directly (uses googleapis, server-only)
 import { executeGmailToolCallsServer } from '@/app/canvas/features/gmail-oauth/lib/gmailToolExecutorServer';
+import { executeSheetsToolCallsServer } from '@/app/canvas/features/sheets-oauth/lib/sheetsToolExecutorServer';
 
 interface QueryRequestBody {
   canvasId: string;
@@ -67,11 +73,40 @@ export async function POST(request: NextRequest) {
     if (hasGmailTools) {
       const enabledTools = getEnabledGmailTools(gmailConfig.permissions);
       if (enabledTools.length > 0) {
-        gmailTools = toClaudeToolFormat(enabledTools);
+        gmailTools = gmailToClaudeToolFormat(enabledTools);
         gmailSystemPrompt = generateGmailSystemPrompt(gmailConfig);
         console.log(`[Ask/Answer] Gmail tools enabled: ${enabledTools.map(t => t.name).join(', ')}`);
       }
     }
+
+    // Check if target node has Sheets integration enabled
+    // Sheets uses same Google OAuth as Gmail, so check if either connectionId is set
+    const sheetsConfig = toNodeConfig.sheets;
+    const gmailConnectionId = gmailConfig?.connectionId;
+    const sheetsConnectionId = sheetsConfig?.connectionId || gmailConnectionId;
+    const hasSheetsTools = sheetsConfig?.enabled && sheetsConnectionId;
+    let sheetsTools: any[] = [];
+    let sheetsSystemPrompt = '';
+
+    console.log(`[Ask/Answer] Sheets config:`, {
+      enabled: sheetsConfig?.enabled,
+      connectionId: sheetsConfig?.connectionId,
+      gmailConnectionId,
+      hasSheetsTools,
+      permissions: sheetsConfig?.permissions
+    });
+
+    if (hasSheetsTools) {
+      const enabledTools = getEnabledSheetsTools(sheetsConfig.permissions);
+      if (enabledTools.length > 0) {
+        sheetsTools = sheetsToClaudeToolFormat(enabledTools);
+        sheetsSystemPrompt = generateSheetsSystemPrompt(sheetsConfig);
+        console.log(`[Ask/Answer] Sheets tools enabled: ${enabledTools.map(t => t.name).join(', ')}`);
+      }
+    }
+
+    // Combine all tools
+    const allTools = [...gmailTools, ...sheetsTools];
 
     // Build context for Node B
     // Node B receives the query with context about Node A
@@ -88,6 +123,11 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
       systemPrompt += `\n\n${gmailSystemPrompt}`;
     }
 
+    // Add Sheets capabilities to system prompt if enabled
+    if (sheetsSystemPrompt) {
+      systemPrompt += `\n\n${sheetsSystemPrompt}`;
+    }
+
     // Prepare messages for Node B
     let messages: Array<{ role: string; content: any }> = [
       {
@@ -101,6 +141,8 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
     console.log(`  To: ${toNodeId} (${toNodeConfig.name})`);
     console.log(`  Model: ${toNodeConfig.model_provider}/${toNodeConfig.model_name}`);
     console.log(`  Gmail Tools: ${hasGmailTools ? gmailTools.length : 0}`);
+    console.log(`  Sheets Tools: ${hasSheetsTools ? sheetsTools.length : 0}`);
+    console.log(`  Total Tools: ${allTools.length}`);
 
     // Route to appropriate Pro API based on provider
     const provider = toNodeConfig.model_provider;
@@ -138,7 +180,7 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
         temperature: toNodeConfig.temperature,
         maxTokens: toNodeConfig.max_tokens,
         enableWebSearch: toNodeConfig.web_search_enabled !== false,
-        tools: gmailTools.length > 0 ? gmailTools : undefined,
+        tools: allTools.length > 0 ? allTools : undefined,
       }),
     });
 
@@ -149,7 +191,7 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
 
     let apiData = await apiResponse.json();
 
-    // Handle tool calls (Gmail) - loop until we get a final response
+    // Handle tool calls (Gmail & Sheets) - loop until we get a final response
     const maxToolIterations = 5;
     let iteration = 0;
 
@@ -159,6 +201,8 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
 
       // Extract tool calls from response
       const toolUseBlocks = apiData.contentBlocks.filter((b: any) => b.type === 'tool_use');
+
+      // Separate Gmail and Sheets tool calls
       const gmailToolCalls = toolUseBlocks
         .filter((b: any) => b.name?.startsWith('gmail_'))
         .map((b: any) => ({
@@ -167,24 +211,48 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
           input: b.input,
         }));
 
-      if (gmailToolCalls.length === 0) {
-        // No Gmail tools to execute, break out
-        console.log(`[Ask/Answer] No Gmail tools in tool_use response, using text content`);
+      const sheetsToolCalls = toolUseBlocks
+        .filter((b: any) => b.name?.startsWith('sheets_'))
+        .map((b: any) => ({
+          id: b.id,
+          name: b.name,
+          input: b.input,
+        }));
+
+      if (gmailToolCalls.length === 0 && sheetsToolCalls.length === 0) {
+        // No tools to execute, break out
+        console.log(`[Ask/Answer] No Gmail/Sheets tools in tool_use response, using text content`);
         break;
       }
 
-      console.log(`[Ask/Answer] Executing ${gmailToolCalls.length} Gmail tools (server-side)`);
+      const allToolResults: Array<{ toolCallId: string; result: string; isError: boolean }> = [];
 
-      // Execute Gmail tools directly (server-side, no HTTP fetch)
-      const toolResults = await executeGmailToolCallsServer(
-        gmailToolCalls,
-        userId,
-        toNodeId,
-        gmailConfig!.permissions
-      );
+      // Execute Gmail tools if any
+      if (gmailToolCalls.length > 0 && hasGmailTools) {
+        console.log(`[Ask/Answer] Executing ${gmailToolCalls.length} Gmail tools (server-side)`);
+        const gmailResults = await executeGmailToolCallsServer(
+          gmailToolCalls,
+          userId,
+          toNodeId,
+          gmailConfig!.permissions
+        );
+        allToolResults.push(...gmailResults);
+      }
+
+      // Execute Sheets tools if any
+      if (sheetsToolCalls.length > 0 && hasSheetsTools) {
+        console.log(`[Ask/Answer] Executing ${sheetsToolCalls.length} Sheets tools (server-side)`);
+        const sheetsResults = await executeSheetsToolCallsServer(
+          sheetsToolCalls,
+          userId,
+          toNodeId,
+          sheetsConfig!.permissions
+        );
+        allToolResults.push(...sheetsResults);
+      }
 
       // Format tool results for Claude
-      const toolResultBlocks = toolResults.map(result => ({
+      const toolResultBlocks = allToolResults.map(result => ({
         type: 'tool_result',
         tool_use_id: result.toolCallId,
         content: result.result,
@@ -211,7 +279,7 @@ Please provide a helpful, accurate answer based on your capabilities and knowled
           temperature: toNodeConfig.temperature,
           maxTokens: toNodeConfig.max_tokens,
           enableWebSearch: toNodeConfig.web_search_enabled !== false,
-          tools: gmailTools.length > 0 ? gmailTools : undefined,
+          tools: allTools.length > 0 ? allTools : undefined,
         }),
       });
 

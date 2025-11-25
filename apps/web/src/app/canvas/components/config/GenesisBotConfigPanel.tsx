@@ -12,6 +12,8 @@ import type { GenesisBotNodeConfig } from '../../types';
 import { AVAILABLE_MODELS, type AIModel } from '@/lib/apiKeyStorage';
 import { GmailOAuthPanel } from '../../features/gmail-oauth/components/GmailOAuthPanel';
 import { DEFAULT_GMAIL_CONFIG, type GmailOAuthConfig } from '../../features/gmail-oauth/types';
+import { SheetsOAuthPanel } from '../../features/sheets-oauth/components/SheetsOAuthPanel';
+import { DEFAULT_SHEETS_CONFIG, type SheetsOAuthConfig } from '../../features/sheets-oauth/types';
 
 interface GenesisBotConfigPanelProps {
   config: GenesisBotNodeConfig;
@@ -276,6 +278,19 @@ export default function GenesisBotConfigPanel({
             handleChange('gmail', gmailConfig);
             // Save immediately when Gmail config changes
             onUpdate({ gmail: gmailConfig });
+          }}
+        />
+
+        {/* Divider */}
+        <div className="my-4 border-t border-white/10" />
+
+        {/* Sheets OAuth Panel */}
+        <SheetsOAuthPanel
+          config={formData.sheets || DEFAULT_SHEETS_CONFIG}
+          onConfigChange={(sheetsConfig: SheetsOAuthConfig) => {
+            handleChange('sheets', sheetsConfig);
+            // Save immediately when Sheets config changes
+            onUpdate({ sheets: sheetsConfig });
           }}
         />
       </div>
