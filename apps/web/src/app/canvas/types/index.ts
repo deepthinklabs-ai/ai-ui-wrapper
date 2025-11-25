@@ -6,6 +6,7 @@
  */
 
 import type { AIModel } from '@/lib/apiKeyStorage';
+import type { GmailOAuthConfig } from '../features/gmail-oauth/types';
 
 // ============================================================================
 // CANVAS
@@ -92,6 +93,9 @@ export interface GenesisBotNodeConfig {
   streaming_enabled?: boolean;
   show_thinking?: boolean;
   web_search_enabled?: boolean;
+
+  // Gmail Integration
+  gmail?: GmailOAuthConfig;
 }
 
 /**

@@ -23,18 +23,21 @@ export async function GET(request: NextRequest) {
 
     // Handle OAuth errors
     if (error) {
+      console.error('[OAuth Callback] Google returned error:', error);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/tools?error=${encodeURIComponent(error)}`
+        `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=${encodeURIComponent(error)}`
       );
     }
 
     if (!code || !state) {
+      console.error('[OAuth Callback] Missing code or state');
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/tools?error=missing_parameters`
+        `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=missing_parameters`
       );
     }
 
     // Verify state parameter (CSRF protection)
+    console.log('[OAuth Callback] Verifying state:', state);
     const { data: stateData, error: stateError } = await supabase
       .from('oauth_states')
       .select('*')
@@ -42,17 +45,19 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (stateError || !stateData) {
+      console.error('[OAuth Callback] State verification failed:', stateError?.message || 'State not found');
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/tools?error=invalid_state`
+        `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=invalid_state`
       );
     }
 
     // Check if state has expired (10 minutes)
     const expiresAt = new Date(stateData.expires_at);
     if (expiresAt < new Date()) {
+      console.error('[OAuth Callback] State expired');
       await supabase.from('oauth_states').delete().eq('state', state);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/tools?error=expired_state`
+        `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=expired_state`
       );
     }
 
@@ -70,14 +75,15 @@ export async function GET(request: NextRequest) {
     // Store tokens securely in database
     await storeOAuthTokens(userId, 'google', tokens, userInfo);
 
-    // Redirect back to tools page with success
+    // Redirect back to canvas page with success
+    console.log('[OAuth Callback] Success! Redirecting to canvas');
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/tools?success=true`
+      `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_success=true`
     );
   } catch (error: any) {
-    console.error('OAuth callback error:', error);
+    console.error('[OAuth Callback] Error:', error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/tools?error=${encodeURIComponent(
+      `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=${encodeURIComponent(
         error.message || 'oauth_failed'
       )}`
     );

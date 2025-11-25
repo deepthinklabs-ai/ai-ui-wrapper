@@ -7,7 +7,7 @@
  * Provides a complete chat interface similar to the main dashboard.
  */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useMessages } from '@/hooks/useMessages';
@@ -19,6 +19,12 @@ import { getSelectedModel, setSelectedModel } from '@/lib/apiKeyStorage';
 import { supabase } from '@/lib/supabaseClient';
 import { useCanvasContext } from '../../context/CanvasContext';
 import CustomConnectionHandle from '../CustomConnectionHandle';
+import {
+  getEnabledGmailTools,
+  toClaudeToolFormat,
+  generateGmailSystemPrompt,
+  executeGmailToolCalls,
+} from '../../features/gmail-oauth';
 
 interface GenesisBotChatModalProps {
   isOpen: boolean;
@@ -153,6 +159,35 @@ export default function GenesisBotChatModal({
     createThreadInDatabase();
   }, [isOpen, threadId, user?.id, botLabel, creatingThread]);
 
+  // Gmail tools configuration
+  const gmailToolsConfig = useMemo(() => {
+    const gmailConfig = botConfig.gmail;
+    if (!gmailConfig?.enabled || !gmailConfig.connectionId) {
+      return undefined;
+    }
+
+    const enabledTools = getEnabledGmailTools(gmailConfig.permissions);
+    if (enabledTools.length === 0) {
+      return undefined;
+    }
+
+    return {
+      enabled: true,
+      tools: toClaudeToolFormat(enabledTools),
+      systemPrompt: generateGmailSystemPrompt(gmailConfig),
+      executor: async (toolCalls: Array<{ id: string; name: string; input: Record<string, unknown> }>) => {
+        if (!user?.id) {
+          return toolCalls.map(tc => ({
+            toolCallId: tc.id,
+            result: JSON.stringify({ error: 'User not authenticated' }),
+            isError: true,
+          }));
+        }
+        return executeGmailToolCalls(toolCalls, user.id, nodeId, gmailConfig.permissions);
+      },
+    };
+  }, [botConfig.gmail, user?.id, nodeId]);
+
   // Messages hook
   const {
     messages,
@@ -166,6 +201,7 @@ export default function GenesisBotChatModal({
     systemPromptAddition: botConfig.system_prompt,
     enableWebSearch: botConfig.web_search_enabled !== false, // Enabled by default, can be disabled
     disableMCPTools: true, // Canvas bots are isolated and don't use MCP tools
+    gmailTools: gmailToolsConfig, // Gmail integration if configured
   });
 
   // Calculate existing connections

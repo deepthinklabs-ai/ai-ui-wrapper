@@ -13,6 +13,14 @@ import { executeToolCalls } from "@/lib/toolExecutor";
 import { getMCPServers } from "@/lib/mcpStorage";
 import { getSlackTools, generateSlackSystemPrompt } from "@/lib/slackMCPIntegration";
 
+// Gmail tool types (imported inline to avoid circular deps)
+interface GmailToolConfig {
+  enabled: boolean;
+  tools: Array<{ name: string; description: string; input_schema: Record<string, unknown> }>;
+  systemPrompt: string;
+  executor: (toolCalls: Array<{ id: string; name: string; input: Record<string, unknown> }>) => Promise<Array<{ toolCallId: string; result: string; isError: boolean }>>;
+}
+
 type UseMessagesOptions = {
   onThreadTitleUpdated?: () => void;
   systemPromptAddition?: string;
@@ -20,6 +28,7 @@ type UseMessagesOptions = {
   userId?: string;
   enableWebSearch?: boolean;
   disableMCPTools?: boolean;
+  gmailTools?: GmailToolConfig; // Gmail integration for Genesis Bots
 };
 
 type UseMessagesResult = {
@@ -188,7 +197,30 @@ export function useMessages(
         disableMCPTools: options?.disableMCPTools,
         shouldUseMCPTools,
       });
-      const claudeTools = shouldUseMCPTools ? formatToolsForClaude(tools) : undefined;
+      let claudeTools = shouldUseMCPTools ? formatToolsForClaude(tools) : undefined;
+
+      // 4b) Add Gmail tools if configured
+      const gmailConfig = options?.gmailTools;
+      if (gmailConfig?.enabled && gmailConfig.tools.length > 0) {
+        console.log('[Gmail Tools Debug]', {
+          enabled: gmailConfig.enabled,
+          toolCount: gmailConfig.tools.length,
+        });
+
+        // Merge Gmail tools with existing tools
+        claudeTools = [
+          ...(claudeTools || []),
+          ...gmailConfig.tools,
+        ];
+
+        // Add Gmail system prompt
+        if (gmailConfig.systemPrompt) {
+          payloadMessages.push({
+            role: "system" as MessageRole,
+            content: gmailConfig.systemPrompt,
+          });
+        }
+      }
 
       // Add MCP context information if tools are available AND MCP is enabled AND not disabled
       if (claudeTools && claudeTools.length > 0 && shouldUseMCPTools) {
@@ -297,16 +329,35 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
       let toolResults: ToolResult[] | null = null;
 
       if (response.stop_reason === "tool_use" && response.contentBlocks) {
-        console.log("[MCP Tool Calling] Claude requested tool use");
+        console.log("[Tool Calling] Claude requested tool use");
 
         // Parse tool calls from response
         const parsedToolCalls = parseClaudeToolUse(response.contentBlocks);
-        console.log("[MCP Tool Calling] Parsed tool calls:", parsedToolCalls);
+        console.log("[Tool Calling] Parsed tool calls:", parsedToolCalls);
 
         if (parsedToolCalls.length > 0) {
-          // Execute tools
-          const executedResults = await executeToolCalls(parsedToolCalls, tools);
-          console.log("[MCP Tool Calling] Tool execution results:", executedResults);
+          // Separate Gmail tools from MCP tools
+          const gmailToolCalls = parsedToolCalls.filter(tc => tc.name.startsWith('gmail_'));
+          const mcpToolCalls = parsedToolCalls.filter(tc => !tc.name.startsWith('gmail_'));
+
+          // Execute MCP tools
+          let mcpResults: ToolResult[] = [];
+          if (mcpToolCalls.length > 0) {
+            mcpResults = await executeToolCalls(mcpToolCalls, tools);
+            console.log("[MCP Tool Calling] Tool execution results:", mcpResults);
+          }
+
+          // Execute Gmail tools if we have a Gmail executor
+          let gmailResults: ToolResult[] = [];
+          if (gmailToolCalls.length > 0 && gmailConfig?.executor) {
+            console.log("[Gmail Tool Calling] Executing Gmail tools:", gmailToolCalls.map(t => t.name));
+            gmailResults = await gmailConfig.executor(gmailToolCalls);
+            console.log("[Gmail Tool Calling] Tool execution results:", gmailResults);
+          }
+
+          // Combine results
+          const executedResults = [...mcpResults, ...gmailResults];
+          console.log("[Tool Calling] Combined tool execution results:", executedResults);
 
           // Store tool calls and results
           toolCalls = parsedToolCalls;

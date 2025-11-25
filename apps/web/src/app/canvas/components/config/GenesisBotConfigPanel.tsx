@@ -10,6 +10,8 @@
 import React, { useState, useEffect } from 'react';
 import type { GenesisBotNodeConfig } from '../../types';
 import { AVAILABLE_MODELS, type AIModel } from '@/lib/apiKeyStorage';
+import { GmailOAuthPanel } from '../../features/gmail-oauth/components/GmailOAuthPanel';
+import { DEFAULT_GMAIL_CONFIG, type GmailOAuthConfig } from '../../features/gmail-oauth/types';
 
 interface GenesisBotConfigPanelProps {
   config: GenesisBotNodeConfig;
@@ -259,6 +261,23 @@ export default function GenesisBotConfigPanel({
             <span className="text-sm text-slate-300">Enable Web Search (Real-time Information)</span>
           </label>
         </div>
+      </div>
+
+      {/* Integrations Section */}
+      <div>
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Integrations
+        </h5>
+
+        {/* Gmail OAuth Panel */}
+        <GmailOAuthPanel
+          config={formData.gmail || DEFAULT_GMAIL_CONFIG}
+          onConfigChange={(gmailConfig: GmailOAuthConfig) => {
+            handleChange('gmail', gmailConfig);
+            // Save immediately when Gmail config changes
+            onUpdate({ gmail: gmailConfig });
+          }}
+        />
       </div>
     </div>
   );

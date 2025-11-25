@@ -145,11 +145,6 @@ export async function POST(req: NextRequest) {
       messages: convertedMessages,
     };
 
-    // Add system prompt if we have one
-    if (finalSystemPrompt) {
-      requestBody.system = finalSystemPrompt;
-    }
-
     // Add web search tool if enabled
     if (enableWebSearch) {
       requestBody.tools = [
@@ -159,6 +154,17 @@ export async function POST(req: NextRequest) {
         },
         ...(requestBody.tools || [])
       ];
+
+      // Add instruction to include sources when using web search
+      const webSearchInstruction = `\n\nIMPORTANT: When you use web search to find information, you MUST include the sources at the end of your response. Format sources as a "Sources:" section with the website names and URLs as markdown links.`;
+      finalSystemPrompt = finalSystemPrompt
+        ? finalSystemPrompt + webSearchInstruction
+        : webSearchInstruction.trim();
+    }
+
+    // Add system prompt if we have one
+    if (finalSystemPrompt) {
+      requestBody.system = finalSystemPrompt;
     }
 
     // Add tools if provided (for MCP tool calling)
@@ -168,13 +174,23 @@ export async function POST(req: NextRequest) {
 
     // Make request to Claude API
     const startTime = Date.now();
+
+    // Build headers - add beta header if web search is enabled
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.CLAUDE_API_KEY!,
+      'anthropic-version': '2023-06-01',
+    };
+
+    // Web search requires the beta header to work properly
+    // Without this, Claude sees the tool but doesn't execute server-side search
+    if (enableWebSearch) {
+      headers['anthropic-beta'] = 'web-search-2025-03-05';
+    }
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
+      headers,
       body: JSON.stringify(requestBody),
     });
 
@@ -199,19 +215,44 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
 
-    // Check if response contains tool use (Claude can return tool_use blocks)
-    const hasToolUse = data.content?.some((block: any) => block.type === 'tool_use');
+    // Log the full response for debugging
+    console.log('[Claude API] Response stop_reason:', data.stop_reason);
+    console.log('[Claude API] Content blocks:', JSON.stringify(data.content?.map((b: any) => ({
+      type: b.type,
+      hasText: !!b.text,
+      textLength: b.text?.length,
+      textPreview: b.text?.substring(0, 100)
+    })), null, 2));
 
-    // Extract the text content from Claude's response (if any)
-    let content = '';
-    if (!hasToolUse) {
-      content = data.content?.[0]?.text;
-      if (!content) {
-        return NextResponse.json(
-          { error: 'No response from Claude' },
-          { status: 500 }
-        );
-      }
+    // If stop_reason indicates truncation, log warning
+    if (data.stop_reason === 'max_tokens') {
+      console.warn('[Claude API] Response was truncated due to max_tokens limit');
+    }
+
+    // Check if response contains tool use blocks that need client-side handling
+    // Note: web_search_20250305 is a server-side tool - Anthropic handles it automatically
+    // and returns the final text response in the same API call
+    const hasClientToolUse = data.content?.some(
+      (block: any) => block.type === 'tool_use' && !block.name?.startsWith('web_search')
+    );
+
+    // Extract ALL text content from Claude's response
+    // For web search, the response may contain MULTIPLE text blocks:
+    // - One before the search (e.g., "I'll check the weather...")
+    // - One after the search (with actual results)
+    // We need to combine all text blocks to get the complete response
+    const textBlocks = data.content?.filter((block: any) => block.type === 'text') || [];
+    let content = textBlocks.map((block: any) => block.text).join('\n\n');
+
+    console.log('[Claude API] Found', textBlocks.length, 'text blocks, total content length:', content.length);
+
+    if (!content && !hasClientToolUse) {
+      // No text and no client-side tool use means something went wrong
+      console.error('[Claude API] No text content in response:', JSON.stringify(data.content, null, 2));
+      return NextResponse.json(
+        { error: 'No response from Claude' },
+        { status: 500 }
+      );
     }
 
     // Extract token usage
@@ -236,6 +277,11 @@ export async function POST(req: NextRequest) {
     //   latency_ms: latency,
     // });
 
+    // Check if web search was used in this response
+    const usedWebSearch = data.content?.some(
+      (block: any) => block.type === 'web_search_tool_result' || block.name === 'web_search'
+    );
+
     return NextResponse.json({
       content: content,
       contentBlocks: data.content, // Include full content blocks for tool use
@@ -245,6 +291,7 @@ export async function POST(req: NextRequest) {
         total_tokens: usage.input_tokens + usage.output_tokens,
       },
       stop_reason: data.stop_reason, // Include stop reason (can be 'tool_use')
+      usedWebSearch, // Indicate if web search was used
     });
   } catch (error: any) {
     console.error('Error in /api/pro/claude:', error);
