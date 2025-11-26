@@ -41,6 +41,57 @@ export async function POST(request: NextRequest) {
     const slack = new WebClient(token);
     let result: any;
 
+    // Helper function to resolve channel name to ID
+    async function resolveChannelId(channel: string): Promise<string> {
+      // If it already looks like a channel ID, return it
+      if (channel.startsWith('C') || channel.startsWith('G')) {
+        return channel;
+      }
+
+      // Remove # prefix if present
+      const channelName = channel.replace(/^#/, '');
+
+      // Look up the channel by name
+      try {
+        const response = await slack.conversations.list({
+          types: 'public_channel,private_channel',
+          limit: 200,
+          exclude_archived: true,
+        });
+
+        const found = response.channels?.find(
+          (ch) => ch.name === channelName || ch.name === channel
+        );
+
+        if (found?.id) {
+          console.log(`[Slack] Resolved channel "${channel}" to ID: ${found.id}`);
+          return found.id;
+        }
+      } catch (err) {
+        console.log('[Slack] Failed to resolve channel name:', err);
+      }
+
+      return channel;
+    }
+
+    // Helper function to join a channel before posting (handles "not_in_channel" error)
+    async function ensureInChannel(channel: string): Promise<string> {
+      const channelId = await resolveChannelId(channel);
+
+      try {
+        await slack.conversations.join({ channel: channelId });
+        console.log(`[Slack] Joined channel: ${channelId}`);
+      } catch (joinError: any) {
+        // Ignore errors like "already_in_channel" or if it's a private channel we can't join
+        if (joinError?.data?.error !== 'already_in_channel' &&
+            joinError?.data?.error !== 'method_not_supported_for_channel_type') {
+          console.log('[Slack] Join channel note:', joinError?.data?.error || joinError.message);
+        }
+      }
+
+      return channelId;
+    }
+
     switch (toolName) {
       case 'slack_list_channels':
         if (!permissions.canReadChannels) throw new Error('Channel read permission not granted');
@@ -77,8 +128,11 @@ export async function POST(request: NextRequest) {
 
       case 'slack_post_message':
         if (!permissions.canPostMessages) throw new Error('Post message permission not granted');
+        // Auto-join the channel before posting (fixes "not_in_channel" error)
+        // ensureInChannel also resolves channel names to IDs
+        const postChannelId = await ensureInChannel(params.channel);
         const postResponse = await slack.chat.postMessage({
-          channel: params.channel,
+          channel: postChannelId,
           text: params.text,
         });
         return NextResponse.json({
@@ -88,8 +142,11 @@ export async function POST(request: NextRequest) {
 
       case 'slack_reply_to_thread':
         if (!permissions.canPostMessages) throw new Error('Post message permission not granted');
+        // Auto-join the channel before replying (fixes "not_in_channel" error)
+        // ensureInChannel also resolves channel names to IDs
+        const replyChannelId = await ensureInChannel(params.channel);
         const replyResponse = await slack.chat.postMessage({
-          channel: params.channel,
+          channel: replyChannelId,
           thread_ts: params.thread_ts,
           text: params.text,
         });

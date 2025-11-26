@@ -138,6 +138,59 @@ export async function executeSlackToolCallsServer(
 
 // Tool implementations
 
+// Helper function to resolve channel name to ID
+async function resolveChannelId(slack: WebClient, channel: string): Promise<string> {
+  // If it already looks like a channel ID, return it
+  if (channel.startsWith('C') || channel.startsWith('G')) {
+    return channel;
+  }
+
+  // Remove # prefix if present
+  const channelName = channel.replace(/^#/, '');
+
+  // Look up the channel by name
+  try {
+    const response = await slack.conversations.list({
+      types: 'public_channel,private_channel',
+      limit: 200,
+      exclude_archived: true,
+    });
+
+    const found = response.channels?.find(
+      (ch) => ch.name === channelName || ch.name === channel
+    );
+
+    if (found?.id) {
+      console.log(`[SlackExecutor] Resolved channel "${channel}" to ID: ${found.id}`);
+      return found.id;
+    }
+  } catch (err) {
+    console.log('[SlackExecutor] Failed to resolve channel name:', err);
+  }
+
+  // Return original if we couldn't resolve
+  return channel;
+}
+
+// Helper function to join a channel before posting (handles "not_in_channel" error)
+async function ensureInChannel(slack: WebClient, channel: string): Promise<string> {
+  // First resolve the channel name to ID
+  const channelId = await resolveChannelId(slack, channel);
+
+  try {
+    await slack.conversations.join({ channel: channelId });
+    console.log(`[SlackExecutor] Joined channel: ${channelId}`);
+  } catch (joinError: any) {
+    // Ignore errors like "already_in_channel" or if it's a private channel we can't join
+    if (joinError?.data?.error !== 'already_in_channel' &&
+        joinError?.data?.error !== 'method_not_supported_for_channel_type') {
+      console.log('[SlackExecutor] Join channel note:', joinError?.data?.error || joinError.message);
+    }
+  }
+
+  return channelId;
+}
+
 async function executeListChannels(slack: WebClient, params: { types?: string; limit?: number }) {
   const response = await slack.conversations.list({
     types: params.types || 'public_channel',
@@ -180,8 +233,12 @@ async function executeGetChannelHistory(slack: WebClient, params: { channel: str
 }
 
 async function executePostMessage(slack: WebClient, params: { channel: string; text: string }) {
+  // Auto-join the channel before posting (fixes "not_in_channel" error)
+  // ensureInChannel also resolves channel names to IDs
+  const channelId = await ensureInChannel(slack, params.channel);
+
   const response = await slack.chat.postMessage({
-    channel: params.channel,
+    channel: channelId,
     text: params.text,
   });
 
@@ -194,8 +251,12 @@ async function executePostMessage(slack: WebClient, params: { channel: string; t
 }
 
 async function executeReplyToThread(slack: WebClient, params: { channel: string; thread_ts: string; text: string }) {
+  // Auto-join the channel before replying (fixes "not_in_channel" error)
+  // ensureInChannel also resolves channel names to IDs
+  const channelId = await ensureInChannel(slack, params.channel);
+
   const response = await slack.chat.postMessage({
-    channel: params.channel,
+    channel: channelId,
     thread_ts: params.thread_ts,
     text: params.text,
   });

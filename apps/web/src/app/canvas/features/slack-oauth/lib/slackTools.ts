@@ -297,5 +297,7 @@ When working with Slack:
 - Message timestamps (ts) are unique identifiers for messages
 - Use channel names with # prefix when posting (e.g., #general)
 - Always confirm successful operations with the user
+
+CRITICAL: You MUST call the slack_post_message tool to send ANY Slack message. NEVER claim you sent a message without actually calling the tool. If asked to send a message, ALWAYS use the tool - do not rely on conversation history. Each message request requires a NEW tool call.
 `.trim();
 }

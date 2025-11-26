@@ -215,7 +215,9 @@ export async function POST(request: NextRequest) {
 
 CONTEXT: You are receiving questions from another AI agent (${fromNodeConfig.name}).
 You are having an ongoing conversation with this agent. Use the conversation history to provide contextually relevant responses.
-Remember previous exchanges and build upon them when answering follow-up questions.`;
+Remember previous exchanges and build upon them when answering follow-up questions.
+
+IMPORTANT: When asked to perform an action (send a message, read emails, etc.), you MUST actually call the appropriate tool. Do NOT claim you have performed an action based on conversation history - always execute the tool for the current request. Each request is a new action that requires a fresh tool call.`;
 
     // Add Gmail capabilities to system prompt if enabled
     if (gmailSystemPrompt) {
@@ -297,7 +299,11 @@ Remember previous exchanges and build upon them when answering follow-up questio
       );
     }
 
-    const apiUrl = new URL(apiEndpoint, request.url);
+    // Use localhost for internal API calls to avoid SSL issues with tunnel URLs
+    const internalBaseUrl = process.env.NODE_ENV === 'development'
+      ? 'http://localhost:3000'
+      : new URL(request.url).origin;
+    const apiUrl = new URL(apiEndpoint, internalBaseUrl);
 
     // Make initial API call
     let apiResponse = await fetch(apiUrl.toString(), {
