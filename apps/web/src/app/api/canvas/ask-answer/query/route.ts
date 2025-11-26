@@ -23,12 +23,19 @@ import {
   toClaudeToolFormat as docsToClaudeToolFormat,
   generateDocsSystemPrompt,
 } from '@/app/canvas/features/docs-oauth/lib/docsTools';
-// Import server-side executors directly (uses googleapis, server-only)
+import {
+  getEnabledSlackTools,
+  toClaudeToolFormat as slackToClaudeToolFormat,
+  generateSlackSystemPrompt,
+} from '@/app/canvas/features/slack-oauth/lib/slackTools';
+// Import server-side executors directly (uses googleapis/@slack, server-only)
 import { executeGmailToolCallsServer } from '@/app/canvas/features/gmail-oauth/lib/gmailToolExecutorServer';
 import { executeSheetsToolCallsServer } from '@/app/canvas/features/sheets-oauth/lib/sheetsToolExecutorServer';
 import { executeDocsToolCallsServer } from '@/app/canvas/features/docs-oauth/lib/docsToolExecutorServer';
+import { executeSlackToolCallsServer } from '@/app/canvas/features/slack-oauth/lib/slackToolExecutorServer';
 // Import OAuth connection lookup for fallback when connectionId not in config
 import { getOAuthConnection } from '@/lib/googleTokenStorage';
+import { getSlackConnection } from '@/lib/slackTokenStorage';
 
 interface ConversationHistoryEntry {
   id: string;
@@ -161,8 +168,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if target node has Slack integration enabled
+    const slackConfig = toNodeConfig.slack;
+    let slackConnectionId = slackConfig?.connectionId;
+    let slackTools: any[] = [];
+    let slackSystemPrompt = '';
+
+    // If Slack is enabled but no connectionId, try to look up the Slack OAuth connection directly
+    if (slackConfig?.enabled && !slackConnectionId) {
+      try {
+        const slackConnection = await getSlackConnection(userId);
+        if (slackConnection) {
+          slackConnectionId = slackConnection.id;
+          console.log(`[Ask/Answer] Found Slack OAuth connection: ${slackConnectionId}`);
+        }
+      } catch (error) {
+        console.log(`[Ask/Answer] Failed to lookup Slack OAuth connection:`, error);
+      }
+    }
+
+    const hasSlackTools = slackConfig?.enabled && slackConnectionId;
+
+    console.log(`[Ask/Answer] Slack config:`, {
+      enabled: slackConfig?.enabled,
+      connectionId: slackConfig?.connectionId,
+      resolvedConnectionId: slackConnectionId,
+      hasSlackTools,
+      permissions: slackConfig?.permissions
+    });
+
+    if (hasSlackTools) {
+      const enabledTools = getEnabledSlackTools(slackConfig.permissions);
+      if (enabledTools.length > 0) {
+        slackTools = slackToClaudeToolFormat(enabledTools);
+        slackSystemPrompt = generateSlackSystemPrompt(slackConfig);
+        console.log(`[Ask/Answer] Slack tools enabled: ${enabledTools.map(t => t.name).join(', ')}`);
+      }
+    }
+
     // Combine all tools
-    const allTools = [...gmailTools, ...sheetsTools, ...docsTools];
+    const allTools = [...gmailTools, ...sheetsTools, ...docsTools, ...slackTools];
 
     // Build context for Node B
     // Node B receives the query with context about Node A
@@ -185,6 +230,11 @@ Remember previous exchanges and build upon them when answering follow-up questio
     // Add Docs capabilities to system prompt if enabled
     if (docsSystemPrompt) {
       systemPrompt += `\n\n${docsSystemPrompt}`;
+    }
+
+    // Add Slack capabilities to system prompt if enabled
+    if (slackSystemPrompt) {
+      systemPrompt += `\n\n${slackSystemPrompt}`;
     }
 
     // Build messages array with conversation history
@@ -224,6 +274,7 @@ Remember previous exchanges and build upon them when answering follow-up questio
     console.log(`  Gmail Tools: ${hasGmailTools ? gmailTools.length : 0}`);
     console.log(`  Sheets Tools: ${hasSheetsTools ? sheetsTools.length : 0}`);
     console.log(`  Docs Tools: ${hasDocsTools ? docsTools.length : 0}`);
+    console.log(`  Slack Tools: ${hasSlackTools ? slackTools.length : 0}`);
     console.log(`  Total Tools: ${allTools.length}`);
 
     // Route to appropriate Pro API based on provider
@@ -309,9 +360,17 @@ Remember previous exchanges and build upon them when answering follow-up questio
           input: b.input,
         }));
 
-      if (gmailToolCalls.length === 0 && sheetsToolCalls.length === 0 && docsToolCalls.length === 0) {
+      const slackToolCalls = toolUseBlocks
+        .filter((b: any) => b.name?.startsWith('slack_'))
+        .map((b: any) => ({
+          id: b.id,
+          name: b.name,
+          input: b.input,
+        }));
+
+      if (gmailToolCalls.length === 0 && sheetsToolCalls.length === 0 && docsToolCalls.length === 0 && slackToolCalls.length === 0) {
         // No tools to execute, break out
-        console.log(`[Ask/Answer] No Gmail/Sheets/Docs tools in tool_use response, using text content`);
+        console.log(`[Ask/Answer] No Gmail/Sheets/Docs/Slack tools in tool_use response, using text content`);
         break;
       }
 
@@ -351,6 +410,18 @@ Remember previous exchanges and build upon them when answering follow-up questio
           docsConfig!.permissions
         );
         allToolResults.push(...docsResults);
+      }
+
+      // Execute Slack tools if any
+      if (slackToolCalls.length > 0 && hasSlackTools) {
+        console.log(`[Ask/Answer] Executing ${slackToolCalls.length} Slack tools (server-side)`);
+        const slackResults = await executeSlackToolCallsServer(
+          slackToolCalls,
+          userId,
+          toNodeId,
+          slackConfig!.permissions
+        );
+        allToolResults.push(...slackResults);
       }
 
       // Format tool results for Claude

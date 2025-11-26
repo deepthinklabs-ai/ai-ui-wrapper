@@ -9,6 +9,7 @@ import type { AIModel } from '@/lib/apiKeyStorage';
 import type { GmailOAuthConfig } from '../features/gmail-oauth/types';
 import type { SheetsOAuthConfig } from '../features/sheets-oauth/types';
 import type { DocsOAuthConfig } from '../features/docs-oauth/types';
+import type { SlackOAuthConfig } from '../features/slack-oauth/types';
 
 // ============================================================================
 // CANVAS
@@ -104,6 +105,9 @@ export interface GenesisBotNodeConfig {
 
   // Google Docs Integration
   docs?: DocsOAuthConfig;
+
+  // Slack Integration
+  slack?: SlackOAuthConfig;
 }
 
 /**

@@ -16,6 +16,8 @@ import { SheetsOAuthPanel } from '../../features/sheets-oauth/components/SheetsO
 import { DEFAULT_SHEETS_CONFIG, type SheetsOAuthConfig } from '../../features/sheets-oauth/types';
 import { DocsOAuthPanel } from '../../features/docs-oauth/components/DocsOAuthPanel';
 import { DEFAULT_DOCS_CONFIG, type DocsOAuthConfig } from '../../features/docs-oauth/types';
+import { SlackOAuthPanel } from '../../features/slack-oauth/components/SlackOAuthPanel';
+import { DEFAULT_SLACK_CONFIG, type SlackOAuthConfig } from '../../features/slack-oauth/types';
 
 interface GenesisBotConfigPanelProps {
   config: GenesisBotNodeConfig;
@@ -306,6 +308,19 @@ export default function GenesisBotConfigPanel({
             handleChange('docs', docsConfig);
             // Save immediately when Docs config changes
             onUpdate({ docs: docsConfig });
+          }}
+        />
+
+        {/* Divider */}
+        <div className="my-4 border-t border-white/10" />
+
+        {/* Slack OAuth Panel */}
+        <SlackOAuthPanel
+          config={formData.slack || DEFAULT_SLACK_CONFIG}
+          onConfigChange={(slackConfig: SlackOAuthConfig) => {
+            handleChange('slack', slackConfig);
+            // Save immediately when Slack config changes
+            onUpdate({ slack: slackConfig });
           }}
         />
       </div>
