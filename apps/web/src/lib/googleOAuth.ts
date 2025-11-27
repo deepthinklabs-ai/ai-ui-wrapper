@@ -3,12 +3,17 @@
  * Handles authentication for Gmail, Drive, Sheets, and Docs
  */
 
+// Helper to get app URL dynamically (prefer server-side APP_URL to avoid Next.js caching)
+const getAppUrl = () => process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+// Helper to get redirect URI dynamically at runtime
+export const getRedirectUri = () => `${getAppUrl()}/api/oauth/google/callback`;
+
 export const GOOGLE_OAUTH_CONFIG = {
   clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
   clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '',
-  redirectUri: process.env.NEXT_PUBLIC_APP_URL
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/google/callback`
-    : 'http://localhost:3000/api/oauth/google/callback',
+  // NOTE: redirectUri is now dynamic - use getRedirectUri() instead of this property
+  get redirectUri() { return getRedirectUri(); },
 
   // Granular scopes for different Google services
   scopes: [
