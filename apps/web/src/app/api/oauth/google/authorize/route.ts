@@ -41,6 +41,11 @@ export async function GET(request: NextRequest) {
     // Generate Google OAuth URL
     const authUrl = getGoogleAuthUrl(state);
 
+    // Debug: Log the URLs being used
+    console.log('[Google OAuth] DEBUG - APP_URL env:', process.env.APP_URL);
+    console.log('[Google OAuth] DEBUG - NEXT_PUBLIC_APP_URL env:', process.env.NEXT_PUBLIC_APP_URL);
+    console.log('[Google OAuth] DEBUG - Generated auth URL:', authUrl);
+
     // Redirect to Google's authorization page
     return NextResponse.redirect(authUrl);
   } catch (error: any) {
