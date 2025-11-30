@@ -26,6 +26,12 @@ export interface MasterTriggerInput {
 
   /** Timestamp when the trigger was invoked */
   timestamp: string;
+
+  /** Conversation history for context (previous messages in the thread) */
+  conversationHistory?: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
 }
 
 /**

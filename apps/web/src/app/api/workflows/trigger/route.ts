@@ -122,8 +122,19 @@ export async function POST(request: NextRequest) {
     console.log(`[POST /api/workflows/trigger] Executing with bot: ${botConfig.name}`);
     console.log(`  Model: ${botConfig.model_provider}/${botConfig.model_name}`);
 
-    // Build messages array
+    // Build messages array with conversation history
     const messages: Array<{ role: string; content: any }> = [];
+
+    // Add conversation history from dashboard thread for context
+    if (input.conversationHistory && input.conversationHistory.length > 0) {
+      console.log(`[POST /api/workflows/trigger] Including ${input.conversationHistory.length} messages from conversation history`);
+      for (const histMsg of input.conversationHistory) {
+        messages.push({
+          role: histMsg.role,
+          content: histMsg.content,
+        });
+      }
+    }
 
     // Add attachments as content if present
     if (input.attachments && input.attachments.length > 0) {
@@ -265,6 +276,21 @@ export async function POST(request: NextRequest) {
       chainDepth++;
       console.log(`[POST /api/workflows/trigger] Chain step ${chainDepth}: ${currentBotConfig?.name} → ${nextBotConfig.name} via Ask/Answer`);
 
+      // Build conversation history from the input (passed from dashboard)
+      // Convert to Ask/Answer format: array of { id, query, answer, timestamp }
+      const askAnswerHistory = (input.conversationHistory || []).reduce((acc, msg, idx, arr) => {
+        // Pair user messages with the following assistant message
+        if (msg.role === 'user' && arr[idx + 1]?.role === 'assistant') {
+          acc.push({
+            id: `hist-${idx}`,
+            query: msg.content,
+            answer: arr[idx + 1].content,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        return acc;
+      }, [] as Array<{ id: string; query: string; answer: string; timestamp: string }>);
+
       // Call Ask/Answer API to send response to next bot
       const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
       const askAnswerResponse = await fetch(askAnswerUrl.toString(), {
@@ -280,7 +306,7 @@ export async function POST(request: NextRequest) {
           userId: input.userId,
           fromNodeConfig: currentBotConfig,
           toNodeConfig: nextBotConfig,
-          conversationHistory: [], // Fresh conversation for workflow execution
+          conversationHistory: askAnswerHistory, // Pass conversation history for context
         }),
       });
 

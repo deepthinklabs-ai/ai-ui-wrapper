@@ -342,9 +342,45 @@ async function executeSend(gmail: any, params: Record<string, unknown>) {
   const ccAddresses = cc ? (cc as string[]).join(', ') : '';
   const bccAddresses = bcc ? (bcc as string[]).join(', ') : '';
 
+  // For replies, we need to get the original message's Message-ID and threadId
+  let originalMessageId: string | null = null;
+  let threadId: string | null = null;
+
+  if (replyToMessageId) {
+    try {
+      console.log(`[Gmail Server] Fetching original message for reply: ${replyToMessageId}`);
+      const originalMsg = await gmail.users.messages.get({
+        userId: 'me',
+        id: replyToMessageId,
+        format: 'metadata',
+        metadataHeaders: ['Message-ID', 'References'],
+      });
+
+      const headers = originalMsg.data.payload?.headers || [];
+      const messageIdHeader = headers.find(
+        (h: { name: string }) => h.name.toLowerCase() === 'message-id'
+      );
+      originalMessageId = messageIdHeader?.value || null;
+      threadId = originalMsg.data.threadId;
+
+      console.log(`[Gmail Server] Original Message-ID: ${originalMessageId}`);
+      console.log(`[Gmail Server] Thread ID: ${threadId}`);
+    } catch (err) {
+      console.error('[Gmail Server] Failed to fetch original message for reply:', err);
+      // Continue anyway - it will just create a new thread
+    }
+  }
+
   let emailContent = `To: ${toAddresses}\r\n`;
   if (ccAddresses) emailContent += `Cc: ${ccAddresses}\r\n`;
   if (bccAddresses) emailContent += `Bcc: ${bccAddresses}\r\n`;
+
+  // Add reply headers for proper threading
+  if (originalMessageId) {
+    emailContent += `In-Reply-To: ${originalMessageId}\r\n`;
+    emailContent += `References: ${originalMessageId}\r\n`;
+  }
+
   emailContent += `Subject: ${subject}\r\n`;
   emailContent += `Content-Type: text/plain; charset=utf-8\r\n\r\n`;
   emailContent += body;
@@ -359,20 +395,44 @@ async function executeSend(gmail: any, params: Record<string, unknown>) {
     raw: encodedMessage,
   };
 
-  if (replyToMessageId) {
-    requestBody.threadId = replyToMessageId;
+  // Add threadId for proper Gmail threading
+  if (threadId) {
+    requestBody.threadId = threadId;
   }
 
-  const response = await gmail.users.messages.send({
-    userId: 'me',
-    requestBody,
-  });
+  try {
+    const response = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody,
+    });
 
-  return {
-    messageId: response.data.id,
-    threadId: response.data.threadId,
-    sent: true,
-  };
+    return {
+      messageId: response.data.id,
+      threadId: response.data.threadId,
+      sent: true,
+      isReply: !!originalMessageId,
+    };
+  } catch (sendError: any) {
+    // If sending with threadId fails (404), retry without threadId
+    if (sendError.code === 404 && threadId) {
+      console.warn('[Gmail Server] Failed to send with threadId, retrying without threading');
+      delete requestBody.threadId;
+
+      const response = await gmail.users.messages.send({
+        userId: 'me',
+        requestBody,
+      });
+
+      return {
+        messageId: response.data.id,
+        threadId: response.data.threadId,
+        sent: true,
+        isReply: false,
+        warning: 'Could not thread reply, sent as new message',
+      };
+    }
+    throw sendError;
+  }
 }
 
 async function executeDraft(gmail: any, params: Record<string, unknown>) {

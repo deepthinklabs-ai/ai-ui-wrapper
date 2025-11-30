@@ -211,7 +211,13 @@ export default function DashboardPage() {
       setDraft('');
       setAttachedFiles([]);
 
-      // Trigger workflow
+      // Build conversation history from thread messages for workflow context
+      const conversationHistory = messages.map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }));
+
+      // Trigger workflow with conversation history
       const output = await triggerWorkflow({
         message: draftToSend,
         attachments: workflowAttachments.length > 0 ? workflowAttachments : undefined,
@@ -219,6 +225,7 @@ export default function DashboardPage() {
         threadId: selectedThreadId || undefined,
         model: selectedModel,
         timestamp: new Date().toISOString(),
+        conversationHistory, // Pass thread history for context
       });
 
       // Display response in chat if we have a thread
@@ -264,7 +271,7 @@ export default function DashboardPage() {
       // Regular chat flow
       await originalHandleSend();
     }
-  }, [selectedWorkflow, user?.id, draft, attachedFiles, triggerWorkflow, selectedThreadId, selectedModel, originalHandleSend, setDraft, setAttachedFiles, refreshMessages]);
+  }, [selectedWorkflow, user?.id, draft, attachedFiles, triggerWorkflow, selectedThreadId, selectedModel, originalHandleSend, setDraft, setAttachedFiles, refreshMessages, messages]);
 
   // Text conversion (convert draft to Markdown or JSON)
   const {
