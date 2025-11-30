@@ -307,6 +307,7 @@ export async function POST(request: NextRequest) {
           fromNodeConfig: currentBotConfig,
           toNodeConfig: nextBotConfig,
           conversationHistory: askAnswerHistory, // Pass conversation history for context
+          uploadedAttachments: input.attachments, // Pass user's uploaded files for email attachments
         }),
       });
 

@@ -44,6 +44,15 @@ interface ConversationHistoryEntry {
   timestamp: string;
 }
 
+// Uploaded attachment from dashboard/workflow
+interface UploadedAttachment {
+  name: string;
+  type: string; // MIME type
+  size: number;
+  content: string; // base64 content
+  isImage: boolean;
+}
+
 interface QueryRequestBody {
   canvasId: string;
   fromNodeId: string;
@@ -55,6 +64,7 @@ interface QueryRequestBody {
   fromNodeConfig: GenesisBotNodeConfig;
   toNodeConfig: GenesisBotNodeConfig;
   conversationHistory?: ConversationHistoryEntry[]; // Previous Q&A for context
+  uploadedAttachments?: UploadedAttachment[]; // Files uploaded by user in dashboard
 }
 
 export async function POST(request: NextRequest) {
@@ -73,6 +83,7 @@ export async function POST(request: NextRequest) {
       fromNodeConfig,
       toNodeConfig,
       conversationHistory = [],
+      uploadedAttachments = [],
     } = body;
 
     // Validation
@@ -140,10 +151,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (hasGmailTools) {
-      const enabledTools = getEnabledGmailTools(effectiveGmailConfig.permissions);
+      const enabledTools = getEnabledGmailTools(effectiveGmailConfig!.permissions);
       if (enabledTools.length > 0) {
         gmailTools = gmailToClaudeToolFormat(enabledTools);
-        gmailSystemPrompt = generateGmailSystemPrompt(effectiveGmailConfig);
+        gmailSystemPrompt = generateGmailSystemPrompt(effectiveGmailConfig!);
         console.log(`[Ask/Answer] Gmail tools enabled: ${enabledTools.map(t => t.name).join(', ')}`);
       }
     }
@@ -281,6 +292,17 @@ IMPORTANT: When asked to perform an action (send a message, read emails, etc.), 
     // Add Slack capabilities to system prompt if enabled
     if (slackSystemPrompt) {
       systemPrompt += `\n\n${slackSystemPrompt}`;
+    }
+
+    // Add context about uploaded attachments if present
+    if (uploadedAttachments.length > 0) {
+      const attachmentList = uploadedAttachments.map((a, i) =>
+        `  ${i + 1}. "${a.name}" (${a.type}, ${Math.round(a.size / 1024)}KB)`
+      ).join('\n');
+      systemPrompt += `\n\nUPLOADED FILES: The user has uploaded the following files with their message:
+${attachmentList}
+
+When sending emails with gmail_send or creating drafts with gmail_draft, you can set "includeUploadedAttachments": true to automatically attach these files to the email.`;
     }
 
     // Build messages array with conversation history
@@ -431,7 +453,8 @@ IMPORTANT: When asked to perform an action (send a message, read emails, etc.), 
           gmailToolCalls,
           userId,
           toNodeId,
-          effectiveGmailConfig!.permissions
+          effectiveGmailConfig!.permissions,
+          uploadedAttachments // Pass uploaded attachments for email attachment support
         );
         allToolResults.push(...gmailResults);
       }

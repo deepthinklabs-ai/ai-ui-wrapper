@@ -254,7 +254,7 @@ export default function DashboardPage() {
             thread_id: selectedThreadId,
             role: "assistant",
             content: output.response,
-            model: `workflow:${selectedWorkflow.name}`,
+            model: `workflow:${selectedWorkflow.displayName}`,
           });
 
         if (assistantMsgError) {

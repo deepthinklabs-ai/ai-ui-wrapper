@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json({
           success: true,
-          data: { file_id: fileResponse.file?.id },
+          data: { file_id: (fileResponse as any).file?.id },
         });
 
       case 'slack_create_channel':

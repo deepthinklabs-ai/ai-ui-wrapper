@@ -21,6 +21,15 @@ interface ToolResult {
   isError: boolean;
 }
 
+// Uploaded attachment from user's message
+interface UploadedAttachment {
+  name: string;
+  type: string; // MIME type
+  size: number;
+  content: string; // base64 content
+  isImage: boolean;
+}
+
 /**
  * Execute a single Gmail tool call (server-side)
  */
@@ -28,7 +37,8 @@ export async function executeGmailToolCallServer(
   toolCall: ToolCall,
   userId: string,
   nodeId: string,
-  permissions: GmailPermissions
+  permissions: GmailPermissions,
+  uploadedAttachments?: UploadedAttachment[]
 ): Promise<ToolResult> {
   try {
     console.log(`[Gmail Server] Executing tool: ${toolCall.name}`);
@@ -116,7 +126,7 @@ export async function executeGmailToolCallServer(
             isError: true,
           };
         }
-        result = await executeSend(gmail, toolCall.input);
+        result = await executeSend(gmail, toolCall.input, uploadedAttachments);
         break;
 
       case 'gmail_draft':
@@ -127,7 +137,7 @@ export async function executeGmailToolCallServer(
             isError: true,
           };
         }
-        result = await executeDraft(gmail, toolCall.input);
+        result = await executeDraft(gmail, toolCall.input, uploadedAttachments);
         break;
 
       case 'gmail_get_labels':
@@ -198,11 +208,15 @@ export async function executeGmailToolCallsServer(
   toolCalls: ToolCall[],
   userId: string,
   nodeId: string,
-  permissions: GmailPermissions
+  permissions: GmailPermissions,
+  uploadedAttachments?: UploadedAttachment[]
 ): Promise<ToolResult[]> {
   console.log(`[Gmail Server] Executing ${toolCalls.length} tool calls`);
+  if (uploadedAttachments?.length) {
+    console.log(`[Gmail Server] ${uploadedAttachments.length} uploaded attachments available`);
+  }
   const results = await Promise.all(
-    toolCalls.map((tc) => executeGmailToolCallServer(tc, userId, nodeId, permissions))
+    toolCalls.map((tc) => executeGmailToolCallServer(tc, userId, nodeId, permissions, uploadedAttachments))
   );
   return results;
 }
@@ -335,12 +349,77 @@ async function executeReadThread(gmail: any, threadId: string) {
   };
 }
 
-async function executeSend(gmail: any, params: Record<string, unknown>) {
-  const { to, subject, body, cc, bcc, replyToMessageId } = params;
+// Type for email attachments
+interface EmailAttachment {
+  filename: string;
+  mimeType: string;
+  content: string; // base64 encoded
+}
+
+/**
+ * Build a MIME message with optional attachments
+ */
+function buildMimeMessage(
+  headers: string,
+  body: string,
+  attachments?: EmailAttachment[]
+): string {
+  if (!attachments || attachments.length === 0) {
+    // Simple plain text message
+    return `${headers}Content-Type: text/plain; charset=utf-8\r\n\r\n${body}`;
+  }
+
+  // Multipart message with attachments
+  const boundary = `boundary_${crypto.randomUUID().replace(/-/g, '')}`;
+
+  let mimeMessage = `${headers}Content-Type: multipart/mixed; boundary="${boundary}"\r\n\r\n`;
+
+  // Add body part
+  mimeMessage += `--${boundary}\r\n`;
+  mimeMessage += `Content-Type: text/plain; charset=utf-8\r\n\r\n`;
+  mimeMessage += `${body}\r\n\r\n`;
+
+  // Add attachment parts
+  for (const attachment of attachments) {
+    mimeMessage += `--${boundary}\r\n`;
+    mimeMessage += `Content-Type: ${attachment.mimeType}\r\n`;
+    mimeMessage += `Content-Disposition: attachment; filename="${attachment.filename}"\r\n`;
+    mimeMessage += `Content-Transfer-Encoding: base64\r\n\r\n`;
+    mimeMessage += `${attachment.content}\r\n\r\n`;
+  }
+
+  // End boundary
+  mimeMessage += `--${boundary}--`;
+
+  return mimeMessage;
+}
+
+async function executeSend(
+  gmail: any,
+  params: Record<string, unknown>,
+  uploadedAttachments?: UploadedAttachment[]
+) {
+  const { to, subject, body, cc, bcc, replyToMessageId, attachments, includeUploadedAttachments } = params;
 
   const toAddresses = (to as string[]).join(', ');
   const ccAddresses = cc ? (cc as string[]).join(', ') : '';
   const bccAddresses = bcc ? (bcc as string[]).join(', ') : '';
+
+  // Build final attachments list
+  let emailAttachments: EmailAttachment[] = (attachments as EmailAttachment[]) || [];
+
+  // If includeUploadedAttachments is true, convert and add user's uploaded files
+  if (includeUploadedAttachments && uploadedAttachments?.length) {
+    console.log(`[Gmail Server] Including ${uploadedAttachments.length} user-uploaded attachments`);
+    const convertedAttachments = uploadedAttachments.map((ua) => ({
+      filename: ua.name,
+      mimeType: ua.type,
+      content: ua.content,
+    }));
+    emailAttachments = [...emailAttachments, ...convertedAttachments];
+  }
+
+  console.log(`[Gmail Server] Sending email with ${emailAttachments.length} total attachments`);
 
   // For replies, we need to get the original message's Message-ID and threadId
   let originalMessageId: string | null = null;
@@ -356,8 +435,8 @@ async function executeSend(gmail: any, params: Record<string, unknown>) {
         metadataHeaders: ['Message-ID', 'References'],
       });
 
-      const headers = originalMsg.data.payload?.headers || [];
-      const messageIdHeader = headers.find(
+      const msgHeaders = originalMsg.data.payload?.headers || [];
+      const messageIdHeader = msgHeaders.find(
         (h: { name: string }) => h.name.toLowerCase() === 'message-id'
       );
       originalMessageId = messageIdHeader?.value || null;
@@ -371,19 +450,25 @@ async function executeSend(gmail: any, params: Record<string, unknown>) {
     }
   }
 
-  let emailContent = `To: ${toAddresses}\r\n`;
-  if (ccAddresses) emailContent += `Cc: ${ccAddresses}\r\n`;
-  if (bccAddresses) emailContent += `Bcc: ${bccAddresses}\r\n`;
+  // Build headers
+  let headers = `To: ${toAddresses}\r\n`;
+  if (ccAddresses) headers += `Cc: ${ccAddresses}\r\n`;
+  if (bccAddresses) headers += `Bcc: ${bccAddresses}\r\n`;
 
   // Add reply headers for proper threading
   if (originalMessageId) {
-    emailContent += `In-Reply-To: ${originalMessageId}\r\n`;
-    emailContent += `References: ${originalMessageId}\r\n`;
+    headers += `In-Reply-To: ${originalMessageId}\r\n`;
+    headers += `References: ${originalMessageId}\r\n`;
   }
 
-  emailContent += `Subject: ${subject}\r\n`;
-  emailContent += `Content-Type: text/plain; charset=utf-8\r\n\r\n`;
-  emailContent += body;
+  headers += `Subject: ${subject}\r\n`;
+
+  // Build MIME message with optional attachments
+  const emailContent = buildMimeMessage(
+    headers,
+    body as string,
+    emailAttachments.length > 0 ? emailAttachments : undefined
+  );
 
   const encodedMessage = Buffer.from(emailContent)
     .toString('base64')
@@ -411,6 +496,7 @@ async function executeSend(gmail: any, params: Record<string, unknown>) {
       threadId: response.data.threadId,
       sent: true,
       isReply: !!originalMessageId,
+      attachmentCount: emailAttachments.length,
     };
   } catch (sendError: any) {
     // If sending with threadId fails (404), retry without threadId
@@ -428,6 +514,7 @@ async function executeSend(gmail: any, params: Record<string, unknown>) {
         threadId: response.data.threadId,
         sent: true,
         isReply: false,
+        attachmentCount: emailAttachments.length,
         warning: 'Could not thread reply, sent as new message',
       };
     }
@@ -435,17 +522,43 @@ async function executeSend(gmail: any, params: Record<string, unknown>) {
   }
 }
 
-async function executeDraft(gmail: any, params: Record<string, unknown>) {
-  const { to, subject, body, cc } = params;
+async function executeDraft(
+  gmail: any,
+  params: Record<string, unknown>,
+  uploadedAttachments?: UploadedAttachment[]
+) {
+  const { to, subject, body, cc, attachments, includeUploadedAttachments } = params;
 
   const toAddresses = (to as string[]).join(', ');
   const ccAddresses = cc ? (cc as string[]).join(', ') : '';
 
-  let emailContent = `To: ${toAddresses}\r\n`;
-  if (ccAddresses) emailContent += `Cc: ${ccAddresses}\r\n`;
-  emailContent += `Subject: ${subject}\r\n`;
-  emailContent += `Content-Type: text/plain; charset=utf-8\r\n\r\n`;
-  emailContent += body;
+  // Build final attachments list
+  let emailAttachments: EmailAttachment[] = (attachments as EmailAttachment[]) || [];
+
+  // If includeUploadedAttachments is true, convert and add user's uploaded files
+  if (includeUploadedAttachments && uploadedAttachments?.length) {
+    console.log(`[Gmail Server] Including ${uploadedAttachments.length} user-uploaded attachments in draft`);
+    const convertedAttachments = uploadedAttachments.map((ua) => ({
+      filename: ua.name,
+      mimeType: ua.type,
+      content: ua.content,
+    }));
+    emailAttachments = [...emailAttachments, ...convertedAttachments];
+  }
+
+  console.log(`[Gmail Server] Creating draft with ${emailAttachments.length} total attachments`);
+
+  // Build headers
+  let headers = `To: ${toAddresses}\r\n`;
+  if (ccAddresses) headers += `Cc: ${ccAddresses}\r\n`;
+  headers += `Subject: ${subject}\r\n`;
+
+  // Build MIME message with optional attachments
+  const emailContent = buildMimeMessage(
+    headers,
+    body as string,
+    emailAttachments.length > 0 ? emailAttachments : undefined
+  );
 
   const encodedMessage = Buffer.from(emailContent)
     .toString('base64')
@@ -465,6 +578,7 @@ async function executeDraft(gmail: any, params: Record<string, unknown>) {
   return {
     draftId: response.data.id,
     created: true,
+    attachmentCount: emailAttachments.length,
   };
 }
 

@@ -341,12 +341,13 @@ async function executeUploadFile(
     initial_comment: params.initial_comment,
   });
 
+  const fileData = (response as any).file;
   return {
     success: response.ok,
-    file: response.file ? {
-      id: response.file.id,
-      name: response.file.name,
-      url: response.file.url_private,
+    file: fileData ? {
+      id: fileData.id,
+      name: fileData.name,
+      url: fileData.url_private,
     } : null,
   };
 }
