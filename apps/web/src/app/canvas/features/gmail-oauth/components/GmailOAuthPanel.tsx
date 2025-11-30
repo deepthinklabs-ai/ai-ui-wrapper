@@ -75,10 +75,13 @@ export function GmailOAuthPanel({
   };
 
   // Update config with connection ID when connected
+  // Also auto-enable Gmail when a connection is detected
   React.useEffect(() => {
     if (connection?.id && connection.id !== currentConfig.connectionId) {
+      console.log('[GmailOAuthPanel] Connection detected, saving connectionId and enabling Gmail');
       onConfigChange({
         ...currentConfig,
+        enabled: true,  // Auto-enable when connected
         connectionId: connection.id,
       });
     }

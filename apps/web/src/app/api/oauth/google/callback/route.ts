@@ -14,6 +14,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Helper to get app URL for redirects after OAuth callback
+// In development, always use localhost:3000 to avoid stale tunnel URLs
+const getAppUrl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  }
+  return 'http://localhost:3000';
+};
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -25,14 +34,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('[OAuth Callback] Google returned error:', error);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=${encodeURIComponent(error)}`
+        `${getAppUrl()}/canvas?oauth_error=${encodeURIComponent(error)}`
       );
     }
 
     if (!code || !state) {
       console.error('[OAuth Callback] Missing code or state');
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=missing_parameters`
+        `${getAppUrl()}/canvas?oauth_error=missing_parameters`
       );
     }
 
@@ -47,7 +56,7 @@ export async function GET(request: NextRequest) {
     if (stateError || !stateData) {
       console.error('[OAuth Callback] State verification failed:', stateError?.message || 'State not found');
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=invalid_state`
+        `${getAppUrl()}/canvas?oauth_error=invalid_state`
       );
     }
 
@@ -57,7 +66,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] State expired');
       await supabase.from('oauth_states').delete().eq('state', state);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=expired_state`
+        `${getAppUrl()}/canvas?oauth_error=expired_state`
       );
     }
 
@@ -78,12 +87,12 @@ export async function GET(request: NextRequest) {
     // Redirect back to canvas page with success
     console.log('[OAuth Callback] Success! Redirecting to canvas');
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_success=true`
+      `${getAppUrl()}/canvas?oauth_success=true`
     );
   } catch (error: any) {
     console.error('[OAuth Callback] Error:', error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/canvas?oauth_error=${encodeURIComponent(
+      `${getAppUrl()}/canvas?oauth_error=${encodeURIComponent(
         error.message || 'oauth_failed'
       )}`
     );

@@ -90,15 +90,60 @@ export async function POST(request: NextRequest) {
 
     // Check if target node has Gmail integration enabled
     const gmailConfig = toNodeConfig.gmail;
-    const hasGmailTools = gmailConfig?.enabled && gmailConfig.connectionId;
+    let gmailConnectionId = gmailConfig?.connectionId;
     let gmailTools: any[] = [];
     let gmailSystemPrompt = '';
+    let effectiveGmailConfig = gmailConfig;
+
+    // Try to look up the Google OAuth connection if:
+    // 1. Gmail is enabled but no connectionId, OR
+    // 2. Gmail is NOT configured but user might have a Google OAuth connection (fallback)
+    if (!gmailConnectionId) {
+      try {
+        const googleConnection = await getOAuthConnection(userId, 'google');
+        if (googleConnection) {
+          gmailConnectionId = googleConnection.id;
+          console.log(`[Ask/Answer] Found Google OAuth connection for Gmail: ${gmailConnectionId}`);
+
+          // If no Gmail config at all, use default permissions as fallback
+          if (!gmailConfig?.enabled) {
+            console.log(`[Ask/Answer] Gmail not configured in node, using default permissions as fallback`);
+            effectiveGmailConfig = {
+              enabled: true,
+              connectionId: gmailConnectionId,
+              permissions: {
+                canRead: true,
+                canSend: false,  // Conservative: don't allow sending by default
+                canSearch: true,
+                canManageLabels: false,
+                canManageDrafts: true,
+              },
+              requireConfirmation: true,
+              maxEmailsPerHour: 10,
+            };
+          }
+        }
+      } catch (error) {
+        console.log(`[Ask/Answer] Failed to lookup Google OAuth connection for Gmail:`, error);
+      }
+    }
+
+    const hasGmailTools = effectiveGmailConfig?.enabled && gmailConnectionId;
+
+    console.log(`[Ask/Answer] Gmail config:`, {
+      enabled: gmailConfig?.enabled,
+      connectionId: gmailConfig?.connectionId,
+      resolvedConnectionId: gmailConnectionId,
+      hasGmailTools,
+      usingFallbackConfig: effectiveGmailConfig !== gmailConfig,
+      permissions: effectiveGmailConfig?.permissions
+    });
 
     if (hasGmailTools) {
-      const enabledTools = getEnabledGmailTools(gmailConfig.permissions);
+      const enabledTools = getEnabledGmailTools(effectiveGmailConfig.permissions);
       if (enabledTools.length > 0) {
         gmailTools = gmailToClaudeToolFormat(enabledTools);
-        gmailSystemPrompt = generateGmailSystemPrompt(gmailConfig);
+        gmailSystemPrompt = generateGmailSystemPrompt(effectiveGmailConfig);
         console.log(`[Ask/Answer] Gmail tools enabled: ${enabledTools.map(t => t.name).join(', ')}`);
       }
     }
@@ -106,7 +151,6 @@ export async function POST(request: NextRequest) {
     // Check if target node has Sheets integration enabled
     // Sheets uses same Google OAuth as Gmail, so check if either connectionId is set
     const sheetsConfig = toNodeConfig.sheets;
-    const gmailConnectionId = gmailConfig?.connectionId;
     const sheetsConnectionId = sheetsConfig?.connectionId || gmailConnectionId;
     const hasSheetsTools = sheetsConfig?.enabled && sheetsConnectionId;
     let sheetsTools: any[] = [];
@@ -299,10 +343,8 @@ IMPORTANT: When asked to perform an action (send a message, read emails, etc.), 
       );
     }
 
-    // Use localhost for internal API calls to avoid SSL issues with tunnel URLs
-    const internalBaseUrl = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3000'
-      : new URL(request.url).origin;
+    // Use the same origin as the incoming request (handles dynamic ports in development)
+    const internalBaseUrl = new URL(request.url).origin;
     const apiUrl = new URL(apiEndpoint, internalBaseUrl);
 
     // Make initial API call
@@ -389,7 +431,7 @@ IMPORTANT: When asked to perform an action (send a message, read emails, etc.), 
           gmailToolCalls,
           userId,
           toNodeId,
-          gmailConfig!.permissions
+          effectiveGmailConfig!.permissions
         );
         allToolResults.push(...gmailResults);
       }

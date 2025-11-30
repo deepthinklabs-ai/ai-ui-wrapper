@@ -27,6 +27,7 @@ import '@xyflow/react/dist/style.css';
 import type { CanvasNode, CanvasEdge, NodeId } from '../types';
 import { NODE_DEFINITIONS } from '../lib/nodeRegistry';
 import GenesisBotNode from './nodes/GenesisBotNode';
+import MasterTriggerNode from './nodes/MasterTriggerNode';
 import DeletableEdge from './edges/DeletableEdge';
 import CanvasDebugOverlay from './CanvasDebugOverlay';
 
@@ -59,6 +60,7 @@ export default function CanvasViewport({
   const nodeTypes = useMemo(
     () => ({
       GENESIS_BOT: GenesisBotNode,
+      MASTER_TRIGGER: MasterTriggerNode,
       // TODO: Add other custom node types here
       // TRAINING_SESSION: TrainingSessionNode,
       // BOARDROOM: BoardroomNode,

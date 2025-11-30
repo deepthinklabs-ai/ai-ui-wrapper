@@ -43,6 +43,7 @@ export type CanvasNodeType =
   | 'BOARDROOM'
   | 'CABLE_CHANNEL'
   | 'TRIGGER'
+  | 'MASTER_TRIGGER'
   | 'TOOL'
   | 'TERMINAL_COMMAND'
   | 'CUSTOM';
@@ -200,6 +201,31 @@ export interface TriggerNodeConfig {
   // State
   is_enabled: boolean;
   last_triggered_at?: string;
+}
+
+/**
+ * Master Genesis Bot Trigger Node
+ * Exposes a workflow to be triggered from the main Genesis Bot page
+ */
+export interface MasterTriggerNodeConfig {
+  // Display name shown in Genesis Bot dropdown
+  display_name: string;
+
+  // Description shown in dropdown (optional)
+  description?: string;
+
+  // Whether this trigger is currently exposed to the Genesis Bot page
+  is_exposed: boolean;
+
+  // Output format for connected nodes
+  output_format: 'raw' | 'structured';
+
+  // Optional: Restrict to specific users (future feature)
+  allowed_user_ids?: string[];
+
+  // State tracking
+  last_triggered_at?: string;
+  trigger_count?: number;
 }
 
 /**

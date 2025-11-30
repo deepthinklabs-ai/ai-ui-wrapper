@@ -3,9 +3,11 @@
 import React, { KeyboardEvent, useRef, useCallback, useEffect } from "react";
 import TextConversionButtons from "./TextConversionButtons";
 import ModelDropdown from "./ModelDropdown";
+import WorkflowSelector from "./WorkflowSelector";
 import StepByStepToggle from "./StepByStepToggle";
 import MicrophoneButton from "./MicrophoneButton";
 import type { AIModel } from "@/lib/apiKeyStorage";
+import type { ExposedWorkflow } from "@/app/canvas/features/master-trigger/types";
 import type { FeatureId } from "@/types/features";
 import { getFileUploadWarning } from "@/lib/modelCapabilities";
 import { useResizableComposer } from "@/hooks/useResizableComposer";
@@ -44,6 +46,12 @@ type MessageComposerProps = {
   onToggleWebSearch?: () => void;
   userTier?: "free" | "pro";
   isFeatureEnabled?: (featureId: FeatureId) => boolean;
+  // Workflow selection props
+  workflows?: ExposedWorkflow[];
+  selectedWorkflow?: ExposedWorkflow | null;
+  onWorkflowChange?: (workflow: ExposedWorkflow | null) => void;
+  workflowsLoading?: boolean;
+  workflowExecuting?: boolean;
 };
 
 const MessageComposer: React.FC<MessageComposerProps> = ({
@@ -74,6 +82,11 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   onToggleWebSearch,
   userTier,
   isFeatureEnabled,
+  workflows = [],
+  selectedWorkflow = null,
+  onWorkflowChange,
+  workflowsLoading = false,
+  workflowExecuting = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -349,6 +362,17 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           />
           {/* Model Dropdown, File Upload, and Microphone Row */}
           <div className="flex items-center gap-2">
+            {/* Workflow Selector - show if workflows are available or loading */}
+            {onWorkflowChange && (workflows.length > 0 || workflowsLoading) && (
+              <WorkflowSelector
+                workflows={workflows}
+                selectedWorkflow={selectedWorkflow}
+                onWorkflowChange={onWorkflowChange}
+                isLoading={workflowsLoading}
+                disabled={disabled || workflowExecuting}
+              />
+            )}
+
             {/* Model Dropdown - only show if model selection is enabled */}
             {modelSelectionEnabled && selectedModel && onModelChange && (
               <ModelDropdown

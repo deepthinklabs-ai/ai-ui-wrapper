@@ -24,6 +24,8 @@ export type AIModel =
   | 'claude-haiku-4-5'
   | 'claude-haiku-3-5'
   // Grok Models
+  | 'grok-4-fast-reasoning'
+  | 'grok-4-fast-non-reasoning'
   | 'grok-4-1-fast-reasoning'
   | 'grok-4-1-fast-non-reasoning'
   | 'grok-code-fast-1';
@@ -143,6 +145,24 @@ export const AVAILABLE_MODELS: {
     contextWindow: 16385,
   },
   // Grok Models (xAI)
+  // Grok 4 Fast models
+  {
+    value: 'grok-4-fast-reasoning',
+    label: 'Grok 4 Fast Reasoning',
+    description: 'Grok 4 with reasoning capabilities • 2M context window • Supports images • Live web & X search',
+    provider: 'grok',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 2000000,
+  },
+  {
+    value: 'grok-4-fast-non-reasoning',
+    label: 'Grok 4 Fast Non-Reasoning',
+    description: 'Grok 4 without deep reasoning for faster responses • 2M context window • Supports images • Live web & X search',
+    provider: 'grok',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 2000000,
+  },
+  // Grok 4.1 Fast models
   {
     value: 'grok-4-1-fast-reasoning',
     label: 'Grok 4.1 Fast Reasoning',

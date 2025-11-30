@@ -21,7 +21,9 @@ import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { useFeatureToggles } from "@/hooks/useFeatureToggles";
 import { useSplitView } from "@/hooks/useSplitView";
 import { useMCPServers } from "@/hooks/useMCPServers";
+import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
+import { supabase } from "@/lib/supabaseClient";
 import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
 import MessageList from "@/components/dashboard/MessageList";
@@ -91,6 +93,16 @@ export default function DashboardPage() {
   // MCP servers
   const { connections, tools, isConnecting, servers, isEnabled } = useMCPServers();
 
+  // Exposed workflows for Master Trigger feature
+  const {
+    workflows,
+    selectedWorkflow,
+    selectWorkflow,
+    triggerWorkflow,
+    isLoading: workflowsLoading,
+    isExecuting: workflowExecuting,
+  } = useExposedWorkflows(user?.id || null);
+
   // Debug MCP status
   useEffect(() => {
     console.log('[Dashboard MCP Status]', {
@@ -149,12 +161,110 @@ export default function DashboardPage() {
   const { selection, clearSelection } = useTextSelection(messagesContainerRef as RefObject<HTMLElement>);
 
   // Message composition (draft, files, send handler)
-  const { draft, setDraft, attachedFiles, setAttachedFiles, handleSend } =
+  const { draft, setDraft, attachedFiles, setAttachedFiles, handleSend: originalHandleSend } =
     useMessageComposition({
       selectedThreadId,
       sendMessage,
       createThread,
     });
+
+  // Workflow-aware send handler - routes to workflow or regular chat
+  const handleSend = useCallback(async () => {
+    if (selectedWorkflow && user?.id) {
+      // Route through workflow
+      const content = draft.trim();
+      if (!content && attachedFiles.length === 0) return;
+
+      // Convert files to workflow attachment format
+      const workflowAttachments = await Promise.all(
+        attachedFiles.map(async (file) => {
+          const content = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result as string;
+              // Extract base64 data for images, raw content for text
+              if (file.type.startsWith('image/')) {
+                resolve(result.split(',')[1]); // Remove data:mime;base64, prefix
+              } else {
+                resolve(result);
+              }
+            };
+            if (file.type.startsWith('image/')) {
+              reader.readAsDataURL(file);
+            } else {
+              reader.readAsText(file);
+            }
+          });
+
+          return {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            content,
+            isImage: file.type.startsWith('image/'),
+          };
+        })
+      );
+
+      // Clear draft and files
+      const draftToSend = draft;
+      setDraft('');
+      setAttachedFiles([]);
+
+      // Trigger workflow
+      const output = await triggerWorkflow({
+        message: draftToSend,
+        attachments: workflowAttachments.length > 0 ? workflowAttachments : undefined,
+        userId: user.id,
+        threadId: selectedThreadId || undefined,
+        model: selectedModel,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Display response in chat if we have a thread
+      if (output && output.success && selectedThreadId) {
+        console.log('[Dashboard] Workflow succeeded, displaying response in chat');
+
+        // Insert user message directly to DB (without calling AI)
+        const { error: userMsgError } = await supabase
+          .from("messages")
+          .insert({
+            thread_id: selectedThreadId,
+            role: "user",
+            content: draftToSend,
+            model: null,
+            attachments: workflowAttachments.length > 0 ? workflowAttachments : null,
+          });
+
+        if (userMsgError) {
+          console.error('[Dashboard] Failed to insert user message:', userMsgError);
+        }
+
+        // Insert workflow response as assistant message
+        const { error: assistantMsgError } = await supabase
+          .from("messages")
+          .insert({
+            thread_id: selectedThreadId,
+            role: "assistant",
+            content: output.response,
+            model: `workflow:${selectedWorkflow.name}`,
+          });
+
+        if (assistantMsgError) {
+          console.error('[Dashboard] Failed to insert workflow response:', assistantMsgError);
+        }
+
+        // Refresh messages to show the new messages
+        await refreshMessages();
+        console.log('[Dashboard] Workflow response displayed successfully');
+      } else if (output && !output.success) {
+        console.error('[Dashboard] Workflow failed:', output.error);
+      }
+    } else {
+      // Regular chat flow
+      await originalHandleSend();
+    }
+  }, [selectedWorkflow, user?.id, draft, attachedFiles, triggerWorkflow, selectedThreadId, selectedModel, originalHandleSend, setDraft, setAttachedFiles, refreshMessages]);
 
   // Text conversion (convert draft to Markdown or JSON)
   const {
@@ -474,7 +584,7 @@ export default function DashboardPage() {
                   value={draft}
                   onChange={setDraft}
                   onSend={handleSend}
-                  disabled={sendInFlight}
+                  disabled={sendInFlight || workflowExecuting}
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
                   onSummarize={handleSummarize}
@@ -498,6 +608,11 @@ export default function DashboardPage() {
                   onToggleWebSearch={toggleWebSearch}
                   userTier={tier}
                   isFeatureEnabled={isFeatureEnabled}
+                  workflows={workflows}
+                  selectedWorkflow={selectedWorkflow}
+                  onWorkflowChange={selectWorkflow}
+                  workflowsLoading={workflowsLoading}
+                  workflowExecuting={workflowExecuting}
                 />
               </div>
             </section>

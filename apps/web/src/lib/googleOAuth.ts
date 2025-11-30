@@ -3,8 +3,18 @@
  * Handles authentication for Gmail, Drive, Sheets, and Docs
  */
 
-// Helper to get app URL dynamically (prefer server-side APP_URL to avoid Next.js caching)
-const getAppUrl = () => process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+// Helper to get app URL for Google OAuth
+// Google OAuth works with localhost, so always use localhost:3000 in development
+// In production, use the configured APP_URL
+const getAppUrl = () => {
+  // Production: use configured URL
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  }
+  // Development: Google OAuth allows localhost, so always use it
+  // This avoids issues with dynamic tunnel URLs
+  return 'http://localhost:3000';
+};
 
 // Helper to get redirect URI dynamically at runtime
 export const getRedirectUri = () => `${getAppUrl()}/api/oauth/google/callback`;
@@ -71,9 +81,12 @@ export type GoogleUserInfo = {
  * Generate Google OAuth authorization URL
  */
 export function getGoogleAuthUrl(state: string): string {
+  const redirectUri = getRedirectUri();
+  console.log('[Google OAuth] getGoogleAuthUrl - redirect_uri:', redirectUri);
+
   const params = new URLSearchParams({
     client_id: GOOGLE_OAUTH_CONFIG.clientId,
-    redirect_uri: GOOGLE_OAUTH_CONFIG.redirectUri,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: GOOGLE_OAUTH_CONFIG.scopes.join(' '),
     access_type: 'offline', // Get refresh token

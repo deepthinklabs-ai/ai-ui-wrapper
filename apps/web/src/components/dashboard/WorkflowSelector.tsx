@@ -1,0 +1,223 @@
+/**
+ * Workflow Selector Component
+ *
+ * Dropdown to select an exposed Canvas workflow to route messages to.
+ * When a workflow is selected, messages go through the workflow instead of direct chat.
+ */
+
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import type { ExposedWorkflow } from "@/app/canvas/features/master-trigger/types";
+
+type WorkflowSelectorProps = {
+  workflows: ExposedWorkflow[];
+  selectedWorkflow: ExposedWorkflow | null;
+  onWorkflowChange: (workflow: ExposedWorkflow | null) => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+};
+
+const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
+  workflows,
+  selectedWorkflow,
+  onWorkflowChange,
+  isLoading = false,
+  disabled = false,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const handleWorkflowSelect = (workflow: ExposedWorkflow | null) => {
+    onWorkflowChange(workflow);
+    setIsOpen(false);
+  };
+
+  // Don't render if no workflows available
+  if (!isLoading && workflows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {/* Dropdown Button */}
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled || isLoading}
+        className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-colors ${
+          selectedWorkflow
+            ? "border-purple-500/50 bg-purple-900/30 text-purple-200 hover:bg-purple-900/50"
+            : "border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+        } disabled:opacity-60`}
+        title={selectedWorkflow ? `Workflow: ${selectedWorkflow.displayName}` : "Select a workflow"}
+      >
+        {/* Workflow Icon */}
+        <span className={`flex h-4 w-4 items-center justify-center rounded text-[10px] ${
+          selectedWorkflow
+            ? "bg-purple-500/30 text-purple-300"
+            : "bg-slate-600/50 text-slate-400"
+        }`}>
+          {isLoading ? (
+            <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+          ) : (
+            <span>W</span>
+          )}
+        </span>
+
+        {/* Label */}
+        <span className="font-medium max-w-[120px] truncate">
+          {isLoading
+            ? "Loading..."
+            : selectedWorkflow
+              ? selectedWorkflow.displayName
+              : "Workflow"
+          }
+        </span>
+
+        {/* Chevron */}
+        <svg
+          className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute bottom-full left-0 mb-2 w-72 rounded-lg border border-slate-700 bg-slate-900 shadow-xl z-50 max-h-80 overflow-y-auto">
+          <div className="p-2">
+            {/* Default Chat Option */}
+            <button
+              onClick={() => handleWorkflowSelect(null)}
+              className={`w-full rounded-md px-3 py-2 text-left transition-colors mb-2 ${
+                !selectedWorkflow
+                  ? "bg-slate-700/50 border border-slate-600"
+                  : "hover:bg-slate-800 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-600/50 text-slate-300 text-xs">
+                  D
+                </span>
+                <span className="text-xs font-medium text-slate-100">
+                  Default Chat
+                </span>
+                {!selectedWorkflow && (
+                  <span className="rounded-full bg-slate-600/30 px-1.5 py-0.5 text-[9px] text-slate-300">
+                    Active
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] text-slate-400 leading-tight pl-7">
+                Standard chat - messages sent directly to AI
+              </div>
+            </button>
+
+            {/* Divider */}
+            {workflows.length > 0 && (
+              <div className="border-t border-slate-700 my-2" />
+            )}
+
+            {/* Workflows Header */}
+            {workflows.length > 0 && (
+              <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Canvas Workflows ({workflows.length})
+              </div>
+            )}
+
+            {/* Workflow Options */}
+            <div className="space-y-1">
+              {workflows.map((workflow) => (
+                <button
+                  key={`${workflow.canvasId}-${workflow.triggerNodeId}`}
+                  onClick={() => handleWorkflowSelect(workflow)}
+                  className={`w-full rounded-md px-3 py-2 text-left transition-colors ${
+                    selectedWorkflow?.triggerNodeId === workflow.triggerNodeId
+                      ? "bg-purple-600/20 border border-purple-500/30"
+                      : "hover:bg-slate-800 border border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-purple-500/20 text-purple-300 text-xs">
+                      W
+                    </span>
+                    <span className="text-xs font-medium text-slate-100 truncate flex-1">
+                      {workflow.displayName}
+                    </span>
+                    {selectedWorkflow?.triggerNodeId === workflow.triggerNodeId && (
+                      <span className="rounded-full bg-purple-500/20 px-1.5 py-0.5 text-[9px] text-purple-300">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  {workflow.description && (
+                    <div className="text-[10px] text-slate-400 leading-tight pl-7 truncate">
+                      {workflow.description}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 mt-1 pl-7 text-[9px] text-slate-500">
+                    <span>Canvas: {workflow.canvasName}</span>
+                    {workflow.triggerCount !== undefined && workflow.triggerCount > 0 && (
+                      <span>Used {workflow.triggerCount}x</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Empty State */}
+            {workflows.length === 0 && !isLoading && (
+              <div className="text-center py-4 text-xs text-slate-500">
+                No workflows available.
+                <br />
+                <span className="text-[10px]">
+                  Expose workflows in Canvas to use them here.
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default WorkflowSelector;

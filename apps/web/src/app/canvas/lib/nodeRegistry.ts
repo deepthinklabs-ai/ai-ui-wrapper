@@ -15,6 +15,7 @@ import type {
   TrainingSessionNodeConfig,
   BoardroomNodeConfig,
   TriggerNodeConfig,
+  MasterTriggerNodeConfig,
   CableChannelNodeConfig,
   ToolNodeConfig,
   TerminalCommandNodeConfig,
@@ -263,6 +264,42 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       is_enabled: false,
     } as TriggerNodeConfig,
     componentPath: './components/nodes/TriggerNode',
+    capabilities: {
+      canHaveMultipleInstances: true,
+      canBeDisabled: true,
+    },
+  },
+
+  MASTER_TRIGGER: {
+    type: 'MASTER_TRIGGER',
+    label: 'Master Trigger',
+    description: 'Expose workflow to Genesis Bot page for triggering from chat',
+    category: 'trigger',
+    icon: '🎯',
+    color: 'purple',
+    inputs: [],
+    outputs: [
+      {
+        id: 'message',
+        label: 'User Message',
+        type: 'output',
+        dataType: 'message',
+      },
+      {
+        id: 'attachments',
+        label: 'Attachments',
+        type: 'output',
+        dataType: 'data',
+      },
+    ],
+    defaultConfig: {
+      display_name: 'New Workflow Trigger',
+      description: '',
+      is_exposed: false,
+      output_format: 'structured',
+      trigger_count: 0,
+    } as MasterTriggerNodeConfig,
+    componentPath: './components/nodes/MasterTriggerNode',
     capabilities: {
       canHaveMultipleInstances: true,
       canBeDisabled: true,
