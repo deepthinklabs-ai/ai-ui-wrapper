@@ -122,83 +122,52 @@ export async function POST(request: NextRequest) {
     console.log(`[POST /api/workflows/trigger] Executing with bot: ${botConfig.name}`);
     console.log(`  Model: ${botConfig.model_provider}/${botConfig.model_name}`);
 
-    // Build messages array with conversation history
-    const messages: Array<{ role: string; content: any }> = [];
-
-    // Add conversation history from dashboard thread for context
-    if (input.conversationHistory && input.conversationHistory.length > 0) {
-      console.log(`[POST /api/workflows/trigger] Including ${input.conversationHistory.length} messages from conversation history`);
-      for (const histMsg of input.conversationHistory) {
-        messages.push({
-          role: histMsg.role,
-          content: histMsg.content,
-        });
-      }
-    }
-
-    // Add attachments as content if present
-    if (input.attachments && input.attachments.length > 0) {
-      const contentParts: any[] = [{ type: 'text', text: sanitizedMessage }];
-
-      for (const attachment of input.attachments) {
-        if (attachment.isImage) {
-          contentParts.push({
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: attachment.type,
-              data: attachment.content,
-            },
-          });
-        }
-        // For non-image files, append as text context
-        else {
-          contentParts.push({
-            type: 'text',
-            text: `\n\n[Attached file: ${attachment.name}]\n${attachment.content}`,
-          });
-        }
-      }
-
-      messages.push({ role: 'user', content: contentParts });
-    } else {
-      messages.push({ role: 'user', content: sanitizedMessage });
-    }
-
-    // Determine API endpoint based on provider
-    const provider = botConfig.model_provider;
-    const apiEndpoint =
-      provider === 'openai' ? '/api/pro/openai' :
-      provider === 'claude' ? '/api/pro/claude' :
-      provider === 'grok' ? '/api/pro/grok' :
-      null;
-
-    if (!apiEndpoint) {
-      return NextResponse.json({
-        success: false,
-        error: `Unsupported provider: ${provider}`,
-      }, { status: 400 });
-    }
-
     // Use the same origin as the incoming request (handles dynamic ports)
     const internalBaseUrl = new URL(request.url).origin;
-    const apiUrl = new URL(apiEndpoint, internalBaseUrl);
-    console.log(`[POST /api/workflows/trigger] Calling API: ${apiUrl.toString()}`);
 
-    // Call the AI API
-    const apiResponse = await fetch(apiUrl.toString(), {
+    // Build conversation history in Ask/Answer format for context
+    const askAnswerHistory = (input.conversationHistory || []).reduce((acc, msg, idx, arr) => {
+      // Pair user messages with the following assistant message
+      if (msg.role === 'user' && arr[idx + 1]?.role === 'assistant') {
+        acc.push({
+          id: `hist-${idx}`,
+          query: msg.content,
+          answer: arr[idx + 1].content,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      return acc;
+    }, [] as Array<{ id: string; query: string; answer: string; timestamp: string }>);
+
+    console.log(`[POST /api/workflows/trigger] Using Ask/Answer API for first bot (has Gmail tools)`);
+    if (askAnswerHistory.length > 0) {
+      console.log(`[POST /api/workflows/trigger] Including ${askAnswerHistory.length} conversation history entries`);
+    }
+
+    // Create a virtual "from" node config representing the trigger
+    const triggerAsFromNode = {
+      name: triggerConfig.display_name || 'Master Trigger',
+      model_provider: 'system',
+      model_name: 'trigger',
+    };
+
+    // Call Ask/Answer API for the first bot - this gives us Gmail tool support
+    const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
+    const apiResponse = await fetch(askAnswerUrl.toString(), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        canvasId,
+        fromNodeId: triggerNodeId,
+        toNodeId: targetBot.id,
+        edgeId: edges[0].id,
+        query: sanitizedMessage,
+        queryId: crypto.randomUUID(),
         userId: input.userId,
-        messages,
-        model: botConfig.model_name,
-        systemPrompt: botConfig.system_prompt,
-        temperature: botConfig.temperature,
-        maxTokens: botConfig.max_tokens,
-        enableWebSearch: botConfig.web_search_enabled !== false,
+        fromNodeConfig: triggerAsFromNode,
+        toNodeConfig: botConfig,
+        conversationHistory: askAnswerHistory,
+        uploadedAttachments: input.attachments, // Pass user's uploaded files for email attachments
       }),
     });
 
@@ -214,7 +183,12 @@ export async function POST(request: NextRequest) {
     }
 
     const apiData = await apiResponse.json();
-    let response = apiData.content || apiData.message || '';
+
+    if (!apiData.success) {
+      throw new Error(apiData.error || 'Ask/Answer query failed');
+    }
+
+    let response = apiData.answer || '';
 
     console.log(`[POST /api/workflows/trigger] First bot response received (${response.length} chars)`);
 

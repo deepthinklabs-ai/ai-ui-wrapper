@@ -68,7 +68,7 @@ export const gmailTools: GmailToolDefinition[] = [
   {
     name: 'gmail_send',
     description:
-      'Send an email from the connected Gmail account. Supports file attachments. Use with caution - this will actually send an email.',
+      'Send an email from the connected Gmail account. IMPORTANT: If the user has uploaded any files or images with their message and wants to send them as attachments, you MUST set includeUploadedAttachments to true. Use with caution - this will actually send an email.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -119,11 +119,12 @@ export const gmailTools: GmailToolDefinition[] = [
             },
             required: ['filename', 'mimeType', 'content'],
           },
-          description: 'Optional array of file attachments to include',
+          description: 'Optional array of file attachments to include (for programmatically generated content)',
         },
         includeUploadedAttachments: {
           type: 'boolean',
-          description: 'Set to true to automatically include all files/images that the user uploaded with their message as email attachments',
+          description:
+            'IMPORTANT: Set this to true when the user has uploaded files/images with their message and wants to send them as email attachments. This will automatically attach all user-uploaded files to the email.',
         },
       },
       required: ['to', 'subject', 'body'],
@@ -133,7 +134,7 @@ export const gmailTools: GmailToolDefinition[] = [
   {
     name: 'gmail_draft',
     description:
-      'Create an email draft without sending. Supports file attachments. The user can review and send manually.',
+      'Create an email draft without sending. IMPORTANT: If the user has uploaded any files or images with their message and wants to include them as attachments, you MUST set includeUploadedAttachments to true. The user can review and send manually.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -175,11 +176,12 @@ export const gmailTools: GmailToolDefinition[] = [
             },
             required: ['filename', 'mimeType', 'content'],
           },
-          description: 'Optional array of file attachments to include',
+          description: 'Optional array of file attachments to include (for programmatically generated content)',
         },
         includeUploadedAttachments: {
           type: 'boolean',
-          description: 'Set to true to automatically include all files/images that the user uploaded with their message as email attachments',
+          description:
+            'IMPORTANT: Set this to true when the user has uploaded files/images with their message and wants to include them as draft attachments. This will automatically attach all user-uploaded files to the draft.',
         },
       },
       required: ['to', 'subject', 'body'],

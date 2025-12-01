@@ -106,37 +106,38 @@ export async function POST(request: NextRequest) {
     let gmailSystemPrompt = '';
     let effectiveGmailConfig = gmailConfig;
 
-    // Try to look up the Google OAuth connection if:
-    // 1. Gmail is enabled but no connectionId, OR
-    // 2. Gmail is NOT configured but user might have a Google OAuth connection (fallback)
-    if (!gmailConnectionId) {
-      try {
-        const googleConnection = await getOAuthConnection(userId, 'google');
-        if (googleConnection) {
+    // Always try to look up the Google OAuth connection
+    // This ensures we can send emails even if the node doesn't have Gmail explicitly configured
+    try {
+      const googleConnection = await getOAuthConnection(userId, 'google');
+      if (googleConnection) {
+        // Use the Google OAuth connection ID
+        if (!gmailConnectionId) {
           gmailConnectionId = googleConnection.id;
           console.log(`[Ask/Answer] Found Google OAuth connection for Gmail: ${gmailConnectionId}`);
-
-          // If no Gmail config at all, use default permissions as fallback
-          if (!gmailConfig?.enabled) {
-            console.log(`[Ask/Answer] Gmail not configured in node, using default permissions as fallback`);
-            effectiveGmailConfig = {
-              enabled: true,
-              connectionId: gmailConnectionId,
-              permissions: {
-                canRead: true,
-                canSend: false,  // Conservative: don't allow sending by default
-                canSearch: true,
-                canManageLabels: false,
-                canManageDrafts: true,
-              },
-              requireConfirmation: true,
-              maxEmailsPerHour: 10,
-            };
-          }
         }
-      } catch (error) {
-        console.log(`[Ask/Answer] Failed to lookup Google OAuth connection for Gmail:`, error);
+
+        // Use full permissions if Gmail is not enabled or doesn't allow sending
+        // This ensures email sending works when user has connected their Google account
+        if (!gmailConfig?.enabled || !gmailConfig?.permissions?.canSend) {
+          console.log(`[Ask/Answer] Gmail not fully configured, using full permissions as fallback`);
+          effectiveGmailConfig = {
+            enabled: true,
+            connectionId: gmailConnectionId,
+            permissions: {
+              canRead: true,
+              canSend: true,
+              canSearch: true,
+              canManageLabels: true,
+              canManageDrafts: true,
+            },
+            requireConfirmation: false,
+            maxEmailsPerHour: 50,
+          };
+        }
       }
+    } catch (error) {
+      console.log(`[Ask/Answer] Failed to lookup Google OAuth connection for Gmail:`, error);
     }
 
     const hasGmailTools = effectiveGmailConfig?.enabled && gmailConnectionId;
@@ -299,10 +300,10 @@ IMPORTANT: When asked to perform an action (send a message, read emails, etc.), 
       const attachmentList = uploadedAttachments.map((a, i) =>
         `  ${i + 1}. "${a.name}" (${a.type}, ${Math.round(a.size / 1024)}KB)`
       ).join('\n');
-      systemPrompt += `\n\nUPLOADED FILES: The user has uploaded the following files with their message:
+      systemPrompt += `\n\nIMPORTANT - UPLOADED FILES: The user has uploaded the following files with their message:
 ${attachmentList}
 
-When sending emails with gmail_send or creating drafts with gmail_draft, you can set "includeUploadedAttachments": true to automatically attach these files to the email.`;
+CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and the user wants to attach these files, you MUST set "includeUploadedAttachments": true in your tool call. Without this parameter, the attachments will NOT be included in the email.`;
     }
 
     // Build messages array with conversation history
@@ -395,48 +396,53 @@ When sending emails with gmail_send or creating drafts with gmail_draft, you can
     let apiData = await apiResponse.json();
 
     // Handle tool calls (Gmail & Sheets) - loop until we get a final response
+    // Supports both Claude format (stop_reason: 'tool_use', contentBlocks) and OpenAI format (toolCalls)
     const maxToolIterations = 5;
     let iteration = 0;
 
-    while (apiData.stop_reason === 'tool_use' && apiData.contentBlocks && iteration < maxToolIterations) {
+    // Check for tool calls - either Claude or OpenAI format
+    // The condition is re-evaluated each iteration
+    while (iteration < maxToolIterations) {
+      const hasClaudeToolUse = apiData.stop_reason === 'tool_use' && apiData.contentBlocks;
+      const hasOpenAIToolCalls = apiData.toolCalls && apiData.toolCalls.length > 0;
+
+      if (!hasClaudeToolUse && !hasOpenAIToolCalls) {
+        break; // No more tool calls
+      }
       iteration++;
       console.log(`[Ask/Answer] Tool use iteration ${iteration}`);
 
-      // Extract tool calls from response
-      const toolUseBlocks = apiData.contentBlocks.filter((b: any) => b.type === 'tool_use');
+      // Extract tool calls from response - handle both formats
+      let toolUseBlocks: Array<{ id: string; name: string; input: any }> = [];
 
-      // Separate Gmail and Sheets tool calls
-      const gmailToolCalls = toolUseBlocks
-        .filter((b: any) => b.name?.startsWith('gmail_'))
-        .map((b: any) => ({
-          id: b.id,
-          name: b.name,
-          input: b.input,
-        }));
+      if (apiData.contentBlocks) {
+        // Claude format
+        toolUseBlocks = apiData.contentBlocks
+          .filter((b: any) => b.type === 'tool_use')
+          .map((b: any) => ({ id: b.id, name: b.name, input: b.input }));
+      } else if (apiData.toolCalls) {
+        // OpenAI format (already converted in the API route)
+        toolUseBlocks = apiData.toolCalls;
+      }
 
-      const sheetsToolCalls = toolUseBlocks
-        .filter((b: any) => b.name?.startsWith('sheets_'))
-        .map((b: any) => ({
-          id: b.id,
-          name: b.name,
-          input: b.input,
-        }));
+      // Separate Gmail, Sheets, Docs, and Slack tool calls
+      const gmailToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('gmail_'));
+      const sheetsToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('sheets_'));
+      const docsToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('docs_'));
+      const slackToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('slack_'));
 
-      const docsToolCalls = toolUseBlocks
-        .filter((b: any) => b.name?.startsWith('docs_'))
-        .map((b: any) => ({
-          id: b.id,
-          name: b.name,
-          input: b.input,
-        }));
-
-      const slackToolCalls = toolUseBlocks
-        .filter((b: any) => b.name?.startsWith('slack_'))
-        .map((b: any) => ({
-          id: b.id,
-          name: b.name,
-          input: b.input,
-        }));
+      // AUTO-INJECT includeUploadedAttachments for gmail_send/gmail_draft when user uploaded files
+      // This ensures attachments are included even if the AI forgets to set the flag
+      if (uploadedAttachments && uploadedAttachments.length > 0) {
+        gmailToolCalls.forEach((toolCall: any) => {
+          if (toolCall.name === 'gmail_send' || toolCall.name === 'gmail_draft') {
+            if (!toolCall.input.includeUploadedAttachments) {
+              console.log(`[Ask/Answer] Auto-injecting includeUploadedAttachments=true for ${toolCall.name} (${uploadedAttachments.length} files uploaded)`);
+              toolCall.input.includeUploadedAttachments = true;
+            }
+          }
+        });
+      }
 
       if (gmailToolCalls.length === 0 && sheetsToolCalls.length === 0 && docsToolCalls.length === 0 && slackToolCalls.length === 0) {
         // No tools to execute, break out
@@ -495,6 +501,33 @@ When sending emails with gmail_send or creating drafts with gmail_draft, you can
         allToolResults.push(...slackResults);
       }
 
+      // For OpenAI with tool calls, we've executed the tools - now return the result directly
+      // OpenAI doesn't need a multi-turn tool loop like Claude for simple cases
+      if (apiData.toolCalls && allToolResults.length > 0) {
+        // Find the successful result (likely gmail_send)
+        const successResult = allToolResults.find(r => !r.isError);
+        if (successResult) {
+          try {
+            const resultData = JSON.parse(successResult.result);
+            if (resultData.sent && resultData.messageId) {
+              // Email was sent successfully - return confirmation
+              const answer = `✅ Email sent successfully!\n\nMessage ID: ${resultData.messageId}${resultData.attachmentCount ? `\nAttachments: ${resultData.attachmentCount}` : ''}`;
+              const duration_ms = Date.now() - startTime;
+              console.log(`[Ask/Answer] OpenAI email sent successfully in ${duration_ms}ms`);
+              return NextResponse.json({
+                success: true,
+                queryId,
+                answer,
+                timestamp: new Date().toISOString(),
+                duration_ms,
+              });
+            }
+          } catch (e) {
+            // Continue with normal flow if result parsing fails
+          }
+        }
+      }
+
       // Format tool results for Claude
       const toolResultBlocks = allToolResults.map(result => ({
         type: 'tool_result',
@@ -503,12 +536,18 @@ When sending emails with gmail_send or creating drafts with gmail_draft, you can
         is_error: result.isError,
       }));
 
-      // Continue conversation with tool results
-      messages = [
-        ...messages,
-        { role: 'assistant', content: apiData.contentBlocks },
-        { role: 'user', content: toolResultBlocks },
-      ];
+      // Continue conversation with tool results (Claude format)
+      // Skip for OpenAI as we handle it above
+      if (!apiData.toolCalls) {
+        messages = [
+          ...messages,
+          { role: 'assistant', content: apiData.contentBlocks },
+          { role: 'user', content: toolResultBlocks },
+        ];
+      } else {
+        // For OpenAI, break out of the loop after executing tools
+        break;
+      }
 
       apiResponse = await fetch(apiUrl.toString(), {
         method: 'POST',

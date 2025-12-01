@@ -24,7 +24,7 @@ const SEARCH_ENABLED_MODELS: Record<string, string> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, messages, model = 'gpt-4o', enableWebSearch = true } = body;
+    const { userId, messages, model = 'gpt-4o', enableWebSearch = true, tools, systemPrompt } = body;
 
     // Validate required fields
     if (!userId) {
@@ -76,13 +76,44 @@ export async function POST(req: NextRequest) {
       ? SEARCH_ENABLED_MODELS[model]
       : model;
 
+    // Build messages with optional system prompt
+    let finalMessages = messages;
+    if (systemPrompt) {
+      finalMessages = [{ role: 'system', content: systemPrompt }, ...messages];
+    }
+
     const completionParams: any = {
       model: actualModel,
-      messages,
+      messages: finalMessages,
     };
 
-    // Note: For GPT-5 and GPT-4o search models, web search is built-in
-    // No need to add tools - the model automatically searches when needed
+    // Add tools if provided (for Gmail, Sheets, etc.)
+    if (tools && Array.isArray(tools) && tools.length > 0) {
+      // Convert to OpenAI function format
+      completionParams.tools = tools.map((tool: any) => ({
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.input_schema || tool.parameters,
+        },
+      }));
+
+      // Check if this looks like an email send request - force tool use
+      const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop();
+      const messageText = typeof lastUserMessage?.content === 'string'
+        ? lastUserMessage.content
+        : JSON.stringify(lastUserMessage?.content || '');
+
+      const isEmailRequest = /send.*email|email.*to|mail.*to/i.test(messageText);
+      const hasGmailSend = tools.some((t: any) => t.name === 'gmail_send');
+
+      if (isEmailRequest && hasGmailSend) {
+        // Force the model to use the gmail_send tool
+        completionParams.tool_choice = { type: 'function', function: { name: 'gmail_send' } };
+        console.log('[PRO API] Forcing gmail_send tool for email request');
+      }
+    }
 
     // Make request to OpenAI
     const startTime = Date.now();
@@ -91,7 +122,30 @@ export async function POST(req: NextRequest) {
     // Debug log: See the full message structure
     console.log('[PRO API] Full message object:', JSON.stringify(completion.choices?.[0]?.message, null, 2));
 
-    const reply = completion.choices?.[0]?.message?.content;
+    const message = completion.choices?.[0]?.message;
+    const reply = message?.content;
+    const toolCalls = message?.tool_calls;
+
+    // If the model made tool calls, return them for execution
+    if (toolCalls && toolCalls.length > 0) {
+      console.log(`[PRO API] Model made ${toolCalls.length} tool calls`);
+      const latency = Date.now() - startTime;
+      console.log(`[PRO API] User ${userId} | Model: ${model} | Tool calls: ${toolCalls.length} | Latency: ${latency}ms`);
+
+      return NextResponse.json({
+        content: reply || '',
+        toolCalls: toolCalls.map((tc: any) => ({
+          id: tc.id,
+          name: tc.function.name,
+          input: JSON.parse(tc.function.arguments || '{}'),
+        })),
+        usage: completion.usage ? {
+          prompt_tokens: completion.usage.prompt_tokens,
+          completion_tokens: completion.usage.completion_tokens,
+          total_tokens: completion.usage.total_tokens,
+        } : undefined,
+      });
+    }
 
     if (!reply) {
       throw new Error('No response from OpenAI');
@@ -120,7 +174,7 @@ export async function POST(req: NextRequest) {
     // });
 
     // Extract citations from annotations (for search-enabled models)
-    const message = completion.choices?.[0]?.message;
+    // Reuse `message` from line 125 instead of fetching again
     const annotations = (message as any)?.annotations || [];
 
     // Debug logging to see what we're getting

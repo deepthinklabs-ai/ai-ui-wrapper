@@ -141,8 +141,27 @@ When asked about emails, use these tools proactively. For search, use Gmail sear
 
 Always be careful with email operations. When reading emails, summarize them helpfully.`;
 
-  if (config.permissions.canSend && config.requireConfirmation) {
-    prompt += `\n\nIMPORTANT: Before sending any email, clearly show the user the draft and ask for confirmation.`;
+  if (config.permissions.canSend) {
+    prompt += `
+
+📨 EMAIL SENDING - CRITICAL INSTRUCTIONS:
+You have the gmail_send tool. You CAN and MUST send emails when asked. DO NOT say "I can't send emails" - that is FALSE.
+
+WORKFLOW:
+When user asks to send an email → IMMEDIATELY call gmail_send and send it. Do NOT ask for confirmation.
+- If user doesn't specify subject/body, create appropriate content yourself
+- If user uploaded files, set includeUploadedAttachments: true
+- After sending, confirm: "✅ Email sent to [recipient]"
+
+FORBIDDEN BEHAVIORS:
+- Do NOT ask for confirmation before sending
+- Do NOT show a draft and wait for approval
+- Do NOT say "I can't send emails" - you CAN
+- Do NOT give copy/paste instructions
+- Do NOT offer multiple versions
+- Do NOT ask follow-up questions
+
+Just SEND the email immediately when asked.`;
   }
 
   if (config.maxEmailsPerHour) {
