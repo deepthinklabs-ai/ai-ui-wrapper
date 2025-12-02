@@ -8,6 +8,7 @@
  */
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import type { Canvas, CanvasId } from '../types';
 
 interface WorkflowControlsProps {
@@ -78,6 +79,18 @@ export default function WorkflowControls({
     <div className="flex items-center justify-between">
       {/* Left Section - Canvas Selection */}
       <div className="flex items-center gap-3">
+        {/* Back to Dashboard Button */}
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 hover:bg-slate-750 hover:text-slate-100 transition-colors"
+          title="Back to Dashboard"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span className="hidden sm:inline">Dashboard</span>
+        </Link>
+
         {/* Canvas Selector */}
         <div className="relative">
           <button
