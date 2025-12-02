@@ -15,9 +15,10 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user ID from query params or session
+    // Get user ID and optional service from query params
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const service = searchParams.get('service'); // 'gmail', 'calendar', 'sheets', 'docs', or null for all
 
     if (!userId) {
       return NextResponse.json(
@@ -38,8 +39,8 @@ export async function GET(request: NextRequest) {
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
       });
 
-    // Generate Google OAuth URL
-    const authUrl = getGoogleAuthUrl(state);
+    // Generate Google OAuth URL with optional service-specific scopes
+    const authUrl = getGoogleAuthUrl(state, service || undefined);
 
     // Debug: Log the URLs being used
     console.log('[Google OAuth] DEBUG - APP_URL env:', process.env.APP_URL);

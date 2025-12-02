@@ -28,11 +28,17 @@ import {
   toClaudeToolFormat as slackToClaudeToolFormat,
   generateSlackSystemPrompt,
 } from '@/app/canvas/features/slack-oauth/lib/slackTools';
+import {
+  getEnabledCalendarTools,
+  toClaudeToolFormat as calendarToClaudeToolFormat,
+  generateCalendarSystemPrompt,
+} from '@/app/canvas/features/calendar-oauth';
 // Import server-side executors directly (uses googleapis/@slack, server-only)
 import { executeGmailToolCallsServer } from '@/app/canvas/features/gmail-oauth/lib/gmailToolExecutorServer';
 import { executeSheetsToolCallsServer } from '@/app/canvas/features/sheets-oauth/lib/sheetsToolExecutorServer';
 import { executeDocsToolCallsServer } from '@/app/canvas/features/docs-oauth/lib/docsToolExecutorServer';
 import { executeSlackToolCallsServer } from '@/app/canvas/features/slack-oauth/lib/slackToolExecutorServer';
+import { executeCalendarToolCallsServer } from '@/app/canvas/features/calendar-oauth/lib/calendarToolExecutorServer';
 // Import OAuth connection lookup for fallback when connectionId not in config
 import { getOAuthConnection } from '@/lib/googleTokenStorage';
 import { getSlackConnection } from '@/lib/slackTokenStorage';
@@ -98,6 +104,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // DEBUG: Log all keys in toNodeConfig to see what integrations are present
+    console.log(`[Ask/Answer] toNodeConfig keys:`, Object.keys(toNodeConfig));
+    console.log(`[Ask/Answer] toNodeConfig.calendar raw:`, toNodeConfig.calendar);
 
     // Check if target node has Gmail integration enabled
     const gmailConfig = toNodeConfig.gmail;
@@ -262,8 +272,48 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if target node has Calendar integration enabled
+    // Calendar uses same Google OAuth as Gmail/Sheets/Docs
+    const calendarConfig = toNodeConfig.calendar;
+    let calendarConnectionId = calendarConfig?.connectionId || gmailConnectionId || sheetsConnectionId;
+    let calendarTools: any[] = [];
+    let calendarSystemPrompt = '';
+
+    // Only look up Google OAuth connection if Calendar is EXPLICITLY enabled but missing connectionId
+    // This ensures we don't auto-enable Calendar just because Gmail is connected
+    if (calendarConfig?.enabled && !calendarConnectionId) {
+      try {
+        const googleConnection = await getOAuthConnection(userId, 'google');
+        if (googleConnection) {
+          calendarConnectionId = googleConnection.id;
+          console.log(`[Ask/Answer] Found Google OAuth connection for Calendar: ${calendarConnectionId}`);
+        }
+      } catch (error) {
+        console.log(`[Ask/Answer] Failed to lookup Google OAuth connection for Calendar:`, error);
+      }
+    }
+
+    const hasCalendarTools = calendarConfig?.enabled && calendarConnectionId;
+
+    console.log(`[Ask/Answer] Calendar config:`, {
+      enabled: calendarConfig?.enabled,
+      connectionId: calendarConfig?.connectionId,
+      resolvedConnectionId: calendarConnectionId,
+      hasCalendarTools,
+      permissions: calendarConfig?.permissions
+    });
+
+    if (hasCalendarTools && calendarConfig) {
+      const enabledTools = getEnabledCalendarTools(calendarConfig.permissions);
+      if (enabledTools.length > 0) {
+        calendarTools = calendarToClaudeToolFormat(enabledTools);
+        calendarSystemPrompt = generateCalendarSystemPrompt(calendarConfig.permissions);
+        console.log(`[Ask/Answer] Calendar tools enabled: ${enabledTools.map(t => t.name).join(', ')}`);
+      }
+    }
+
     // Combine all tools
-    const allTools = [...gmailTools, ...sheetsTools, ...docsTools, ...slackTools];
+    const allTools = [...gmailTools, ...sheetsTools, ...docsTools, ...slackTools, ...calendarTools];
 
     // Build context for Node B
     // Node B receives the query with context about Node A
@@ -293,6 +343,11 @@ IMPORTANT: When asked to perform an action (send a message, read emails, etc.), 
     // Add Slack capabilities to system prompt if enabled
     if (slackSystemPrompt) {
       systemPrompt += `\n\n${slackSystemPrompt}`;
+    }
+
+    // Add Calendar capabilities to system prompt if enabled
+    if (calendarSystemPrompt) {
+      systemPrompt += `\n\n${calendarSystemPrompt}`;
     }
 
     // Add context about uploaded attachments if present
@@ -344,6 +399,7 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
     console.log(`  Sheets Tools: ${hasSheetsTools ? sheetsTools.length : 0}`);
     console.log(`  Docs Tools: ${hasDocsTools ? docsTools.length : 0}`);
     console.log(`  Slack Tools: ${hasSlackTools ? slackTools.length : 0}`);
+    console.log(`  Calendar Tools: ${hasCalendarTools ? calendarTools.length : 0}`);
     console.log(`  Total Tools: ${allTools.length}`);
 
     // Route to appropriate Pro API based on provider
@@ -425,11 +481,12 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
         toolUseBlocks = apiData.toolCalls;
       }
 
-      // Separate Gmail, Sheets, Docs, and Slack tool calls
+      // Separate Gmail, Sheets, Docs, Slack, and Calendar tool calls
       const gmailToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('gmail_'));
       const sheetsToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('sheets_'));
       const docsToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('docs_'));
       const slackToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('slack_'));
+      const calendarToolCalls = toolUseBlocks.filter((b: any) => b.name?.startsWith('calendar_'));
 
       // AUTO-INJECT includeUploadedAttachments for gmail_send/gmail_draft when user uploaded files
       // This ensures attachments are included even if the AI forgets to set the flag
@@ -444,9 +501,9 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
         });
       }
 
-      if (gmailToolCalls.length === 0 && sheetsToolCalls.length === 0 && docsToolCalls.length === 0 && slackToolCalls.length === 0) {
+      if (gmailToolCalls.length === 0 && sheetsToolCalls.length === 0 && docsToolCalls.length === 0 && slackToolCalls.length === 0 && calendarToolCalls.length === 0) {
         // No tools to execute, break out
-        console.log(`[Ask/Answer] No Gmail/Sheets/Docs/Slack tools in tool_use response, using text content`);
+        console.log(`[Ask/Answer] No Gmail/Sheets/Docs/Slack/Calendar tools in tool_use response, using text content`);
         break;
       }
 
@@ -501,10 +558,22 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
         allToolResults.push(...slackResults);
       }
 
-      // For OpenAI with tool calls, we've executed the tools - now return the result directly
-      // OpenAI doesn't need a multi-turn tool loop like Claude for simple cases
+      // Execute Calendar tools if any
+      if (calendarToolCalls.length > 0 && hasCalendarTools && calendarConfig) {
+        console.log(`[Ask/Answer] Executing ${calendarToolCalls.length} Calendar tools (server-side)`);
+        const calendarResults = await executeCalendarToolCallsServer(
+          calendarToolCalls,
+          userId,
+          toNodeId,
+          calendarConfig.permissions
+        );
+        allToolResults.push(...calendarResults);
+      }
+
+      // For OpenAI with tool calls, check for immediate success cases (email sent, event created)
+      // and return early if we can provide a direct response
       if (apiData.toolCalls && allToolResults.length > 0) {
-        // Find the successful result (likely gmail_send)
+        // Find the successful result (likely gmail_send or calendar_create_event)
         const successResult = allToolResults.find(r => !r.isError);
         if (successResult) {
           try {
@@ -522,31 +591,72 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
                 duration_ms,
               });
             }
+            // Calendar event created successfully
+            if (resultData.created && resultData.event) {
+              const event = resultData.event;
+              const eventStartTime = event.start?.dateTime || event.start?.date || 'TBD';
+              const answer = `✅ Calendar event created!\n\n**${event.summary}**\nWhen: ${eventStartTime}${event.location ? `\nWhere: ${event.location}` : ''}${event.htmlLink ? `\n\n[View in Google Calendar](${event.htmlLink})` : ''}`;
+              const duration_ms = Date.now() - startTime;
+              console.log(`[Ask/Answer] OpenAI calendar event created successfully in ${duration_ms}ms`);
+              return NextResponse.json({
+                success: true,
+                queryId,
+                answer,
+                timestamp: new Date().toISOString(),
+                duration_ms,
+              });
+            }
           } catch (e) {
             // Continue with normal flow if result parsing fails
           }
         }
       }
 
-      // Format tool results for Claude
-      const toolResultBlocks = allToolResults.map(result => ({
-        type: 'tool_result',
-        tool_use_id: result.toolCallId,
-        content: result.result,
-        is_error: result.isError,
-      }));
+      // Format tool results for the next API call
+      // For OpenAI, we need to continue the conversation with tool results
+      if (apiData.toolCalls) {
+        // OpenAI format: Add assistant message with tool_calls, then tool results
+        const toolResultMessages = allToolResults.map(result => ({
+          role: 'tool' as const,
+          tool_call_id: result.toolCallId,
+          content: result.result,
+        }));
 
-      // Continue conversation with tool results (Claude format)
-      // Skip for OpenAI as we handle it above
-      if (!apiData.toolCalls) {
+        // Build the assistant message with tool calls (OpenAI format)
+        const assistantToolCallMessage = {
+          role: 'assistant' as const,
+          content: null,
+          tool_calls: apiData.toolCalls.map((tc: any) => ({
+            id: tc.id,
+            type: 'function',
+            function: {
+              name: tc.name,
+              arguments: JSON.stringify(tc.input),
+            },
+          })),
+        };
+
+        messages = [
+          ...messages,
+          assistantToolCallMessage,
+          ...toolResultMessages,
+        ];
+
+        console.log(`[Ask/Answer] OpenAI: Continuing conversation with ${toolResultMessages.length} tool results`);
+      } else {
+        // Claude format: Add assistant message with content blocks, then tool results
+        const toolResultBlocks = allToolResults.map(result => ({
+          type: 'tool_result',
+          tool_use_id: result.toolCallId,
+          content: result.result,
+          is_error: result.isError,
+        }));
+
         messages = [
           ...messages,
           { role: 'assistant', content: apiData.contentBlocks },
           { role: 'user', content: toolResultBlocks },
         ];
-      } else {
-        // For OpenAI, break out of the loop after executing tools
-        break;
       }
 
       apiResponse = await fetch(apiUrl.toString(), {

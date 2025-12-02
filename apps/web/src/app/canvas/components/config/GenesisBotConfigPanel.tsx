@@ -7,17 +7,191 @@
  * Allows editing model, system prompt, temperature, and other settings.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { GenesisBotNodeConfig } from '../../types';
 import { AVAILABLE_MODELS, type AIModel } from '@/lib/apiKeyStorage';
 import { GmailOAuthPanel } from '../../features/gmail-oauth/components/GmailOAuthPanel';
-import { DEFAULT_GMAIL_CONFIG, type GmailOAuthConfig } from '../../features/gmail-oauth/types';
+import { DEFAULT_GMAIL_CONFIG, type GmailOAuthConfig, type GmailPermissions } from '../../features/gmail-oauth/types';
+import { CalendarOAuthPanel } from '../../features/calendar-oauth/components/CalendarOAuthPanel';
+import { DEFAULT_CALENDAR_CONFIG, type CalendarOAuthConfig, type CalendarPermissions } from '../../features/calendar-oauth/types';
 import { SheetsOAuthPanel } from '../../features/sheets-oauth/components/SheetsOAuthPanel';
-import { DEFAULT_SHEETS_CONFIG, type SheetsOAuthConfig } from '../../features/sheets-oauth/types';
+import { DEFAULT_SHEETS_CONFIG, type SheetsOAuthConfig, type SheetsPermissions } from '../../features/sheets-oauth/types';
 import { DocsOAuthPanel } from '../../features/docs-oauth/components/DocsOAuthPanel';
-import { DEFAULT_DOCS_CONFIG, type DocsOAuthConfig } from '../../features/docs-oauth/types';
+import { DEFAULT_DOCS_CONFIG, type DocsOAuthConfig, type DocsPermissions } from '../../features/docs-oauth/types';
 import { SlackOAuthPanel } from '../../features/slack-oauth/components/SlackOAuthPanel';
-import { DEFAULT_SLACK_CONFIG, type SlackOAuthConfig } from '../../features/slack-oauth/types';
+import { DEFAULT_SLACK_CONFIG, type SlackOAuthConfig, type SlackPermissions } from '../../features/slack-oauth/types';
+
+// ============================================================================
+// Integration System Prompt Generators (Hard-coded for UI display)
+// ============================================================================
+
+function generateGmailPrompt(permissions: GmailPermissions): string {
+  const capabilities: string[] = [];
+
+  if (permissions.canSearch) {
+    capabilities.push('• Search emails using Gmail search syntax');
+  }
+  if (permissions.canRead) {
+    capabilities.push('• Read email content and threads');
+    capabilities.push('• Get unread count');
+    capabilities.push('• List labels/folders');
+  }
+  if (permissions.canSend) {
+    capabilities.push('• Send emails - USE WITH CAUTION');
+  }
+  if (permissions.canManageDrafts) {
+    capabilities.push('• Create email drafts');
+  }
+  if (permissions.canManageLabels) {
+    capabilities.push('• Add/remove labels');
+  }
+
+  if (capabilities.length === 0) return '';
+
+  return `📧 GMAIL INTEGRATION
+You have access to the user's Gmail account:
+
+${capabilities.join('\n')}
+
+When asked about emails, use these tools proactively. For search, use Gmail search syntax like:
+• "from:user@example.com" - emails from a specific sender
+• "subject:meeting" - emails with subject containing "meeting"
+• "is:unread" - unread emails
+• "after:2024/01/01" - emails after a date
+• "has:attachment" - emails with attachments
+
+Always be careful with email operations.`;
+}
+
+function generateCalendarPrompt(permissions: CalendarPermissions): string {
+  const capabilities: string[] = [];
+
+  if (permissions.canRead) {
+    capabilities.push('• View calendar events and check availability');
+    capabilities.push('• Search for events');
+    capabilities.push('• List all calendars');
+    capabilities.push('• Find free time slots');
+  }
+  if (permissions.canCreate) {
+    capabilities.push('• Create new calendar events');
+    capabilities.push('• Schedule meetings with attendees');
+    capabilities.push('• Use natural language to quickly add events');
+  }
+  if (permissions.canUpdate) {
+    capabilities.push('• Update existing events (time, location, attendees)');
+  }
+  if (permissions.canDelete) {
+    capabilities.push('• Delete calendar events');
+  }
+  if (permissions.canManageReminders) {
+    capabilities.push('• Set and manage event reminders');
+  }
+
+  if (capabilities.length === 0) return '';
+
+  return `📅 CALENDAR INTEGRATION
+You have access to Google Calendar:
+
+${capabilities.join('\n')}
+
+When scheduling events, confirm the time zone and check for conflicts first.`;
+}
+
+function generateSheetsPrompt(permissions: SheetsPermissions): string {
+  const capabilities: string[] = [];
+
+  if (permissions.canRead) {
+    capabilities.push('• Read spreadsheet data');
+    capabilities.push('• Batch read multiple ranges');
+    capabilities.push('• Get spreadsheet metadata');
+  }
+  if (permissions.canWrite) {
+    capabilities.push('• Write data to cells');
+    capabilities.push('• Append rows to sheets');
+    capabilities.push('• Clear cell ranges');
+    capabilities.push('• Add new sheets');
+  }
+  if (permissions.canCreate) {
+    capabilities.push('• Create new spreadsheets');
+  }
+
+  if (capabilities.length === 0) return '';
+
+  return `📊 SHEETS INTEGRATION
+You have access to Google Sheets:
+
+${capabilities.join('\n')}
+
+Use A1 notation for cell ranges (e.g., "Sheet1!A1:C10").`;
+}
+
+function generateDocsPrompt(permissions: DocsPermissions): string {
+  const capabilities: string[] = [];
+
+  if (permissions.canRead) {
+    capabilities.push('• Read document content');
+    capabilities.push('• Get document text');
+    capabilities.push('• Get document metadata');
+  }
+  if (permissions.canWrite) {
+    capabilities.push('• Insert text into documents');
+    capabilities.push('• Append text to documents');
+    capabilities.push('• Replace text in documents');
+    capabilities.push('• Delete content from documents');
+  }
+  if (permissions.canCreate) {
+    capabilities.push('• Create new documents');
+  }
+  if (permissions.canComment) {
+    capabilities.push('• Add comments to documents');
+    capabilities.push('• List document comments');
+  }
+
+  if (capabilities.length === 0) return '';
+
+  return `📄 DOCS INTEGRATION
+You have access to Google Docs:
+
+${capabilities.join('\n')}
+
+Handle document content carefully and preserve formatting when possible.`;
+}
+
+function generateSlackPrompt(permissions: SlackPermissions): string {
+  const capabilities: string[] = [];
+
+  if (permissions.canReadChannels) {
+    capabilities.push('• List channels');
+    capabilities.push('• Read channel message history');
+  }
+  if (permissions.canPostMessages) {
+    capabilities.push('• Post messages to channels');
+    capabilities.push('• Reply to message threads');
+  }
+  if (permissions.canReact) {
+    capabilities.push('• Add emoji reactions');
+    capabilities.push('• Remove emoji reactions');
+  }
+  if (permissions.canReadUsers) {
+    capabilities.push('• Look up user information');
+    capabilities.push('• List workspace users');
+  }
+  if (permissions.canUploadFiles) {
+    capabilities.push('• Upload files to channels');
+  }
+  if (permissions.canManageChannels) {
+    capabilities.push('• Create new channels');
+  }
+
+  if (capabilities.length === 0) return '';
+
+  return `💬 SLACK INTEGRATION
+You have access to Slack:
+
+${capabilities.join('\n')}
+
+Be mindful of channel audiences when posting messages.`;
+}
 
 interface GenesisBotConfigPanelProps {
   config: GenesisBotNodeConfig;
@@ -53,6 +227,58 @@ export default function GenesisBotConfigPanel({
   const availableModelsForProvider = AVAILABLE_MODELS.filter(
     (m) => m.provider === formData.model_provider
   );
+
+  // Generate integration system prompts based on enabled integrations
+  const integrationPrompts = useMemo(() => {
+    const prompts: { name: string; icon: string; prompt: string; color: string }[] = [];
+
+    // Gmail
+    const gmailConfig = formData.gmail || DEFAULT_GMAIL_CONFIG;
+    if (gmailConfig.enabled && gmailConfig.permissions) {
+      const prompt = generateGmailPrompt(gmailConfig.permissions);
+      if (prompt) {
+        prompts.push({ name: 'Gmail', icon: '📧', prompt, color: 'red' });
+      }
+    }
+
+    // Calendar
+    const calendarConfig = formData.calendar || DEFAULT_CALENDAR_CONFIG;
+    if (calendarConfig.enabled && calendarConfig.permissions) {
+      const prompt = generateCalendarPrompt(calendarConfig.permissions);
+      if (prompt) {
+        prompts.push({ name: 'Calendar', icon: '📅', prompt, color: 'blue' });
+      }
+    }
+
+    // Sheets
+    const sheetsConfig = formData.sheets || DEFAULT_SHEETS_CONFIG;
+    if (sheetsConfig.enabled && sheetsConfig.permissions) {
+      const prompt = generateSheetsPrompt(sheetsConfig.permissions);
+      if (prompt) {
+        prompts.push({ name: 'Sheets', icon: '📊', prompt, color: 'green' });
+      }
+    }
+
+    // Docs
+    const docsConfig = formData.docs || DEFAULT_DOCS_CONFIG;
+    if (docsConfig.enabled && docsConfig.permissions) {
+      const prompt = generateDocsPrompt(docsConfig.permissions);
+      if (prompt) {
+        prompts.push({ name: 'Docs', icon: '📄', prompt, color: 'blue' });
+      }
+    }
+
+    // Slack
+    const slackConfig = formData.slack || DEFAULT_SLACK_CONFIG;
+    if (slackConfig.enabled && slackConfig.permissions) {
+      const prompt = generateSlackPrompt(slackConfig.permissions);
+      if (prompt) {
+        prompts.push({ name: 'Slack', icon: '💬', prompt, color: 'purple' });
+      }
+    }
+
+    return prompts;
+  }, [formData.gmail, formData.calendar, formData.sheets, formData.docs, formData.slack]);
 
   return (
     <div className="space-y-4">
@@ -139,6 +365,64 @@ export default function GenesisBotConfigPanel({
             Define the bot's personality, expertise, and behavior
           </p>
         </div>
+
+        {/* Integration System Prompts (Auto-generated, read-only) */}
+        {integrationPrompts.length > 0 && (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-slate-700" />
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                Integration Prompts (Auto-injected)
+              </span>
+              <div className="h-px flex-1 bg-slate-700" />
+            </div>
+
+            {integrationPrompts.map((integration, index) => (
+              <div
+                key={integration.name}
+                className="rounded-lg border border-slate-700/50 bg-slate-900/50 overflow-hidden"
+              >
+                {/* Integration Header */}
+                <div className={`px-3 py-2 border-b border-slate-700/50 flex items-center gap-2 ${
+                  integration.color === 'red' ? 'bg-red-900/20' :
+                  integration.color === 'blue' ? 'bg-blue-900/20' :
+                  integration.color === 'green' ? 'bg-green-900/20' :
+                  integration.color === 'purple' ? 'bg-purple-900/20' :
+                  'bg-slate-800/50'
+                }`}>
+                  <span className="text-base">{integration.icon}</span>
+                  <span className={`text-xs font-semibold ${
+                    integration.color === 'red' ? 'text-red-400' :
+                    integration.color === 'blue' ? 'text-blue-400' :
+                    integration.color === 'green' ? 'text-green-400' :
+                    integration.color === 'purple' ? 'text-purple-400' :
+                    'text-slate-300'
+                  }`}>
+                    {integration.name}
+                  </span>
+                  <span className="ml-auto text-xs text-slate-500 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Read-only
+                  </span>
+                </div>
+
+                {/* Integration Prompt Content */}
+                <div className="px-3 py-2">
+                  <pre className="text-xs text-slate-400 whitespace-pre-wrap font-mono leading-relaxed">
+                    {integration.prompt}
+                  </pre>
+                </div>
+              </div>
+            ))}
+
+            <p className="text-xs text-slate-500 italic">
+              These prompts are automatically added when integrations are enabled.
+              They instruct the AI how to use each integration's tools.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Advanced Settings */}
@@ -282,6 +566,19 @@ export default function GenesisBotConfigPanel({
             handleChange('gmail', gmailConfig);
             // Save immediately when Gmail config changes
             onUpdate({ gmail: gmailConfig });
+          }}
+        />
+
+        {/* Divider */}
+        <div className="my-4 border-t border-white/10" />
+
+        {/* Calendar OAuth Panel */}
+        <CalendarOAuthPanel
+          config={formData.calendar || DEFAULT_CALENDAR_CONFIG}
+          onConfigChange={(calendarConfig: CalendarOAuthConfig) => {
+            handleChange('calendar', calendarConfig);
+            // Save immediately when Calendar config changes
+            onUpdate({ calendar: calendarConfig });
           }}
         />
 

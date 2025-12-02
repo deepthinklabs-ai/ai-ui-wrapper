@@ -104,8 +104,9 @@ export function useSheetsOAuth({
 
     try {
       setError(null);
-      // Redirect to Google OAuth - same endpoint as Gmail since they share OAuth
-      window.location.href = `/api/oauth/google/authorize?userId=${userId}&source=genesis_bot`;
+      // Redirect to Google OAuth with service=sheets
+      // This will only request Sheets scopes, not Gmail/Calendar/Docs
+      window.location.href = `/api/oauth/google/authorize?userId=${userId}&service=sheets`;
     } catch (err) {
       console.error('[Sheets OAuth] Error initiating connection:', err);
       setError('Failed to initiate connection');

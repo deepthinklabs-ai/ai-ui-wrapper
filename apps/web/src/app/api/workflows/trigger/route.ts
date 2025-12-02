@@ -121,6 +121,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`[POST /api/workflows/trigger] Executing with bot: ${botConfig.name}`);
     console.log(`  Model: ${botConfig.model_provider}/${botConfig.model_name}`);
+    console.log(`  System Prompt (first 100 chars): ${botConfig.system_prompt?.slice(0, 100) || 'UNDEFINED'}`);
 
     // Use the same origin as the incoming request (handles dynamic ports)
     const internalBaseUrl = new URL(request.url).origin;
@@ -249,6 +250,13 @@ export async function POST(request: NextRequest) {
 
       chainDepth++;
       console.log(`[POST /api/workflows/trigger] Chain step ${chainDepth}: ${currentBotConfig?.name} → ${nextBotConfig.name} via Ask/Answer`);
+
+      // Skip chaining if the response from previous bot is empty
+      if (!response || response.trim().length === 0) {
+        console.log(`[POST /api/workflows/trigger] Skipping chain step ${chainDepth} - previous bot response is empty`);
+        chainDepth--;
+        break;
+      }
 
       // Build conversation history from the input (passed from dashboard)
       // Convert to Ask/Answer format: array of { id, query, answer, timestamp }

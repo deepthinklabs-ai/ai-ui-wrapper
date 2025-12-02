@@ -25,7 +25,7 @@ export const GOOGLE_OAUTH_CONFIG = {
   // NOTE: redirectUri is now dynamic - use getRedirectUri() instead of this property
   get redirectUri() { return getRedirectUri(); },
 
-  // Granular scopes for different Google services
+  // All available scopes for different Google services
   scopes: [
     // Gmail scopes
     'https://www.googleapis.com/auth/gmail.send',
@@ -43,10 +43,44 @@ export const GOOGLE_OAUTH_CONFIG = {
     // Google Docs scopes
     'https://www.googleapis.com/auth/documents',
 
+    // Google Calendar scopes
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.events',
+
     // User profile (for identification)
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
   ],
+
+  // Service-specific scope groups
+  scopeGroups: {
+    gmail: [
+      'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.compose',
+      'https://www.googleapis.com/auth/gmail.modify',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+    calendar: [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+    sheets: [
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+    docs: [
+      'https://www.googleapis.com/auth/documents',
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+  } as Record<string, string[]>,
 
   // Authorization endpoint
   authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -79,16 +113,23 @@ export type GoogleUserInfo = {
 
 /**
  * Generate Google OAuth authorization URL
+ * @param state - CSRF state token
+ * @param service - Optional service name ('gmail', 'calendar', 'sheets', 'docs') to request only that service's scopes
  */
-export function getGoogleAuthUrl(state: string): string {
+export function getGoogleAuthUrl(state: string, service?: string): string {
   const redirectUri = getRedirectUri();
-  console.log('[Google OAuth] getGoogleAuthUrl - redirect_uri:', redirectUri);
+  console.log('[Google OAuth] getGoogleAuthUrl - redirect_uri:', redirectUri, 'service:', service);
+
+  // Use service-specific scopes if provided, otherwise all scopes
+  const scopes = service && GOOGLE_OAUTH_CONFIG.scopeGroups[service]
+    ? GOOGLE_OAUTH_CONFIG.scopeGroups[service]
+    : GOOGLE_OAUTH_CONFIG.scopes;
 
   const params = new URLSearchParams({
     client_id: GOOGLE_OAUTH_CONFIG.clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: GOOGLE_OAUTH_CONFIG.scopes.join(' '),
+    scope: scopes.join(' '),
     access_type: 'offline', // Get refresh token
     prompt: 'consent', // Force consent to get refresh token
     state,

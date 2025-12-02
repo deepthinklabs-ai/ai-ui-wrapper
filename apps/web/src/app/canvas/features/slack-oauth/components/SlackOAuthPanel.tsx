@@ -26,10 +26,15 @@ export function SlackOAuthPanel({
   const { connection, status, isLoading, error, connect, disconnect } = useSlackOAuth();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
-  // Use provided config or defaults
+  // Use provided config or defaults - deep merge permissions
   const currentConfig: SlackOAuthConfig = {
     ...DEFAULT_SLACK_CONFIG,
     ...config,
+    // Deep merge permissions to ensure all permission keys exist
+    permissions: {
+      ...DEFAULT_SLACK_CONFIG.permissions,
+      ...config.permissions,
+    },
   };
 
   const handleToggleEnabled = () => {

@@ -27,10 +27,15 @@ export function DocsOAuthPanel({
   const { connection, status, isLoading, error, connect, disconnect } = useGmailOAuth();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
-  // Use provided config or defaults
+  // Use provided config or defaults - deep merge permissions
   const currentConfig: DocsOAuthConfig = {
     ...DEFAULT_DOCS_CONFIG,
     ...config,
+    // Deep merge permissions to ensure all permission keys exist
+    permissions: {
+      ...DEFAULT_DOCS_CONFIG.permissions,
+      ...config.permissions,
+    },
   };
 
   const handleToggleEnabled = () => {

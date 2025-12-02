@@ -129,6 +129,36 @@ export async function getDocsClient(userId: string) {
 }
 
 /**
+ * Get authenticated Google Calendar client
+ * Usage: const calendar = await getCalendarClient(userId);
+ */
+export async function getCalendarClient(userId: string) {
+  const accessToken = await getValidAccessToken(userId, 'google');
+
+  if (!accessToken) {
+    throw new Error('No valid Google OAuth connection found. Please connect your Google account.');
+  }
+
+  const oauth2Client = new google.auth.OAuth2(
+    GOOGLE_OAUTH_CONFIG.clientId,
+    GOOGLE_OAUTH_CONFIG.clientSecret,
+    GOOGLE_OAUTH_CONFIG.redirectUri
+  );
+
+  oauth2Client.setCredentials({
+    access_token: accessToken,
+  });
+
+  // Update last used timestamp
+  const connection = await getOAuthConnection(userId, 'google');
+  if (connection) {
+    await updateLastUsed(connection.id);
+  }
+
+  return google.calendar({ version: 'v3', auth: oauth2Client });
+}
+
+/**
  * Check if user has Google OAuth connection
  */
 export async function hasGoogleConnection(userId: string): Promise<boolean> {
@@ -161,6 +191,9 @@ export async function getAvailableGoogleServices(userId: string): Promise<string
   }
   if (scopes.some(s => s.includes('documents'))) {
     services.push('docs');
+  }
+  if (scopes.some(s => s.includes('calendar'))) {
+    services.push('calendar');
   }
 
   return services;

@@ -10,6 +10,7 @@ import type { GmailOAuthConfig } from '../features/gmail-oauth/types';
 import type { SheetsOAuthConfig } from '../features/sheets-oauth/types';
 import type { DocsOAuthConfig } from '../features/docs-oauth/types';
 import type { SlackOAuthConfig } from '../features/slack-oauth/types';
+import type { CalendarOAuthConfig } from '../features/calendar-oauth/types';
 
 // ============================================================================
 // CANVAS
@@ -100,6 +101,9 @@ export interface GenesisBotNodeConfig {
 
   // Gmail Integration
   gmail?: GmailOAuthConfig;
+
+  // Google Calendar Integration
+  calendar?: CalendarOAuthConfig;
 
   // Google Sheets Integration
   sheets?: SheetsOAuthConfig;
