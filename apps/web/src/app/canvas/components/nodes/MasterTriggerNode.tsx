@@ -222,8 +222,8 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
             <div className="mt-2 text-center">
               <div className={`text-xs ${isExposed ? 'text-green-400' : 'text-slate-500'}`}>
                 {isExposed
-                  ? 'Visible in Genesis Bot dropdown'
-                  : 'Enable exposure to show in Genesis Bot'
+                  ? 'Visible in AI Agent dropdown'
+                  : 'Enable exposure to show in AI Agent'
                 }
               </div>
             </div>
@@ -231,7 +231,7 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
         )}
       </div>
 
-      {/* Output Handle - connects to Genesis Bot nodes */}
+      {/* Output Handle - connects to AI Agent nodes */}
       <Handle
         type="source"
         position={Position.Right}

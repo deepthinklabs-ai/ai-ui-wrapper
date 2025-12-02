@@ -182,7 +182,7 @@ export default function CanvasPage() {
 
             {/* Description */}
             <p className="mb-8 text-lg text-slate-300">
-              Canvas is your visual workflow builder for orchestrating Genesis Bots,
+              Canvas is your visual workflow builder for orchestrating AI Agents,
               Training Sessions, Boardrooms, and all your AI features in one place.
             </p>
 
@@ -190,9 +190,9 @@ export default function CanvasPage() {
             <div className="mb-8 grid grid-cols-1 gap-4 text-left sm:grid-cols-2">
               <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
                 <div className="mb-2 text-2xl">🤖</div>
-                <h3 className="mb-1 font-semibold text-slate-200">Genesis Bots</h3>
+                <h3 className="mb-1 font-semibold text-slate-200">AI Agents</h3>
                 <p className="text-sm text-slate-400">
-                  Connect and orchestrate multiple AI bots with different roles
+                  Connect and orchestrate multiple AI agents with different roles
                 </p>
               </div>
 

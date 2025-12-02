@@ -82,8 +82,8 @@ export interface NodeDefinition {
 export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
   GENESIS_BOT: {
     type: 'GENESIS_BOT',
-    label: 'Genesis Bot',
-    description: 'AI bot with full configurability - model, system prompt, tools, voice, memory',
+    label: 'AI Agent',
+    description: 'AI agent with full configurability - model, system prompt, tools, voice, memory',
     category: 'bot',
     icon: '🤖',
     color: 'blue',
@@ -117,7 +117,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       },
     ],
     defaultConfig: {
-      name: 'New Genesis Bot',
+      name: 'New AI Agent',
       description: '',
       model_provider: 'claude',
       model_name: 'claude-sonnet-4-5',
@@ -138,14 +138,14 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
   TRAINING_SESSION: {
     type: 'TRAINING_SESSION',
     label: 'Training Session',
-    description: 'Train and refine a Genesis Bot through conversation and instruction',
+    description: 'Train and refine an AI Agent through conversation and instruction',
     category: 'training',
     icon: '🎓',
     color: 'purple',
     inputs: [
       {
         id: 'bot',
-        label: 'Genesis Bot',
+        label: 'AI Agent',
         type: 'input',
         dataType: 'bot',
         required: true,
@@ -273,7 +273,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
   MASTER_TRIGGER: {
     type: 'MASTER_TRIGGER',
     label: 'Master Trigger',
-    description: 'Expose workflow to Genesis Bot page for triggering from chat',
+    description: 'Expose workflow to AI Agent page for triggering from chat',
     category: 'trigger',
     icon: '🎯',
     color: 'purple',

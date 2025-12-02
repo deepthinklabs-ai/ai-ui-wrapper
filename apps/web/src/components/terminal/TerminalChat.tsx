@@ -85,7 +85,7 @@ export default function TerminalChat({ messages, isProcessing }: TerminalChatPro
             <p className="text-slate-500 text-sm">
               Start typing a command or question...
               <br />
-              <span className="text-xs">Upload files and images like Genesis Bot!</span>
+              <span className="text-xs">Upload files and images like AI Agent!</span>
             </p>
           </div>
         )}
