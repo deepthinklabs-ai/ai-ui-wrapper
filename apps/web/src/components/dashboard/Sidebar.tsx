@@ -245,21 +245,6 @@ export default function Sidebar({
           </button>
           <button
             type="button"
-            onClick={() => router.push("/terminal")}
-            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            Terminal Bot Command
-          </button>
-          <button
-            type="button"
             onClick={() => router.push("/cablebox")}
             className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
           >
