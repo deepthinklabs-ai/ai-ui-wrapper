@@ -273,7 +273,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
   MASTER_TRIGGER: {
     type: 'MASTER_TRIGGER',
     label: 'Master Trigger',
-    description: 'Expose workflow to AI Agent page for triggering from chat',
+    description: 'Expose workflow to Genesis Chat Bot page for triggering from chat',
     category: 'trigger',
     icon: '🎯',
     color: 'purple',
