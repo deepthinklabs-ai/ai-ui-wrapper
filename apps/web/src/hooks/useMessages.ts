@@ -308,15 +308,8 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
         }
       );
 
-      // Debug: Log system prompts being sent (optional - uncomment to see what's included)
-      const systemPrompts = payloadMessages.filter(m => m.role === 'system');
-      console.log('[System Prompts]', systemPrompts.length, 'prompts:', systemPrompts.map(p => {
-        const content = typeof p.content === 'string' ? p.content : JSON.stringify(p.content);
-        return content.substring(0, 100) + '...';
-      }));
-      console.log('[Full System Prompts]', JSON.stringify(systemPrompts, null, 2));
-      console.log('[Total Payload Messages]', payloadMessages.length, 'messages');
-      console.log('[Full Payload]', JSON.stringify(payloadMessages, null, 2));
+      // Log message counts only (not content for privacy)
+      console.log('[Chat Request]', payloadMessages.length, 'messages');
 
       // 5) Call unified AI client (routes to OpenAI or Claude based on selected model and user tier)
       const response = await sendUnifiedChatRequest(payloadMessages, {
@@ -483,6 +476,9 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
 
           if (!threadError && threadData && shouldGenerateTitle(threadData.title)) {
             console.log("[Title Generation] Generating title for content:", content.substring(0, 100));
+
+            // Wait to avoid hitting rate limiter (title generation is a separate API call)
+            await new Promise(resolve => setTimeout(resolve, 2500));
 
             // Generate a title based on the user's first message (use the original content without file additions)
             const newTitle = await generateThreadTitle(content, {

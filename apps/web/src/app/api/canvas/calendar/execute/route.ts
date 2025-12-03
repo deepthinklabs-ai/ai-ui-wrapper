@@ -155,9 +155,8 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Log tool usage
+    // Log tool usage (not content for privacy)
     console.log(`[Calendar Execute] User ${userId} | Node ${nodeId} | Tool: ${toolName} | Success`);
-    console.log(`[Calendar Execute] Result:`, JSON.stringify(result).substring(0, 500));
 
     return NextResponse.json({
       success: true,

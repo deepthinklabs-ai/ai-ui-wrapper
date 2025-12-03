@@ -248,14 +248,9 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
 
-    // Log the full response for debugging
+    // Log metadata only (not content for privacy)
     console.log('[Claude API] Response stop_reason:', data.stop_reason);
-    console.log('[Claude API] Content blocks:', JSON.stringify(data.content?.map((b: any) => ({
-      type: b.type,
-      hasText: !!b.text,
-      textLength: b.text?.length,
-      textPreview: b.text?.substring(0, 100)
-    })), null, 2));
+    console.log('[Claude API] Content blocks:', data.content?.length || 0, 'blocks');
 
     // If stop_reason indicates truncation, log warning
     if (data.stop_reason === 'max_tokens') {
@@ -277,11 +272,11 @@ export async function POST(req: NextRequest) {
     const textBlocks = data.content?.filter((block: any) => block.type === 'text') || [];
     let content = textBlocks.map((block: any) => block.text).join('\n\n');
 
-    console.log('[Claude API] Found', textBlocks.length, 'text blocks, total content length:', content.length);
+    console.log('[Claude API] Found', textBlocks.length, 'text blocks');
 
     if (!content && !hasClientToolUse) {
       // No text and no client-side tool use means something went wrong
-      console.error('[Claude API] No text content in response:', JSON.stringify(data.content, null, 2));
+      console.error('[Claude API] No text content in response (block types:', data.content?.map((b: any) => b.type).join(', ') + ')');
       return NextResponse.json(
         { error: 'No response from Claude' },
         { status: 500 }

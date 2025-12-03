@@ -153,8 +153,7 @@ export async function POST(req: NextRequest) {
     const startTime = Date.now();
     const completion = await openai.chat.completions.create(completionParams);
 
-    // Debug log: See the full message structure
-    console.log('[PRO API] Full message object:', JSON.stringify(completion.choices?.[0]?.message, null, 2));
+    // Log metadata only (not content for privacy)
 
     const message = completion.choices?.[0]?.message;
     const reply = message?.content;
