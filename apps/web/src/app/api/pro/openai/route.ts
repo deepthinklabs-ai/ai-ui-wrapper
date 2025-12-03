@@ -9,6 +9,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import {
+  checkRateLimit,
+  recordUsage,
+  getRateLimitErrorMessage,
+  getRateLimitHeaders,
+} from '@/lib/rateLimiting';
 
 // Initialize OpenAI client with app's API key
 const openai = new OpenAI({
@@ -70,8 +76,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // TODO: Rate limiting check (coming soon)
-    // For now, we'll rely on OpenAI's rate limits
+    // Rate limiting check
+    const rateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+
+    if (!rateLimitResult.allowed) {
+      const errorMessage = getRateLimitErrorMessage(rateLimitResult.status);
+      const headers = getRateLimitHeaders(rateLimitResult.status);
+
+      console.log(`[PRO API] Rate limited: user=${userId}, model=${model}, reason=${rateLimitResult.status.block_reason}`);
+
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          rateLimited: true,
+          resetTime: rateLimitResult.status.reset_time,
+        },
+        {
+          status: 429,
+          headers,
+        }
+      );
+    }
 
     // Use search-enabled model if available and requested
     const actualModel = enableWebSearch && SEARCH_ENABLED_MODELS[model]
@@ -132,21 +157,34 @@ export async function POST(req: NextRequest) {
     if (toolCalls && toolCalls.length > 0) {
       console.log(`[PRO API] Model made ${toolCalls.length} tool calls`);
       const latency = Date.now() - startTime;
-      console.log(`[PRO API] User ${userId} | Model: ${model} | Tool calls: ${toolCalls.length} | Latency: ${latency}ms`);
+      const tokensUsed = completion.usage?.total_tokens || 0;
+      console.log(`[PRO API] User ${userId} | Model: ${model} | Tool calls: ${toolCalls.length} | Tokens: ${tokensUsed} | Latency: ${latency}ms`);
 
-      return NextResponse.json({
-        content: reply || '',
-        toolCalls: toolCalls.map((tc: any) => ({
-          id: tc.id,
-          name: tc.function.name,
-          input: JSON.parse(tc.function.arguments || '{}'),
-        })),
-        usage: completion.usage ? {
-          prompt_tokens: completion.usage.prompt_tokens,
-          completion_tokens: completion.usage.completion_tokens,
-          total_tokens: completion.usage.total_tokens,
-        } : undefined,
-      });
+      // Record usage for rate limiting
+      await recordUsage(supabase, userId, model, tokensUsed);
+
+      // Get updated rate limit status for headers
+      const updatedRateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+      const rateLimitHeaders = getRateLimitHeaders(updatedRateLimitResult.status);
+
+      return NextResponse.json(
+        {
+          content: reply || '',
+          toolCalls: toolCalls.map((tc: any) => ({
+            id: tc.id,
+            name: tc.function.name,
+            input: JSON.parse(tc.function.arguments || '{}'),
+          })),
+          usage: completion.usage ? {
+            prompt_tokens: completion.usage.prompt_tokens,
+            completion_tokens: completion.usage.completion_tokens,
+            total_tokens: completion.usage.total_tokens,
+          } : undefined,
+          // Include warning if approaching limit
+          rateLimitWarning: updatedRateLimitResult.status.warning_message,
+        },
+        { headers: rateLimitHeaders }
+      );
     }
 
     if (!reply) {
@@ -165,15 +203,12 @@ export async function POST(req: NextRequest) {
     // Log usage for cost tracking
     console.log(`[PRO API] User ${userId} | Model: ${model} | Tokens: ${usage.total_tokens} | Latency: ${latency}ms`);
 
-    // TODO: Track usage in database for billing/analytics (coming soon)
-    // await supabase.from('api_usage').insert({
-    //   user_id: userId,
-    //   model,
-    //   prompt_tokens: usage.prompt_tokens,
-    //   completion_tokens: usage.completion_tokens,
-    //   total_tokens: usage.total_tokens,
-    //   latency_ms: latency,
-    // });
+    // Record usage for rate limiting
+    await recordUsage(supabase, userId, model, usage.total_tokens);
+
+    // Get updated rate limit status for headers
+    const updatedRateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+    const rateLimitHeaders = getRateLimitHeaders(updatedRateLimitResult.status);
 
     // Extract citations from annotations (for search-enabled models)
     // Reuse `message` from line 125 instead of fetching again
@@ -230,15 +265,20 @@ export async function POST(req: NextRequest) {
       console.log(`[PRO API] Final ${citations.length} citations (combined):`, JSON.stringify(citations, null, 2));
     }
 
-    return NextResponse.json({
-      content: reply,
-      usage: {
-        prompt_tokens: usage.prompt_tokens,
-        completion_tokens: usage.completion_tokens,
-        total_tokens: usage.total_tokens,
+    return NextResponse.json(
+      {
+        content: reply,
+        usage: {
+          prompt_tokens: usage.prompt_tokens,
+          completion_tokens: usage.completion_tokens,
+          total_tokens: usage.total_tokens,
+        },
+        citations: citations.length > 0 ? citations : undefined,
+        // Include warning if approaching limit
+        rateLimitWarning: updatedRateLimitResult.status.warning_message,
       },
-      citations: citations.length > 0 ? citations : undefined,
-    });
+      { headers: rateLimitHeaders }
+    );
   } catch (error: any) {
     console.error('Error in /api/pro/openai:', error);
 

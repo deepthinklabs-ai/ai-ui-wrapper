@@ -8,6 +8,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  checkRateLimit,
+  recordUsage,
+  getRateLimitErrorMessage,
+  getRateLimitHeaders,
+} from '@/lib/rateLimiting';
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,8 +77,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // TODO: Rate limiting check (coming soon)
-    // For now, we'll rely on xAI's rate limits
+    // Rate limiting check
+    const rateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+
+    if (!rateLimitResult.allowed) {
+      const errorMessage = getRateLimitErrorMessage(rateLimitResult.status);
+      const headers = getRateLimitHeaders(rateLimitResult.status);
+
+      console.log(`[PRO API Grok] Rate limited: user=${userId}, model=${model}, reason=${rateLimitResult.status.block_reason}`);
+
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          rateLimited: true,
+          resetTime: rateLimitResult.status.reset_time,
+        },
+        {
+          status: 429,
+          headers,
+        }
+      );
+    }
 
     // Make request to Grok (uses OpenAI-compatible API)
     const startTime = Date.now();
@@ -181,26 +206,28 @@ export async function POST(req: NextRequest) {
     const latency = Date.now() - startTime;
 
     // Log usage for cost tracking
-    console.log(`[PRO API] User ${userId} | Model: ${model} | Tokens: ${usage.total_tokens} | Latency: ${latency}ms`);
+    console.log(`[PRO API Grok] User ${userId} | Model: ${model} | Tokens: ${usage.total_tokens} | Latency: ${latency}ms`);
 
-    // TODO: Track usage in database for billing/analytics (coming soon)
-    // await supabase.from('api_usage').insert({
-    //   user_id: userId,
-    //   model,
-    //   prompt_tokens: usage.prompt_tokens,
-    //   completion_tokens: usage.completion_tokens,
-    //   total_tokens: usage.total_tokens,
-    //   latency_ms: latency,
-    // });
+    // Record usage for rate limiting
+    await recordUsage(supabase, userId, model, usage.total_tokens);
 
-    return NextResponse.json({
-      content: reply,
-      usage: {
-        input_tokens: usage.prompt_tokens,
-        output_tokens: usage.completion_tokens,
-        total_tokens: usage.total_tokens,
+    // Get updated rate limit status for headers
+    const updatedRateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+    const rateLimitHeaders = getRateLimitHeaders(updatedRateLimitResult.status);
+
+    return NextResponse.json(
+      {
+        content: reply,
+        usage: {
+          input_tokens: usage.prompt_tokens,
+          output_tokens: usage.completion_tokens,
+          total_tokens: usage.total_tokens,
+        },
+        // Include warning if approaching limit
+        rateLimitWarning: updatedRateLimitResult.status.warning_message,
       },
-    });
+      { headers: rateLimitHeaders }
+    );
   } catch (error: any) {
     console.error('Error in /api/pro/grok:', error);
 

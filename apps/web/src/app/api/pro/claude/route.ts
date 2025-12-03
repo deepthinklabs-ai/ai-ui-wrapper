@@ -8,6 +8,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  checkRateLimit,
+  recordUsage,
+  getRateLimitErrorMessage,
+  getRateLimitHeaders,
+} from '@/lib/rateLimiting';
 
 // Map our internal model names to Claude API model names
 const CLAUDE_API_MODEL_MAP: Record<string, string> = {
@@ -69,6 +75,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'This endpoint is only available for Pro users. Please upgrade to Pro or use your own API key.' },
         { status: 403 }
+      );
+    }
+
+    // Rate limiting check
+    const rateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+
+    if (!rateLimitResult.allowed) {
+      const errorMessage = getRateLimitErrorMessage(rateLimitResult.status);
+      const headers = getRateLimitHeaders(rateLimitResult.status);
+
+      console.log(`[PRO API Claude] Rate limited: user=${userId}, model=${model}, reason=${rateLimitResult.status.block_reason}`);
+
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          rateLimited: true,
+          resetTime: rateLimitResult.status.reset_time,
+        },
+        {
+          status: 429,
+          headers,
+        }
       );
     }
 
@@ -262,37 +290,39 @@ export async function POST(req: NextRequest) {
     };
 
     const latency = Date.now() - startTime;
+    const totalTokens = usage.input_tokens + usage.output_tokens;
 
     // Log usage for cost tracking
-    console.log(`[PRO API] User ${userId} | Model: ${model} | Tokens: ${usage.input_tokens + usage.output_tokens} | Latency: ${latency}ms`);
+    console.log(`[PRO API Claude] User ${userId} | Model: ${model} | Tokens: ${totalTokens} | Latency: ${latency}ms`);
 
-    // TODO: Track usage in database for billing/analytics (coming soon)
-    // await supabase.from('api_usage').insert({
-    //   user_id: userId,
-    //   provider: 'claude',
-    //   model,
-    //   prompt_tokens: usage.input_tokens,
-    //   completion_tokens: usage.output_tokens,
-    //   total_tokens: usage.input_tokens + usage.output_tokens,
-    //   latency_ms: latency,
-    // });
+    // Record usage for rate limiting
+    await recordUsage(supabase, userId, model, totalTokens);
+
+    // Get updated rate limit status for headers
+    const updatedRateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+    const rateLimitHeaders = getRateLimitHeaders(updatedRateLimitResult.status);
 
     // Check if web search was used in this response
     const usedWebSearch = data.content?.some(
       (block: any) => block.type === 'web_search_tool_result' || block.name === 'web_search'
     );
 
-    return NextResponse.json({
-      content: content,
-      contentBlocks: data.content, // Include full content blocks for tool use
-      usage: {
-        input_tokens: usage.input_tokens,
-        output_tokens: usage.output_tokens,
-        total_tokens: usage.input_tokens + usage.output_tokens,
+    return NextResponse.json(
+      {
+        content: content,
+        contentBlocks: data.content, // Include full content blocks for tool use
+        usage: {
+          input_tokens: usage.input_tokens,
+          output_tokens: usage.output_tokens,
+          total_tokens: totalTokens,
+        },
+        stop_reason: data.stop_reason, // Include stop reason (can be 'tool_use')
+        usedWebSearch, // Indicate if web search was used
+        // Include warning if approaching limit
+        rateLimitWarning: updatedRateLimitResult.status.warning_message,
       },
-      stop_reason: data.stop_reason, // Include stop reason (can be 'tool_use')
-      usedWebSearch, // Indicate if web search was used
-    });
+      { headers: rateLimitHeaders }
+    );
   } catch (error: any) {
     console.error('Error in /api/pro/claude:', error);
 
