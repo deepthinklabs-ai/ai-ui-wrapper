@@ -29,7 +29,9 @@ export type ChatResponse = {
 
 // Map models to their search-enabled variants
 const SEARCH_ENABLED_MODELS: Record<string, string> = {
-  'gpt-5': 'gpt-5-search-api-2025-10-14',
+  'gpt-5.1': 'gpt-5.1',
+  'gpt-5.1-mini': 'gpt-5.1-mini',
+  'gpt-5.1-nano': 'gpt-5.1-nano',
   'gpt-4o': 'gpt-4o-search-preview',
 };
 

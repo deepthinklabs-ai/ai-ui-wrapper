@@ -57,7 +57,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ value, onChange }) => {
           )}
 
           {/* Recommended Badge */}
-          {model.value === "gpt-5" && (
+          {model.value === "gpt-5.1" && (
             <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-xs text-purple-300">
               Recommended
             </span>

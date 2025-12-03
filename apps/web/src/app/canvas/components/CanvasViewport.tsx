@@ -28,6 +28,8 @@ import type { CanvasNode, CanvasEdge, NodeId } from '../types';
 import { NODE_DEFINITIONS } from '../lib/nodeRegistry';
 import GenesisBotNode from './nodes/GenesisBotNode';
 import MasterTriggerNode from './nodes/MasterTriggerNode';
+import SmartRouterNode from './nodes/SmartRouterNode';
+import ResponseCompilerNode from './nodes/ResponseCompilerNode';
 import DeletableEdge from './edges/DeletableEdge';
 import CanvasDebugOverlay from './CanvasDebugOverlay';
 
@@ -61,6 +63,8 @@ export default function CanvasViewport({
     () => ({
       GENESIS_BOT: GenesisBotNode,
       MASTER_TRIGGER: MasterTriggerNode,
+      SMART_ROUTER: SmartRouterNode,
+      RESPONSE_COMPILER: ResponseCompilerNode,
       // TODO: Add other custom node types here
       // TRAINING_SESSION: TrainingSessionNode,
       // BOARDROOM: BoardroomNode,

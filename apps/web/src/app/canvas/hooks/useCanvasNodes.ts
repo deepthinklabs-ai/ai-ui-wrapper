@@ -132,8 +132,9 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
         setNodes(prev => [...prev, transformedNode]);
 
         return transformedNode;
-      } catch (err) {
-        console.error('[useCanvasNodes] Error adding node:', err);
+      } catch (err: any) {
+        console.error('[useCanvasNodes] Error adding node:', err?.message || err?.code || JSON.stringify(err));
+        console.error('[useCanvasNodes] Full error:', JSON.stringify(err, null, 2));
         return null;
       } finally {
         setLoading(false);

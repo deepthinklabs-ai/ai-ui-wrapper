@@ -40,7 +40,7 @@ function SettingsPageContent() {
   const [openaiApiKey, setOpenaiApiKeyState] = useState("");
   const [claudeApiKey, setClaudeApiKeyState] = useState("");
   const [grokApiKey, setGrokApiKeyState] = useState("");
-  const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5");
+  const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5.1");
   const [isTesting, setIsTesting] = useState(false);
   const [isTestingClaude, setIsTestingClaude] = useState(false);
   const [isTestingGrok, setIsTestingGrok] = useState(false);

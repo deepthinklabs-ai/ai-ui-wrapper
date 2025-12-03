@@ -45,6 +45,8 @@ export type CanvasNodeType =
   | 'CABLE_CHANNEL'
   | 'TRIGGER'
   | 'MASTER_TRIGGER'
+  | 'SMART_ROUTER'
+  | 'RESPONSE_COMPILER'
   | 'TOOL'
   | 'TERMINAL_COMMAND'
   | 'CUSTOM';
@@ -230,6 +232,101 @@ export interface MasterTriggerNodeConfig {
   // State tracking
   last_triggered_at?: string;
   trigger_count?: number;
+}
+
+/**
+ * Integration type for routing context
+ */
+export type IntegrationType = 'gmail' | 'calendar' | 'sheets' | 'docs' | 'slack';
+
+/**
+ * Keyword-based routing rule
+ */
+export interface KeywordRoutingRule {
+  id: string;
+  keywords: string[]; // Keywords to match (case-insensitive)
+  integration_type?: IntegrationType; // Optional: only match if agent has this integration
+  priority: number; // Higher priority rules checked first
+  enabled: boolean;
+}
+
+/**
+ * Connected agent info for routing context (runtime only, not persisted)
+ */
+export interface ConnectedAgentInfo {
+  nodeId: string;
+  name: string;
+  integrations: IntegrationType[];
+  capabilities: string[]; // Human-readable capability descriptions
+}
+
+/**
+ * Smart Router Node
+ * Intelligent routing node that analyzes queries and routes to appropriate agents
+ * based on their capabilities and integrations.
+ */
+export interface SmartRouterNodeConfig {
+  // Identity
+  name: string;
+  description?: string;
+
+  // Model configuration (for AI routing decisions)
+  model_provider: 'openai' | 'claude' | 'grok';
+  model_name: AIModel;
+
+  // Routing configuration
+  routing_strategy: 'ai_only' | 'keyword_then_ai' | 'keyword_only';
+
+  // Keyword routing rules (for preset detection)
+  keyword_rules: KeywordRoutingRule[];
+
+  // AI routing settings
+  ai_routing_prompt?: string; // Custom prompt for AI routing decision
+  temperature?: number;
+
+  // Execution settings
+  allow_parallel_routing: boolean; // Can route to multiple agents simultaneously
+  max_parallel_agents?: number; // Max agents to route to in parallel (default: 5)
+  fallback_agent_id?: string; // Default agent if no routing match
+
+  // State tracking
+  last_routed_at?: string;
+  routing_count?: number;
+}
+
+/**
+ * Response Compiler Node
+ * Collects responses from multiple upstream agents and compiles them
+ * into a single cohesive response.
+ */
+export interface ResponseCompilerNodeConfig {
+  // Identity
+  name: string;
+  description?: string;
+
+  // Model configuration (for AI summarization)
+  model_provider: 'openai' | 'claude' | 'grok';
+  model_name: AIModel;
+
+  // Compilation settings
+  compilation_strategy: 'ai_summarize' | 'concatenate' | 'prioritized';
+
+  // AI summarization settings
+  summarization_prompt?: string; // Custom prompt for compilation
+  temperature?: number;
+  max_tokens?: number;
+
+  // Output formatting
+  include_source_attribution: boolean; // Add "[From Agent X]" prefixes
+  output_format: 'prose' | 'bullet_points' | 'structured';
+
+  // Timing settings
+  wait_timeout_ms?: number; // How long to wait for all responses (default: 30000)
+  partial_response_behavior: 'wait' | 'proceed' | 'fail';
+
+  // State tracking
+  last_compiled_at?: string;
+  compilation_count?: number;
 }
 
 /**

@@ -9,10 +9,11 @@ const API_KEY_STORAGE_KEY = 'openai_api_key';
 const MODEL_STORAGE_KEY = 'openai_model';
 
 export type AIModel =
-  // OpenAI Models
-  | 'gpt-5'
-  | 'gpt-5-mini'
-  | 'gpt-5-nano'
+  // OpenAI Models (GPT-5.1 generation)
+  | 'gpt-5.1'
+  | 'gpt-5.1-mini'
+  | 'gpt-5.1-nano'
+  // OpenAI Models (GPT-4 generation)
   | 'gpt-4o'
   | 'gpt-4o-mini'
   | 'gpt-4-turbo'
@@ -87,26 +88,26 @@ export const AVAILABLE_MODELS: {
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 200000,
   },
-  // OpenAI Models
+  // OpenAI Models (GPT-5.1 generation)
   {
-    value: 'gpt-5',
-    label: 'GPT-5',
-    description: 'Latest OpenAI model, best for coding and agentic tasks, 272K context • Supports images • Web search enabled',
+    value: 'gpt-5.1',
+    label: 'GPT-5.1',
+    description: 'Latest OpenAI model with adaptive reasoning, best for coding and agentic tasks • Supports images • Web search enabled',
     provider: 'openai',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 272000,
   },
   {
-    value: 'gpt-5-mini',
-    label: 'GPT-5 Mini',
+    value: 'gpt-5.1-mini',
+    label: 'GPT-5.1 Mini',
     description: 'Balanced performance and cost, great for most applications • Supports images',
     provider: 'openai',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 128000,
   },
   {
-    value: 'gpt-5-nano',
-    label: 'GPT-5 Nano',
+    value: 'gpt-5.1-nano',
+    label: 'GPT-5.1 Nano',
     description: 'Ultra-fast and cost-efficient, ideal for high-volume tasks • Supports images',
     provider: 'openai',
     capabilities: { supportsImages: true, supportsFiles: true },
@@ -225,9 +226,9 @@ export function hasApiKey(): boolean {
  * Get the selected AI model from localStorage
  */
 export function getSelectedModel(): AIModel {
-  if (typeof window === 'undefined') return 'gpt-5';
+  if (typeof window === 'undefined') return 'gpt-5.1';
   const stored = localStorage.getItem(MODEL_STORAGE_KEY);
-  return (stored as AIModel) || 'gpt-5';
+  return (stored as AIModel) || 'gpt-5.1';
 }
 
 /**

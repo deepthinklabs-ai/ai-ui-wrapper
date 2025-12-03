@@ -136,7 +136,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                             Latest
                           </span>
                         )}
-                        {model.value === "gpt-5" && (
+                        {model.value === "gpt-5.1" && (
                           <span className="rounded-full bg-purple-500/20 px-1.5 py-0.5 text-[9px] text-purple-300">
                             Recommended
                           </span>
