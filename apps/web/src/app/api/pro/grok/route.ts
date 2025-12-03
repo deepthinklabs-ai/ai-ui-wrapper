@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   checkRateLimit,
   recordUsage,
+  recordRequestTimestamp,
   getRateLimitErrorMessage,
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
@@ -98,6 +99,10 @@ export async function POST(req: NextRequest) {
         }
       );
     }
+
+    // Immediately record request timestamp for burst protection
+    // This prevents race conditions with parallel requests
+    await recordRequestTimestamp(supabase, userId, model);
 
     // Make request to Grok (uses OpenAI-compatible API)
     const startTime = Date.now();

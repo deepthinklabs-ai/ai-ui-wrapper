@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 import {
   checkRateLimit,
   recordUsage,
+  recordRequestTimestamp,
   getRateLimitErrorMessage,
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
@@ -77,7 +78,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Rate limiting check
+    console.log(`[PRO API] Checking rate limit for user=${userId}, model=${model}`);
     const rateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+    console.log(`[PRO API] Rate limit result: allowed=${rateLimitResult.allowed}, reason=${rateLimitResult.status.block_reason || 'none'}, requests_used=${rateLimitResult.status.daily_requests_used}/${rateLimitResult.status.daily_requests_limit}`);
 
     if (!rateLimitResult.allowed) {
       const errorMessage = getRateLimitErrorMessage(rateLimitResult.status);
@@ -97,6 +100,10 @@ export async function POST(req: NextRequest) {
         }
       );
     }
+
+    // Immediately record request timestamp for burst protection
+    // This prevents race conditions with parallel requests
+    await recordRequestTimestamp(supabase, userId, model);
 
     // Use search-enabled model if available and requested
     const actualModel = enableWebSearch && SEARCH_ENABLED_MODELS[model]

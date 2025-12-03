@@ -261,6 +261,45 @@ export async function checkRateLimit(
 }
 
 /**
+ * Immediately record request timestamp for burst protection
+ * Call this right after checkRateLimit passes, BEFORE making API call
+ */
+export async function recordRequestTimestamp(
+  supabase: SupabaseClient,
+  userId: string,
+  modelName: string
+): Promise<void> {
+  const estDate = getESTDate();
+  const now = new Date().toISOString();
+
+  // Try to update existing record first (preserves counts)
+  const { data: updated } = await supabase
+    .from('user_daily_usage')
+    .update({ last_request_at: now, updated_at: now })
+    .eq('user_id', userId)
+    .eq('model_name', modelName)
+    .eq('usage_date', estDate)
+    .select('id')
+    .single();
+
+  // If no record exists, create one
+  if (!updated) {
+    await supabase
+      .from('user_daily_usage')
+      .insert({
+        user_id: userId,
+        model_name: modelName,
+        usage_date: estDate,
+        request_count: 0,
+        token_count: 0,
+        last_request_at: now,
+      });
+  }
+
+  console.log(`[RateLimit] Recorded request timestamp: user=${userId}, model=${modelName}`);
+}
+
+/**
  * Record usage after a successful request
  */
 export async function recordUsage(

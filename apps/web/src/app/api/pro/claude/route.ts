@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   checkRateLimit,
   recordUsage,
+  recordRequestTimestamp,
   getRateLimitErrorMessage,
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
@@ -99,6 +100,10 @@ export async function POST(req: NextRequest) {
         }
       );
     }
+
+    // Immediately record request timestamp for burst protection
+    // This prevents race conditions with parallel requests
+    await recordRequestTimestamp(supabase, userId, model);
 
     // Get the actual Claude API model name
     const apiModel = CLAUDE_API_MODEL_MAP[model] || model;
