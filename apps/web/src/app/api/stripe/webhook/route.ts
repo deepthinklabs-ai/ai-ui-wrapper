@@ -69,7 +69,13 @@ export async function POST(req: NextRequest) {
           .eq('user_id', userId)
           .eq('stripe_customer_id', customerId);
 
-        console.log(`✅ Checkout completed for user ${userId}`);
+        // Update user_profiles tier to 'pro' (backup, DB trigger should also do this)
+        await supabase
+          .from('user_profiles')
+          .update({ tier: 'pro' })
+          .eq('id', userId);
+
+        console.log(`✅ Checkout completed for user ${userId}, upgraded to pro`);
         break;
       }
 

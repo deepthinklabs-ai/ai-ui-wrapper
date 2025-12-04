@@ -33,6 +33,8 @@ type UseEncryptedMessagesResult = {
   sendInFlight: boolean;
   summarizeInFlight: boolean;
   isEncryptionReady: boolean;
+  needsEncryptionSetup: boolean;
+  needsEncryptionUnlock: boolean;
   sendMessage: (content: string, files?: File[], overrideThreadId?: string) => Promise<void>;
   summarizeThread: () => Promise<void>;
   generateSummary: () => Promise<string>;
@@ -48,13 +50,22 @@ export function useEncryptedMessages(
   const [isDecrypting, setIsDecrypting] = useState(false);
 
   // Get encryption functions
-  const { encryptText, decryptText, isReady: isEncryptionReady } = useEncryption();
+  const {
+    encryptText,
+    decryptText,
+    isReady: isEncryptionReady,
+    state: encryptionState,
+  } = useEncryption();
+
+  // Determine encryption status
+  const needsEncryptionSetup = !encryptionState.isLoading && !encryptionState.hasEncryption;
+  const needsEncryptionUnlock = !encryptionState.isLoading && encryptionState.hasEncryption && !encryptionState.isUnlocked;
 
   // Pass encryption function to useMessages for database storage
   // The AI will receive plaintext, but the database will store encrypted
   const baseMessages = useMessages(threadId, {
     ...options,
-    encryptForStorage: isEncryptionReady ? encryptText : undefined,
+    encryptForStorage: isEncryptionReady && encryptionState.isUnlocked ? encryptText : undefined,
   });
 
   /**
@@ -75,7 +86,20 @@ export function useEncryptedMessages(
    * Decrypt all messages when base messages change
    */
   useEffect(() => {
+    // Don't try to decrypt if encryption isn't unlocked
     if (!isEncryptionReady || baseMessages.loadingMessages) {
+      return;
+    }
+
+    // If encryption isn't set up, just use the messages as-is
+    if (!encryptionState.hasEncryption) {
+      setDecryptedMessages(baseMessages.messages);
+      return;
+    }
+
+    // If encryption is set up but not unlocked, show empty messages
+    if (!encryptionState.isUnlocked) {
+      setDecryptedMessages([]);
       return;
     }
 
@@ -103,16 +127,25 @@ export function useEncryptedMessages(
     };
 
     decryptAll();
-  }, [baseMessages.messages, baseMessages.loadingMessages, isEncryptionReady, decryptMessage]);
+  }, [
+    baseMessages.messages,
+    baseMessages.loadingMessages,
+    isEncryptionReady,
+    encryptionState.hasEncryption,
+    encryptionState.isUnlocked,
+    decryptMessage
+  ]);
 
   return {
     messages: decryptedMessages,
-    loadingMessages: baseMessages.loadingMessages || isDecrypting,
+    loadingMessages: baseMessages.loadingMessages || isDecrypting || encryptionState.isLoading,
     messagesError: baseMessages.messagesError,
     encryptionError,
     sendInFlight: baseMessages.sendInFlight,
     summarizeInFlight: baseMessages.summarizeInFlight,
     isEncryptionReady,
+    needsEncryptionSetup,
+    needsEncryptionUnlock,
     sendMessage: baseMessages.sendMessage,
     summarizeThread: baseMessages.summarizeThread,
     generateSummary: baseMessages.generateSummary,

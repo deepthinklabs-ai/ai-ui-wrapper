@@ -4,8 +4,14 @@
  * Encryption Context
  *
  * Manages client-side encryption keys for conversation history.
- * Keys are generated per-device and stored in localStorage.
- * The server stores encrypted data it cannot read.
+ *
+ * Flow:
+ * 1. User sets up encryption password → key bundle stored on server
+ * 2. User logs in → prompted for encryption password
+ * 3. Password derives KEK → unwraps data key → stored in memory
+ * 4. Data key used to encrypt/decrypt messages
+ *
+ * The server stores wrapped keys it cannot decrypt without the password.
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
@@ -16,139 +22,287 @@ import {
   decrypt,
   encryptJSON,
   decryptJSON,
-  generateDataKey,
   isEncrypted,
+  type EncryptionKeyBundle,
+  type RecoveryCodeBundle,
 } from '@/lib/encryption';
 
+/**
+ * Helper to get auth headers for API requests
+ */
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('No active session');
+  }
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session.access_token}`,
+  };
+}
+
+interface EncryptionState {
+  isLoading: boolean;
+  hasEncryption: boolean;
+  isUnlocked: boolean;
+  keyBundle: EncryptionKeyBundle | null;
+  recoveryBundle: RecoveryCodeBundle | null;
+  remainingRecoveryCodes: number;
+}
+
 interface EncryptionContextType {
+  // State
+  state: EncryptionState;
   isReady: boolean;
+
+  // Encryption functions
   encryptText: (plaintext: string) => Promise<string>;
   decryptText: (ciphertext: string) => Promise<string>;
   encryptObject: <T>(data: T) => Promise<string>;
   decryptObject: <T>(ciphertext: string) => Promise<T>;
   isEncryptedData: (data: string) => boolean;
+
+  // Setup and unlock functions
+  refreshEncryptionState: () => Promise<void>;
+  setDataKey: (key: CryptoKey) => void;
+  clearDataKey: () => void;
+
+  // Modals
+  showSetupModal: boolean;
+  showUnlockModal: boolean;
+  setShowSetupModal: (show: boolean) => void;
+  setShowUnlockModal: (show: boolean) => void;
+
+  // Save to server
+  saveEncryptionSetup: (
+    keyBundle: EncryptionKeyBundle,
+    recoveryBundle: RecoveryCodeBundle,
+    deliveryMethod: string
+  ) => Promise<void>;
+
+  // Mark recovery code as used
+  markRecoveryCodeUsed: (
+    updatedBundle: RecoveryCodeBundle,
+    usedCodeHash: string
+  ) => Promise<void>;
 }
 
 const EncryptionContext = createContext<EncryptionContextType | undefined>(undefined);
 
-// LocalStorage key for the encryption key
-const ENCRYPTION_KEY_STORAGE = 'aiuiw_encryption_key';
-
-// In-memory key cache (for performance, avoids re-importing from localStorage)
+// In-memory data key (never persisted in plaintext)
 let cachedDataKey: CryptoKey | null = null;
-
-/**
- * Convert CryptoKey to storable format
- */
-async function exportKey(key: CryptoKey): Promise<string> {
-  const exported = await crypto.subtle.exportKey('raw', key);
-  const bytes = new Uint8Array(exported);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-/**
- * Import key from stored format
- */
-async function importKey(keyData: string): Promise<CryptoKey> {
-  const binary = atob(keyData);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-
-  return crypto.subtle.importKey(
-    'raw',
-    bytes,
-    { name: 'AES-GCM', length: 256 },
-    false, // Not extractable for security
-    ['encrypt', 'decrypt']
-  );
-}
-
-/**
- * Get or create encryption key for the current user/device
- */
-async function getOrCreateKey(userId: string): Promise<CryptoKey> {
-  // Check memory cache first
-  if (cachedDataKey) {
-    return cachedDataKey;
-  }
-
-  const storageKey = `${ENCRYPTION_KEY_STORAGE}_${userId}`;
-
-  // Check localStorage
-  const storedKey = localStorage.getItem(storageKey);
-  if (storedKey) {
-    try {
-      cachedDataKey = await importKey(storedKey);
-      return cachedDataKey;
-    } catch (err) {
-      console.warn('[Encryption] Failed to import stored key, generating new one');
-      localStorage.removeItem(storageKey);
-    }
-  }
-
-  // Generate new key
-  const newKey = await generateDataKey();
-  const exported = await exportKey(newKey);
-  localStorage.setItem(storageKey, exported);
-
-  // Re-import as non-extractable for security
-  cachedDataKey = await importKey(exported);
-
-  console.log('[Encryption] Generated new encryption key for user');
-  return cachedDataKey;
-}
 
 export function EncryptionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuthSession();
-  const [isReady, setIsReady] = useState(false);
 
-  // Initialize encryption key when user is available
-  useEffect(() => {
+  const [state, setState] = useState<EncryptionState>({
+    isLoading: true,
+    hasEncryption: false,
+    isUnlocked: false,
+    keyBundle: null,
+    recoveryBundle: null,
+    remainingRecoveryCodes: 0,
+  });
+
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+
+  /**
+   * Fetch encryption state from server
+   */
+  const refreshEncryptionState = useCallback(async () => {
     if (!user?.id) {
-      setIsReady(false);
-      cachedDataKey = null;
+      setState({
+        isLoading: false,
+        hasEncryption: false,
+        isUnlocked: false,
+        keyBundle: null,
+        recoveryBundle: null,
+        remainingRecoveryCodes: 0,
+      });
       return;
     }
 
-    const initKey = async () => {
+    try {
+      // Get auth headers (may fail if no session yet)
+      let headers: Record<string, string>;
       try {
-        await getOrCreateKey(user.id);
-        setIsReady(true);
-      } catch (err) {
-        console.error('[Encryption] Failed to initialize:', err);
-        // Encryption is optional - app still works without it
-        setIsReady(true);
+        headers = await getAuthHeaders();
+      } catch {
+        // No session yet - treat as no encryption
+        setState({
+          isLoading: false,
+          hasEncryption: false,
+          isUnlocked: false,
+          keyBundle: null,
+          recoveryBundle: null,
+          remainingRecoveryCodes: 0,
+        });
+        return;
       }
-    };
 
-    initKey();
+      const response = await fetch('/api/encryption', {
+        method: 'GET',
+        headers,
+      });
+
+      // Handle 401 (not authenticated yet) gracefully - treat as no encryption
+      if (response.status === 401) {
+        setState({
+          isLoading: false,
+          hasEncryption: false,
+          isUnlocked: false,
+          keyBundle: null,
+          recoveryBundle: null,
+          remainingRecoveryCodes: 0,
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch encryption state');
+      }
+
+      const data = await response.json();
+
+      setState({
+        isLoading: false,
+        hasEncryption: data.hasEncryption,
+        isUnlocked: !!cachedDataKey,
+        keyBundle: data.keyBundle || null,
+        recoveryBundle: data.recoveryBundle || null,
+        remainingRecoveryCodes: data.recoveryCodesStatus?.remaining || 0,
+      });
+
+      // If encryption is set up but not unlocked, show unlock modal
+      if (data.hasEncryption && !cachedDataKey) {
+        setShowUnlockModal(true);
+      }
+    } catch (error) {
+      console.error('[Encryption] Failed to fetch state:', error);
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
   }, [user?.id]);
 
   /**
-   * Encrypt plaintext string (required - throws if encryption fails)
+   * Initialize encryption state when user logs in
    */
-  const encryptText = useCallback(async (plaintext: string): Promise<string> => {
-    if (!user?.id) {
-      throw new Error('Cannot encrypt: User not authenticated');
+  useEffect(() => {
+    if (user?.id) {
+      refreshEncryptionState();
+    } else {
+      // Clear state on logout
+      cachedDataKey = null;
+      setState({
+        isLoading: false,
+        hasEncryption: false,
+        isUnlocked: false,
+        keyBundle: null,
+        recoveryBundle: null,
+        remainingRecoveryCodes: 0,
+      });
+    }
+  }, [user?.id, refreshEncryptionState]);
+
+  /**
+   * Set the data key (after successful password/recovery code unlock)
+   */
+  const setDataKey = useCallback((key: CryptoKey) => {
+    cachedDataKey = key;
+    setState(prev => ({ ...prev, isUnlocked: true }));
+    setShowUnlockModal(false);
+  }, []);
+
+  /**
+   * Clear the data key (on logout or lock)
+   */
+  const clearDataKey = useCallback(() => {
+    cachedDataKey = null;
+    setState(prev => ({ ...prev, isUnlocked: false }));
+  }, []);
+
+  /**
+   * Save encryption setup to server
+   */
+  const saveEncryptionSetup = useCallback(async (
+    keyBundle: EncryptionKeyBundle,
+    recoveryBundle: RecoveryCodeBundle,
+    deliveryMethod: string
+  ) => {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch('/api/encryption', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ keyBundle, recoveryBundle, deliveryMethod }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save encryption setup');
     }
 
-    const key = await getOrCreateKey(user.id);
-    return encrypt(plaintext, key);
-  }, [user?.id]);
+    // Update local state
+    setState(prev => ({
+      ...prev,
+      hasEncryption: true,
+      keyBundle,
+      recoveryBundle,
+      remainingRecoveryCodes: recoveryBundle.codeHashes.length,
+    }));
+  }, []);
+
+  /**
+   * Mark a recovery code as used
+   */
+  const markRecoveryCodeUsed = useCallback(async (
+    updatedBundle: RecoveryCodeBundle,
+    usedCodeHash: string
+  ) => {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch('/api/encryption', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        action: 'mark_code_used',
+        recoveryBundle: updatedBundle,
+        usedCodeHash,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update recovery codes');
+    }
+
+    const data = await response.json();
+
+    // Update local state
+    setState(prev => ({
+      ...prev,
+      recoveryBundle: updatedBundle,
+      remainingRecoveryCodes: data.remainingCodes,
+    }));
+  }, []);
+
+  /**
+   * Encrypt plaintext string (throws if not unlocked)
+   */
+  const encryptText = useCallback(async (plaintext: string): Promise<string> => {
+    if (!cachedDataKey) {
+      throw new Error('Encryption not unlocked. Please enter your encryption password.');
+    }
+    return encrypt(plaintext, cachedDataKey);
+  }, []);
 
   /**
    * Decrypt ciphertext string
-   * Returns original if not encrypted (for backwards compatibility with pre-encryption messages)
+   * Returns original if not encrypted (for backwards compatibility)
    */
   const decryptText = useCallback(async (ciphertext: string): Promise<string> => {
-    if (!user?.id) {
-      throw new Error('Cannot decrypt: User not authenticated');
+    if (!cachedDataKey) {
+      throw new Error('Encryption not unlocked. Please enter your encryption password.');
     }
 
     // If not encrypted, return as-is (backwards compatibility)
@@ -156,39 +310,33 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
       return ciphertext;
     }
 
-    const key = await getOrCreateKey(user.id);
-    return await decrypt(ciphertext, key);
-  }, [user?.id]);
+    return await decrypt(ciphertext, cachedDataKey);
+  }, []);
 
   /**
-   * Encrypt a JSON object (required - throws if encryption fails)
+   * Encrypt a JSON object
    */
   const encryptObject = useCallback(async <T,>(data: T): Promise<string> => {
-    if (!user?.id) {
-      throw new Error('Cannot encrypt: User not authenticated');
+    if (!cachedDataKey) {
+      throw new Error('Encryption not unlocked. Please enter your encryption password.');
     }
-
-    const key = await getOrCreateKey(user.id);
-    return encryptJSON(data, key);
-  }, [user?.id]);
+    return encryptJSON(data, cachedDataKey);
+  }, []);
 
   /**
    * Decrypt to a JSON object
-   * Returns parsed JSON if not encrypted (for backwards compatibility)
    */
   const decryptObject = useCallback(async <T,>(ciphertext: string): Promise<T> => {
-    if (!user?.id) {
-      throw new Error('Cannot decrypt: User not authenticated');
+    if (!cachedDataKey) {
+      throw new Error('Encryption not unlocked. Please enter your encryption password.');
     }
 
-    // If not encrypted, return parsed JSON (backwards compatibility)
     if (!isEncrypted(ciphertext)) {
       return JSON.parse(ciphertext);
     }
 
-    const key = await getOrCreateKey(user.id);
-    return await decryptJSON<T>(ciphertext, key);
-  }, [user?.id]);
+    return await decryptJSON<T>(ciphertext, cachedDataKey);
+  }, []);
 
   /**
    * Check if data is encrypted
@@ -197,15 +345,28 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
     return isEncrypted(data);
   }, []);
 
+  // Determine if encryption is ready for use
+  const isReady = !state.isLoading && (!state.hasEncryption || state.isUnlocked);
+
   return (
     <EncryptionContext.Provider
       value={{
+        state,
         isReady,
         encryptText,
         decryptText,
         encryptObject,
         decryptObject,
         isEncryptedData,
+        refreshEncryptionState,
+        setDataKey,
+        clearDataKey,
+        showSetupModal,
+        showUnlockModal,
+        setShowSetupModal,
+        setShowUnlockModal,
+        saveEncryptionSetup,
+        markRecoveryCodeUsed,
       }}
     >
       {children}
@@ -220,15 +381,32 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
 export function useEncryption(): EncryptionContextType {
   const context = useContext(EncryptionContext);
 
-  // If no context, return a safe fallback that indicates encryption isn't available
+  // If no context, return a safe fallback
   if (context === undefined) {
     return {
+      state: {
+        isLoading: true,
+        hasEncryption: false,
+        isUnlocked: false,
+        keyBundle: null,
+        recoveryBundle: null,
+        remainingRecoveryCodes: 0,
+      },
       isReady: false,
       encryptText: async () => { throw new Error('Encryption not available - EncryptionProvider not found'); },
       decryptText: async () => { throw new Error('Encryption not available - EncryptionProvider not found'); },
       encryptObject: async () => { throw new Error('Encryption not available - EncryptionProvider not found'); },
       decryptObject: async () => { throw new Error('Encryption not available - EncryptionProvider not found'); },
       isEncryptedData: () => false,
+      refreshEncryptionState: async () => {},
+      setDataKey: () => {},
+      clearDataKey: () => {},
+      showSetupModal: false,
+      showUnlockModal: false,
+      setShowSetupModal: () => {},
+      setShowUnlockModal: () => {},
+      saveEncryptionSetup: async () => {},
+      markRecoveryCodeUsed: async () => {},
     };
   }
 

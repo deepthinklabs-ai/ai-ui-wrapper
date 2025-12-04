@@ -236,8 +236,9 @@ export interface EncryptionKeyBundle {
 /**
  * Create a new encryption key bundle for a user
  * Called once when user first enables encryption
+ * Returns both the bundle (for storage) and the data key (for immediate use)
  */
-export async function createKeyBundle(password: string): Promise<EncryptionKeyBundle> {
+export async function createKeyBundle(password: string): Promise<{ bundle: EncryptionKeyBundle; dataKey: CryptoKey }> {
   // Generate salt for password key derivation
   const salt = generateSalt();
 
@@ -250,11 +251,13 @@ export async function createKeyBundle(password: string): Promise<EncryptionKeyBu
   // Wrap the data key with the KEK
   const { wrappedKey, iv } = await wrapDataKey(dataKey, kek);
 
-  return {
+  const bundle: EncryptionKeyBundle = {
     salt: bufferToBase64(salt),
     wrappedDataKey: wrappedKey,
     wrappedKeyIV: iv,
   };
+
+  return { bundle, dataKey };
 }
 
 /**
@@ -311,4 +314,196 @@ export async function rewrapKeyBundle(
     wrappedDataKey: wrappedKey,
     wrappedKeyIV: iv,
   };
+}
+
+// ============================================================================
+// RECOVERY CODE SYSTEM
+// ============================================================================
+
+const RECOVERY_CODE_LENGTH = 12; // Format: XXXX-XXXX-XXXX
+const RECOVERY_CODE_COUNT = 12;  // Generate 12 codes
+
+/**
+ * Generate a single recovery code in format XXXX-XXXX-XXXX
+ */
+function generateRecoveryCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding ambiguous: 0, O, I, 1
+  const randomValues = crypto.getRandomValues(new Uint8Array(12));
+
+  let code = '';
+  for (let i = 0; i < 12; i++) {
+    if (i > 0 && i % 4 === 0) {
+      code += '-';
+    }
+    code += chars[randomValues[i] % chars.length];
+  }
+  return code;
+}
+
+/**
+ * Generate multiple recovery codes
+ */
+export function generateRecoveryCodes(count: number = RECOVERY_CODE_COUNT): string[] {
+  const codes: string[] = [];
+  const usedCodes = new Set<string>();
+
+  while (codes.length < count) {
+    const code = generateRecoveryCode();
+    if (!usedCodes.has(code)) {
+      usedCodes.add(code);
+      codes.push(code);
+    }
+  }
+
+  return codes;
+}
+
+/**
+ * Hash a recovery code for server storage (server stores hash, not plaintext)
+ */
+export async function hashRecoveryCode(code: string): Promise<string> {
+  // Normalize the code (remove dashes, uppercase)
+  const normalized = code.replace(/-/g, '').toUpperCase();
+  const encoded = new TextEncoder().encode(normalized);
+
+  // SHA-256 hash
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+  return bufferToBase64(hashBuffer);
+}
+
+/**
+ * Hash multiple recovery codes for server storage
+ */
+export async function hashRecoveryCodes(codes: string[]): Promise<string[]> {
+  return Promise.all(codes.map(hashRecoveryCode));
+}
+
+export interface RecoveryCodeBundle {
+  // Stored on server (hashed codes + wrapped keys per code)
+  codeHashes: string[];           // SHA-256 hashes of codes
+  wrappedKeys: {                  // Data key wrapped with each code
+    codeHash: string;             // Which code this wrapping corresponds to
+    wrappedKey: string;           // Data key encrypted with code-derived key
+    salt: string;                 // Salt for PBKDF2 derivation from code
+    iv: string;                   // IV for wrapping
+  }[];
+  createdAt: string;              // ISO timestamp
+  usedCodes: string[];            // Hashes of codes that have been used
+}
+
+/**
+ * Create recovery code bundle for a user
+ * Returns plaintext codes (show to user) and bundle (store on server)
+ */
+export async function createRecoveryCodeBundle(
+  dataKey: CryptoKey
+): Promise<{ codes: string[]; bundle: RecoveryCodeBundle }> {
+  // Generate plaintext recovery codes
+  const codes = generateRecoveryCodes();
+
+  // Hash the codes for storage
+  const codeHashes = await hashRecoveryCodes(codes);
+
+  // Export data key for wrapping
+  const exportedDataKey = await crypto.subtle.exportKey('raw', dataKey);
+  const extractableDataKey = await crypto.subtle.importKey(
+    'raw',
+    exportedDataKey,
+    { name: ALGORITHM, length: KEY_LENGTH },
+    true, // Extractable
+    ['encrypt', 'decrypt']
+  );
+
+  // Wrap the data key with each recovery code
+  const wrappedKeys = await Promise.all(
+    codes.map(async (code, index) => {
+      // Normalize code for key derivation
+      const normalized = code.replace(/-/g, '').toUpperCase();
+      const salt = generateSalt();
+
+      // Derive KEK from recovery code
+      const kek = await deriveKeyFromPassword(normalized, salt);
+
+      // Wrap the data key
+      const { wrappedKey, iv } = await wrapDataKey(extractableDataKey, kek);
+
+      return {
+        codeHash: codeHashes[index],
+        wrappedKey,
+        salt: bufferToBase64(salt),
+        iv,
+      };
+    })
+  );
+
+  const bundle: RecoveryCodeBundle = {
+    codeHashes,
+    wrappedKeys,
+    createdAt: new Date().toISOString(),
+    usedCodes: [],
+  };
+
+  return { codes, bundle };
+}
+
+/**
+ * Recover data key using a recovery code
+ * Returns the unwrapped data key if successful
+ */
+export async function recoverWithCode(
+  code: string,
+  bundle: RecoveryCodeBundle
+): Promise<{ dataKey: CryptoKey; codeHash: string } | null> {
+  // Hash the provided code
+  const codeHash = await hashRecoveryCode(code);
+
+  // Check if this code has been used
+  if (bundle.usedCodes.includes(codeHash)) {
+    throw new Error('This recovery code has already been used');
+  }
+
+  // Find the wrapped key for this code
+  const wrappedKeyEntry = bundle.wrappedKeys.find(wk => wk.codeHash === codeHash);
+  if (!wrappedKeyEntry) {
+    return null; // Invalid code
+  }
+
+  try {
+    // Derive KEK from recovery code
+    const normalized = code.replace(/-/g, '').toUpperCase();
+    const salt = base64ToBuffer(wrappedKeyEntry.salt);
+    const kek = await deriveKeyFromPassword(normalized, salt);
+
+    // Unwrap the data key
+    const dataKey = await unwrapDataKey(
+      wrappedKeyEntry.wrappedKey,
+      wrappedKeyEntry.iv,
+      kek
+    );
+
+    return { dataKey, codeHash };
+  } catch (err) {
+    console.error('[Recovery] Failed to recover with code:', err);
+    return null;
+  }
+}
+
+/**
+ * Mark a recovery code as used (after successful recovery)
+ */
+export function markRecoveryCodeUsed(
+  bundle: RecoveryCodeBundle,
+  codeHash: string
+): RecoveryCodeBundle {
+  return {
+    ...bundle,
+    usedCodes: [...bundle.usedCodes, codeHash],
+  };
+}
+
+/**
+ * Get count of remaining (unused) recovery codes
+ */
+export function getRemainingRecoveryCodeCount(bundle: RecoveryCodeBundle): number {
+  return bundle.codeHashes.length - bundle.usedCodes.length;
 }

@@ -42,7 +42,41 @@ export default function DashboardPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // User tier for freemium limits
-  const { tier } = useUserTier(user?.id);
+  const { tier, refreshTier } = useUserTier(user?.id);
+
+  // Verify subscription on upgrade success redirect
+  useEffect(() => {
+    const verifyUpgrade = async () => {
+      if (!user?.id) return;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('upgrade') === 'success') {
+        try {
+          // Call verify API to sync subscription status
+          const response = await fetch('/api/stripe/verify-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id }),
+          });
+
+          const data = await response.json();
+          console.log('[Dashboard] Subscription verification:', data);
+
+          if (data.verified && data.tier === 'pro') {
+            // Refresh the tier from database
+            await refreshTier();
+          }
+
+          // Clean up URL
+          window.history.replaceState({}, '', '/dashboard');
+        } catch (error) {
+          console.error('[Dashboard] Error verifying subscription:', error);
+        }
+      }
+    };
+
+    verifyUpgrade();
+  }, [user?.id, refreshTier]);
 
   // Onboarding status
   const { needsOnboarding, loading: onboardingLoading, markOnboardingComplete } = useOnboardingStatus(user?.id);
@@ -441,7 +475,7 @@ export default function DashboardPage() {
 
   // Show onboarding for new users
   if (needsOnboarding) {
-    return <OnboardingFlow userId={user.id} onComplete={markOnboardingComplete} />;
+    return <OnboardingFlow userId={user.id} userEmail={user.email} onComplete={markOnboardingComplete} />;
   }
 
   return (
