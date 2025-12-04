@@ -29,6 +29,7 @@ type UseMessagesOptions = {
   enableWebSearch?: boolean;
   disableMCPTools?: boolean;
   gmailTools?: GmailToolConfig; // Gmail integration for Genesis Bots
+  encryptForStorage?: (plaintext: string) => Promise<string>; // Optional encryption for DB storage
 };
 
 type UseMessagesResult = {
@@ -97,10 +98,15 @@ export function useMessages(
       // Process files if provided
       const processedFiles = files && files.length > 0 ? await processFiles(files) : [];
 
-      // Build the final content for database storage
+      // Build the final content (plaintext - used for AI API)
       // Include text files inline in the stored message
       const textFilesContent = formatFilesForMessage(processedFiles);
       const dbContent = content + textFilesContent;
+
+      // Encrypt for storage if encryption function provided (otherwise store plaintext)
+      const storageContent = options?.encryptForStorage
+        ? await options.encryptForStorage(dbContent)
+        : dbContent;
 
       // Store attachment metadata for later restoration
       const attachmentMetadata = processedFiles.length > 0
@@ -113,13 +119,13 @@ export function useMessages(
           }))
         : null;
 
-      // 1) Insert user message into DB
+      // 1) Insert user message into DB (encrypted if encryption enabled)
       const { data: insertedUser, error: insertUserError } = await supabase
         .from("messages")
         .insert({
           thread_id: activeThreadId,
           role: "user",
-          content: dbContent,
+          content: storageContent,
           model: null,
           attachments: attachmentMetadata,
         })
@@ -129,8 +135,9 @@ export function useMessages(
       if (insertUserError) throw insertUserError;
       if (!insertedUser) throw new Error("Failed to insert user message");
 
-      // 2) Optimistically add user message to local state
-      setMessages((prev) => [...prev, insertedUser as Message]);
+      // 2) Optimistically add user message to local state (with plaintext for display)
+      const userMessageForDisplay = { ...insertedUser, content: dbContent } as Message;
+      setMessages((prev) => [...prev, userMessageForDisplay]);
 
       // 3) Build payload for chat API (full conversation + new message)
       // For previous messages, use simple string content
@@ -396,10 +403,15 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
       let insertedAssistant;
       let insertAssistantError;
 
+      // Encrypt assistant response for storage if encryption enabled
+      const assistantStorageContent = options?.encryptForStorage
+        ? await options.encryptForStorage(finalContent)
+        : finalContent;
+
       const assistantMessageWithTokens = {
         thread_id: activeThreadId,
         role: "assistant",
-        content: finalContent,
+        content: assistantStorageContent,
         model: getSelectedModel(), // Use user's selected model
         input_tokens: response.usage.input_tokens,
         output_tokens: response.usage.output_tokens,
@@ -424,7 +436,7 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
         const assistantMessageWithoutTokens = {
           thread_id: activeThreadId,
           role: "assistant",
-          content: finalContent,
+          content: assistantStorageContent,
           model: getSelectedModel(),
         };
 
@@ -442,8 +454,9 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
       if (!insertedAssistant)
         throw new Error("Failed to insert assistant message");
 
-      // 8) Optimistically add assistant message
-      setMessages((prev) => [...prev, insertedAssistant as Message]);
+      // 8) Optimistically add assistant message (with plaintext for display)
+      const assistantMessageForDisplay = { ...insertedAssistant, content: finalContent } as Message;
+      setMessages((prev) => [...prev, assistantMessageForDisplay]);
 
       // 7) Auto-generate thread title if this is the first user message
       // Check the database directly for message count to avoid race conditions with local state
@@ -565,12 +578,17 @@ Be thorough and ensure you capture information from the BEGINNING, MIDDLE, and E
       const summaryBody = await generateSummary();
       const summaryContent = `**Thread summary**\n\n${summaryBody}`;
 
+      // Encrypt summary for storage if encryption enabled
+      const summaryStorageContent = options?.encryptForStorage
+        ? await options.encryptForStorage(summaryContent)
+        : summaryContent;
+
       const { data: summaryMessage, error: insertSummaryError } = await supabase
         .from("messages")
         .insert({
           thread_id: threadId,
           role: "assistant",
-          content: summaryContent,
+          content: summaryStorageContent,
           model: getSelectedModel(),
         })
         .select()
@@ -580,7 +598,9 @@ Be thorough and ensure you capture information from the BEGINNING, MIDDLE, and E
       if (!summaryMessage)
         throw new Error("Failed to insert summary message");
 
-      setMessages((prev) => [...prev, summaryMessage as Message]);
+      // Display plaintext summary
+      const summaryForDisplay = { ...summaryMessage, content: summaryContent } as Message;
+      setMessages((prev) => [...prev, summaryForDisplay]);
 
       // Force refresh so the message list always reflects DB state
       await refreshMessages();

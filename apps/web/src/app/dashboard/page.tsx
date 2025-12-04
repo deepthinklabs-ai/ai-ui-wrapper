@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useCallback, type RefObject } from 
 import { redirect } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useThreads } from "@/hooks/useThreads";
-import { useMessages } from "@/hooks/useMessages";
+import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
 import { useUserTier, TIER_LIMITS } from "@/hooks/useUserTier";
 import { useTextSelection } from "@/hooks/useTextSelection";
 import { useThreadOperations } from "@/hooks/useThreadOperations";
@@ -140,13 +140,15 @@ export default function DashboardPage() {
     messages,
     loadingMessages,
     messagesError,
+    encryptionError,
     sendInFlight,
     summarizeInFlight,
+    isEncryptionReady,
     sendMessage,
     summarizeThread,
     generateSummary,
     refreshMessages,
-  } = useMessages(selectedThreadId, {
+  } = useEncryptedMessages(selectedThreadId, {
     onThreadTitleUpdated: refreshThreads,
     systemPromptAddition: getSystemPromptAddition(),
     userTier: tier,

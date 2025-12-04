@@ -10,7 +10,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuthSession } from '@/hooks/useAuthSession';
-import { useMessages } from '@/hooks/useMessages';
+import { useEncryptedMessages } from '@/hooks/useEncryptedMessages';
 import { useUserTier } from '@/hooks/useUserTier';
 import type { GenesisBotNodeConfig, NodeId } from '../../types';
 import MessageList from '@/components/dashboard/MessageList';
@@ -188,14 +188,16 @@ export default function GenesisBotChatModal({
     };
   }, [botConfig.gmail, user?.id, nodeId]);
 
-  // Messages hook
+  // Messages hook with encryption
   const {
     messages,
     loadingMessages,
     messagesError,
+    encryptionError,
     sendInFlight,
+    isEncryptionReady,
     sendMessage,
-  } = useMessages(threadId, {
+  } = useEncryptedMessages(threadId, {
     userId: user?.id,
     userTier: tier,
     systemPromptAddition: botConfig.system_prompt,
