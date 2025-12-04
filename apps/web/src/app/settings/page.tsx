@@ -29,6 +29,7 @@ import FeatureToggles from "@/components/settings/FeatureToggles";
 import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
 import MCPServerSettings from "@/components/settings/MCPServerSettings";
 import MCPMigrationBanner from "@/components/settings/MCPMigrationBanner";
+import EncryptionSettings from "@/components/settings/EncryptionSettings";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useUserTier } from "@/hooks/useUserTier";
 
@@ -256,6 +257,9 @@ function SettingsPageContent() {
           <SubscriptionManagement
             priceId={process.env.NEXT_PUBLIC_STRIPE_PRICE_ID}
           />
+
+          {/* Encryption Settings Section */}
+          <EncryptionSettings userEmail={user?.email} />
 
           {/* Claude API Key Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">

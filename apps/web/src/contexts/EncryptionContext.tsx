@@ -89,11 +89,59 @@ interface EncryptionContextType {
 
 const EncryptionContext = createContext<EncryptionContextType | undefined>(undefined);
 
-// In-memory data key (never persisted in plaintext)
+// In-memory data key
 let cachedDataKey: CryptoKey | null = null;
 
+// Session storage key for persisting the data key
+const SESSION_KEY_STORAGE = 'encryption_session_key';
+
+/**
+ * Save the data key to sessionStorage (persists for browser session)
+ */
+async function saveKeyToSession(key: CryptoKey): Promise<void> {
+  try {
+    // Export key as JWK (JSON Web Key)
+    const jwk = await crypto.subtle.exportKey('jwk', key);
+    sessionStorage.setItem(SESSION_KEY_STORAGE, JSON.stringify(jwk));
+  } catch (error) {
+    console.error('[Encryption] Failed to save key to session:', error);
+  }
+}
+
+/**
+ * Load the data key from sessionStorage
+ */
+async function loadKeyFromSession(): Promise<CryptoKey | null> {
+  try {
+    const stored = sessionStorage.getItem(SESSION_KEY_STORAGE);
+    if (!stored) return null;
+
+    const jwk = JSON.parse(stored);
+    const key = await crypto.subtle.importKey(
+      'jwk',
+      jwk,
+      { name: 'AES-GCM', length: 256 },
+      false, // Not extractable after import (more secure)
+      ['encrypt', 'decrypt']
+    );
+    return key;
+  } catch (error) {
+    console.error('[Encryption] Failed to load key from session:', error);
+    // Clear corrupted data
+    sessionStorage.removeItem(SESSION_KEY_STORAGE);
+    return null;
+  }
+}
+
+/**
+ * Clear the data key from sessionStorage
+ */
+function clearKeyFromSession(): void {
+  sessionStorage.removeItem(SESSION_KEY_STORAGE);
+}
+
 export function EncryptionProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthSession();
+  const { user, loadingUser } = useAuthSession();
 
   const [state, setState] = useState<EncryptionState>({
     isLoading: true,
@@ -109,6 +157,7 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
 
   /**
    * Fetch encryption state from server
+   * Also attempts to restore key from sessionStorage on page refresh
    */
   const refreshEncryptionState = useCallback(async () => {
     if (!user?.id) {
@@ -124,6 +173,14 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
     }
 
     try {
+      // Try to restore key from session storage first (handles page refresh)
+      if (!cachedDataKey) {
+        const sessionKey = await loadKeyFromSession();
+        if (sessionKey) {
+          cachedDataKey = sessionKey;
+        }
+      }
+
       // Get auth headers (may fail if no session yet)
       let headers: Record<string, string>;
       try {
@@ -175,6 +232,7 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
       });
 
       // If encryption is set up but not unlocked, show unlock modal
+      // (only if we couldn't restore from session)
       if (data.hasEncryption && !cachedDataKey) {
         setShowUnlockModal(true);
       }
@@ -188,11 +246,18 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
    * Initialize encryption state when user logs in
    */
   useEffect(() => {
+    // Don't do anything while auth is still loading
+    if (loadingUser) {
+      return;
+    }
+
     if (user?.id) {
       refreshEncryptionState();
     } else {
-      // Clear state on logout
+      // User explicitly logged out (not just initial load)
+      // Clear state and session storage
       cachedDataKey = null;
+      clearKeyFromSession();
       setState({
         isLoading: false,
         hasEncryption: false,
@@ -202,22 +267,27 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
         remainingRecoveryCodes: 0,
       });
     }
-  }, [user?.id, refreshEncryptionState]);
+  }, [user?.id, loadingUser, refreshEncryptionState]);
 
   /**
    * Set the data key (after successful password/recovery code unlock)
+   * Also persists to sessionStorage for the browser session
    */
   const setDataKey = useCallback((key: CryptoKey) => {
     cachedDataKey = key;
     setState(prev => ({ ...prev, isUnlocked: true }));
     setShowUnlockModal(false);
+    // Persist to session storage (async, but we don't need to wait)
+    saveKeyToSession(key);
   }, []);
 
   /**
    * Clear the data key (on logout or lock)
+   * Also clears from sessionStorage
    */
   const clearDataKey = useCallback(() => {
     cachedDataKey = null;
+    clearKeyFromSession();
     setState(prev => ({ ...prev, isUnlocked: false }));
   }, []);
 

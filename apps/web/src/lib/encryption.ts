@@ -114,12 +114,12 @@ export async function unwrapDataKey(
     wrappedKeyBuffer.buffer as ArrayBuffer
   );
 
-  // Import it as a CryptoKey
+  // Import it as a CryptoKey (extractable for session persistence)
   return crypto.subtle.importKey(
     'raw',
     unwrappedKeyBuffer,
     { name: ALGORITHM, length: KEY_LENGTH },
-    false,
+    true, // Extractable to allow session storage persistence
     ['encrypt', 'decrypt']
   );
 }
