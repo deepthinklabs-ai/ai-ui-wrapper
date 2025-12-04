@@ -1,0 +1,260 @@
+/**
+ * useEncryptedCanvasNodes Hook
+ *
+ * A wrapper around useCanvasNodes that adds client-side encryption.
+ * - Encrypts node config and label before storing to database
+ * - Decrypts node config and label when loading from database
+ *
+ * Sensitive fields encrypted:
+ * - config (JSONB) - contains system prompts, API configs, etc.
+ * - label - node display name
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { useEncryption } from '@/contexts/EncryptionContext';
+import { useCanvasNodes } from './useCanvasNodes';
+import type {
+  CanvasNode,
+  CanvasNodeType,
+  NodeId,
+  CanvasId,
+  UseCanvasNodesResult,
+} from '../types';
+
+interface UseEncryptedCanvasNodesResult extends Omit<UseCanvasNodesResult, 'nodes'> {
+  nodes: CanvasNode[];
+  encryptionError: string | null;
+  isEncryptionReady: boolean;
+}
+
+export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncryptedCanvasNodesResult {
+  const [decryptedNodes, setDecryptedNodes] = useState<CanvasNode[]>([]);
+  const [encryptionError, setEncryptionError] = useState<string | null>(null);
+  const [isDecrypting, setIsDecrypting] = useState(false);
+
+  // Get encryption functions
+  const {
+    encryptText,
+    decryptText,
+    encryptObject,
+    decryptObject,
+    isReady: isEncryptionReady,
+    state: encryptionState,
+  } = useEncryption();
+
+  // Get base canvas nodes
+  const baseNodes = useCanvasNodes(canvasId);
+
+  /**
+   * Decrypt a single node's sensitive fields
+   */
+  const decryptNode = useCallback(async (node: CanvasNode): Promise<CanvasNode> => {
+    try {
+      // Decrypt config (JSONB)
+      let decryptedConfig = node.config;
+      if (node.config && typeof node.config === 'string') {
+        // Config was encrypted as a string
+        try {
+          decryptedConfig = await decryptObject(node.config);
+        } catch {
+          // May be plaintext JSON string
+          try {
+            decryptedConfig = JSON.parse(node.config);
+          } catch {
+            decryptedConfig = node.config;
+          }
+        }
+      }
+
+      // Decrypt label
+      let decryptedLabel = node.label;
+      if (node.label) {
+        try {
+          decryptedLabel = await decryptText(node.label);
+        } catch {
+          // May be plaintext (pre-encryption)
+          decryptedLabel = node.label;
+        }
+      }
+
+      return {
+        ...node,
+        config: decryptedConfig,
+        label: decryptedLabel,
+      };
+    } catch (err) {
+      console.warn('[EncryptedCanvasNodes] Decryption failed for node, may be plaintext:', node.id);
+      return node;
+    }
+  }, [decryptText, decryptObject]);
+
+  /**
+   * Decrypt all nodes when base nodes change
+   */
+  useEffect(() => {
+    // Don't try to decrypt if encryption isn't ready
+    if (!isEncryptionReady || baseNodes.loading) {
+      return;
+    }
+
+    // If encryption isn't set up, just use the nodes as-is
+    if (!encryptionState.hasEncryption) {
+      setDecryptedNodes(baseNodes.nodes);
+      return;
+    }
+
+    // If encryption is set up but not unlocked, show empty nodes
+    if (!encryptionState.isUnlocked) {
+      setDecryptedNodes([]);
+      return;
+    }
+
+    const decryptAll = async () => {
+      if (baseNodes.nodes.length === 0) {
+        setDecryptedNodes([]);
+        return;
+      }
+
+      setIsDecrypting(true);
+      setEncryptionError(null);
+
+      try {
+        const decrypted = await Promise.all(
+          baseNodes.nodes.map(decryptNode)
+        );
+        setDecryptedNodes(decrypted);
+      } catch (err: any) {
+        console.error('[EncryptedCanvasNodes] Failed to decrypt nodes:', err);
+        setEncryptionError('Failed to decrypt canvas nodes. Your encryption key may have changed.');
+        setDecryptedNodes(baseNodes.nodes);
+      } finally {
+        setIsDecrypting(false);
+      }
+    };
+
+    decryptAll();
+  }, [
+    baseNodes.nodes,
+    baseNodes.loading,
+    isEncryptionReady,
+    encryptionState.hasEncryption,
+    encryptionState.isUnlocked,
+    decryptNode,
+  ]);
+
+  /**
+   * Add node with encryption
+   */
+  const addNode = useCallback(
+    async (
+      type: CanvasNodeType,
+      position: { x: number; y: number },
+      config?: any
+    ): Promise<CanvasNode | null> => {
+      if (!isEncryptionReady || !encryptionState.isUnlocked) {
+        // No encryption, pass through
+        return baseNodes.addNode(type, position, config);
+      }
+
+      try {
+        // Encrypt config before saving
+        let encryptedConfig = config;
+        if (config) {
+          encryptedConfig = await encryptObject(config);
+        }
+
+        const result = await baseNodes.addNode(type, position, encryptedConfig);
+
+        if (result) {
+          // Return decrypted version for local state
+          return {
+            ...result,
+            config: config, // Use original unencrypted config
+          };
+        }
+        return null;
+      } catch (err) {
+        console.error('[EncryptedCanvasNodes] Failed to encrypt node:', err);
+        return null;
+      }
+    },
+    [baseNodes.addNode, isEncryptionReady, encryptionState.isUnlocked, encryptObject]
+  );
+
+  /**
+   * Update node with encryption
+   */
+  const updateNode = useCallback(
+    async (id: NodeId, updates: Partial<CanvasNode>): Promise<boolean> => {
+      if (!isEncryptionReady || !encryptionState.isUnlocked) {
+        // No encryption, pass through
+        return baseNodes.updateNode(id, updates);
+      }
+
+      try {
+        // Use 'any' for encrypted updates since encrypted config is a string
+        const encryptedUpdates: Record<string, any> = { ...updates };
+
+        // Encrypt config if being updated (stored as encrypted string in JSONB)
+        if (updates.config !== undefined) {
+          encryptedUpdates.config = await encryptObject(updates.config);
+        }
+
+        // Encrypt label if being updated
+        if (updates.label !== undefined) {
+          encryptedUpdates.label = await encryptText(updates.label);
+        }
+
+        const result = await baseNodes.updateNode(id, encryptedUpdates as Partial<CanvasNode>);
+
+        if (result) {
+          // Update local decrypted state
+          setDecryptedNodes(prev =>
+            prev.map(node =>
+              node.id === id ? { ...node, ...updates } : node
+            )
+          );
+        }
+
+        return result;
+      } catch (err) {
+        console.error('[EncryptedCanvasNodes] Failed to encrypt node update:', err);
+        return false;
+      }
+    },
+    [baseNodes.updateNode, isEncryptionReady, encryptionState.isUnlocked, encryptText, encryptObject]
+  );
+
+  /**
+   * Duplicate node with encryption
+   */
+  const duplicateNode = useCallback(
+    async (id: NodeId): Promise<CanvasNode | null> => {
+      const originalNode = decryptedNodes.find(n => n.id === id);
+      if (!originalNode) return null;
+
+      // Use decrypted config for duplication
+      return addNode(
+        originalNode.type,
+        {
+          x: originalNode.position.x + 50,
+          y: originalNode.position.y + 50,
+        },
+        { ...originalNode.config }
+      );
+    },
+    [decryptedNodes, addNode]
+  );
+
+  return {
+    nodes: decryptedNodes,
+    loading: baseNodes.loading || isDecrypting || encryptionState.isLoading,
+    encryptionError,
+    isEncryptionReady,
+    addNode,
+    updateNode,
+    deleteNode: baseNodes.deleteNode,
+    duplicateNode,
+    refreshNodes: baseNodes.refreshNodes,
+  };
+}

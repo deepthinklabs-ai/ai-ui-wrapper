@@ -11,9 +11,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { redirect } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useCanvas } from './hooks/useCanvas';
-import { useCanvasNodes } from './hooks/useCanvasNodes';
-import { useCanvasEdges } from './hooks/useCanvasEdges';
+import { useEncryptedCanvasNodes } from './hooks/useEncryptedCanvasNodes';
+import { useEncryptedCanvasEdges } from './hooks/useEncryptedCanvasEdges';
 import { useCanvasState } from './hooks/useCanvasState';
+import { useEncryption } from '@/contexts/EncryptionContext';
 import { CanvasStateProvider, type CanvasStateContextValue } from './context/CanvasStateContext';
 import CanvasShell from './components/CanvasShell';
 import CreateCanvasModal from './components/modals/CreateCanvasModal';
@@ -22,6 +23,7 @@ import CanvasNotifications from './components/CanvasNotifications';
 export default function CanvasPage() {
   const { user, loadingUser } = useAuthSession();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const { state: encryptionState } = useEncryption();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -42,24 +44,29 @@ export default function CanvasPage() {
     selectCanvas,
   } = useCanvas(user?.id);
 
-  // Nodes and edges for current canvas
+  // Nodes and edges for current canvas (with encryption)
   const {
     nodes,
     loading: nodesLoading,
+    encryptionError: nodesEncryptionError,
     addNode,
     updateNode,
     deleteNode,
     duplicateNode,
-  } = useCanvasNodes(currentCanvas?.id || null);
+  } = useEncryptedCanvasNodes(currentCanvas?.id || null);
 
   const {
     edges,
     loading: edgesLoading,
+    encryptionError: edgesEncryptionError,
     addEdge,
     updateEdge,
     deleteEdge,
     refreshEdges,
-  } = useCanvasEdges(currentCanvas?.id || null);
+  } = useEncryptedCanvasEdges(currentCanvas?.id || null);
+
+  // Combine encryption errors
+  const encryptionError = nodesEncryptionError || edgesEncryptionError;
 
   // Phase 2: Unified state management
   const canvasState = useCanvasState();
@@ -161,6 +168,33 @@ export default function CanvasPage() {
         <div className="max-w-md rounded-lg border border-red-500/50 bg-red-500/10 p-6 text-center">
           <h2 className="mb-2 text-lg font-bold text-red-400">Error Loading Canvas</h2>
           <p className="text-sm text-slate-300">{canvasError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show encryption locked state
+  if (encryptionState.hasEncryption && !encryptionState.isUnlocked && !encryptionState.isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-950">
+        <div className="max-w-md rounded-lg border border-amber-500/50 bg-amber-500/10 p-6 text-center">
+          <div className="mb-4 text-4xl">🔒</div>
+          <h2 className="mb-2 text-lg font-bold text-amber-400">Canvas Locked</h2>
+          <p className="text-sm text-slate-300">
+            Your canvas data is encrypted. Please unlock your encryption to view and edit your canvases.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show encryption error state
+  if (encryptionError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-950">
+        <div className="max-w-md rounded-lg border border-red-500/50 bg-red-500/10 p-6 text-center">
+          <h2 className="mb-2 text-lg font-bold text-red-400">Encryption Error</h2>
+          <p className="text-sm text-slate-300">{encryptionError}</p>
         </div>
       </div>
     );
