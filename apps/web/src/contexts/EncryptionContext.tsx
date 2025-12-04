@@ -26,6 +26,7 @@ import {
   type EncryptionKeyBundle,
   type RecoveryCodeBundle,
 } from '@/lib/encryption';
+import { EncryptionError } from '@/lib/encryptionErrors';
 
 /**
  * Helper to get auth headers for API requests
@@ -361,9 +362,15 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
    */
   const encryptText = useCallback(async (plaintext: string): Promise<string> => {
     if (!cachedDataKey) {
-      throw new Error('Encryption not unlocked. Please enter your encryption password.');
+      throw new EncryptionError('LOCKED', 'Encryption not unlocked. Please enter your encryption password.');
     }
-    return encrypt(plaintext, cachedDataKey);
+    try {
+      return await encrypt(plaintext, cachedDataKey);
+    } catch (err) {
+      throw new EncryptionError('UNKNOWN', 'Failed to encrypt data', {
+        originalError: err instanceof Error ? err : undefined,
+      });
+    }
   }, []);
 
   /**
@@ -372,7 +379,7 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
    */
   const decryptText = useCallback(async (ciphertext: string): Promise<string> => {
     if (!cachedDataKey) {
-      throw new Error('Encryption not unlocked. Please enter your encryption password.');
+      throw new EncryptionError('LOCKED', 'Encryption not unlocked. Please enter your encryption password.');
     }
 
     // If not encrypted, return as-is (backwards compatibility)
@@ -380,7 +387,20 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
       return ciphertext;
     }
 
-    return await decrypt(ciphertext, cachedDataKey);
+    try {
+      return await decrypt(ciphertext, cachedDataKey);
+    } catch (err) {
+      // Check for authentication tag failure (wrong key or corrupted data)
+      const message = err instanceof Error ? err.message.toLowerCase() : '';
+      if (message.includes('tag') || message.includes('authentication')) {
+        throw new EncryptionError('KEY_MISMATCH', 'Data was encrypted with a different key', {
+          originalError: err instanceof Error ? err : undefined,
+        });
+      }
+      throw new EncryptionError('CORRUPTED_DATA', 'Failed to decrypt data - may be corrupted', {
+        originalError: err instanceof Error ? err : undefined,
+      });
+    }
   }, []);
 
   /**
@@ -388,9 +408,15 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
    */
   const encryptObject = useCallback(async <T,>(data: T): Promise<string> => {
     if (!cachedDataKey) {
-      throw new Error('Encryption not unlocked. Please enter your encryption password.');
+      throw new EncryptionError('LOCKED', 'Encryption not unlocked. Please enter your encryption password.');
     }
-    return encryptJSON(data, cachedDataKey);
+    try {
+      return await encryptJSON(data, cachedDataKey);
+    } catch (err) {
+      throw new EncryptionError('UNKNOWN', 'Failed to encrypt data', {
+        originalError: err instanceof Error ? err : undefined,
+      });
+    }
   }, []);
 
   /**
@@ -398,14 +424,30 @@ export function EncryptionProvider({ children }: { children: React.ReactNode }) 
    */
   const decryptObject = useCallback(async <T,>(ciphertext: string): Promise<T> => {
     if (!cachedDataKey) {
-      throw new Error('Encryption not unlocked. Please enter your encryption password.');
+      throw new EncryptionError('LOCKED', 'Encryption not unlocked. Please enter your encryption password.');
     }
 
     if (!isEncrypted(ciphertext)) {
-      return JSON.parse(ciphertext);
+      try {
+        return JSON.parse(ciphertext);
+      } catch {
+        throw new EncryptionError('INVALID_FORMAT', 'Data is not valid JSON');
+      }
     }
 
-    return await decryptJSON<T>(ciphertext, cachedDataKey);
+    try {
+      return await decryptJSON<T>(ciphertext, cachedDataKey);
+    } catch (err) {
+      const message = err instanceof Error ? err.message.toLowerCase() : '';
+      if (message.includes('tag') || message.includes('authentication')) {
+        throw new EncryptionError('KEY_MISMATCH', 'Data was encrypted with a different key', {
+          originalError: err instanceof Error ? err : undefined,
+        });
+      }
+      throw new EncryptionError('CORRUPTED_DATA', 'Failed to decrypt data - may be corrupted', {
+        originalError: err instanceof Error ? err : undefined,
+      });
+    }
   }, []);
 
   /**

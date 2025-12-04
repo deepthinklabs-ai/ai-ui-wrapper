@@ -8,6 +8,8 @@
  * Sensitive fields encrypted:
  * - config (JSONB) - contains system prompts, API configs, etc.
  * - label - node display name
+ *
+ * Uses structured error handling and circuit breaker for resilience.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -20,17 +22,32 @@ import type {
   CanvasId,
   UseCanvasNodesResult,
 } from '../types';
+import {
+  validateDecryption,
+  validateJSONDecryption,
+  isDecryptionSuccess,
+} from '@/lib/decryptionValidator';
+import { getCircuitBreaker } from '@/lib/decryptionCircuitBreaker';
+import { EncryptionError, isEncryptionError } from '@/lib/encryptionErrors';
 
 interface UseEncryptedCanvasNodesResult extends Omit<UseCanvasNodesResult, 'nodes'> {
   nodes: CanvasNode[];
   encryptionError: string | null;
+  encryptionErrorCode: string | null;
   isEncryptionReady: boolean;
+  isCircuitBreakerOpen: boolean;
+  resetCircuitBreaker: () => void;
 }
 
 export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncryptedCanvasNodesResult {
   const [decryptedNodes, setDecryptedNodes] = useState<CanvasNode[]>([]);
   const [encryptionError, setEncryptionError] = useState<string | null>(null);
+  const [encryptionErrorCode, setEncryptionErrorCode] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
+  const [isCircuitBreakerOpen, setIsCircuitBreakerOpen] = useState(false);
+
+  // Get circuit breaker for canvas nodes
+  const circuitBreaker = getCircuitBreaker('canvas-nodes');
 
   // Get encryption functions
   const {
@@ -45,48 +62,92 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
   // Get base canvas nodes
   const baseNodes = useCanvasNodes(canvasId);
 
+  // Subscribe to circuit breaker state changes
+  useEffect(() => {
+    const unsubscribe = circuitBreaker.subscribe((state) => {
+      setIsCircuitBreakerOpen(state.isOpen);
+      if (state.isOpen && state.lastError) {
+        setEncryptionError(state.lastError.getUserMessage());
+        setEncryptionErrorCode(state.lastError.code);
+      }
+    });
+    return unsubscribe;
+  }, [circuitBreaker]);
+
   /**
-   * Decrypt a single node's sensitive fields
+   * Reset the circuit breaker manually
+   */
+  const resetCircuitBreaker = useCallback(() => {
+    circuitBreaker.reset();
+    setIsCircuitBreakerOpen(false);
+    setEncryptionError(null);
+    setEncryptionErrorCode(null);
+  }, [circuitBreaker]);
+
+  /**
+   * Decrypt a single node's sensitive fields with validation
    */
   const decryptNode = useCallback(async (node: CanvasNode): Promise<CanvasNode> => {
-    try {
-      // Decrypt config (JSONB)
-      let decryptedConfig = node.config;
-      if (node.config && typeof node.config === 'string') {
-        // Config was encrypted as a string
-        try {
-          decryptedConfig = await decryptObject(node.config);
-        } catch {
-          // May be plaintext JSON string
-          try {
-            decryptedConfig = JSON.parse(node.config);
-          } catch {
-            decryptedConfig = node.config;
-          }
-        }
-      }
-
-      // Decrypt label
-      let decryptedLabel = node.label;
-      if (node.label) {
-        try {
-          decryptedLabel = await decryptText(node.label);
-        } catch {
-          // May be plaintext (pre-encryption)
-          decryptedLabel = node.label;
-        }
-      }
-
-      return {
-        ...node,
-        config: decryptedConfig,
-        label: decryptedLabel,
-      };
-    } catch (err) {
-      console.warn('[EncryptedCanvasNodes] Decryption failed for node, may be plaintext:', node.id);
+    // Check circuit breaker first
+    if (circuitBreaker.isCircuitOpen()) {
       return node;
     }
-  }, [decryptText, decryptObject]);
+
+    let decryptedConfig = node.config;
+    let decryptedLabel = node.label;
+    let hasError = false;
+
+    // Decrypt config (JSONB)
+    if (node.config && typeof node.config === 'string') {
+      const configResult = await validateJSONDecryption<Record<string, any>>(
+        node.config,
+        decryptObject,
+        { itemId: node.id, itemType: 'node-config' }
+      );
+
+      if (isDecryptionSuccess(configResult)) {
+        decryptedConfig = configResult.data as Record<string, any>;
+        circuitBreaker.recordSuccess();
+      } else {
+        hasError = true;
+        if (configResult.error.code !== 'LOCKED') {
+          circuitBreaker.recordFailure(configResult.error);
+        }
+        console.warn(
+          `[EncryptedCanvasNodes] Config decryption ${configResult.status} for node ${node.id}:`,
+          configResult.error.code
+        );
+      }
+    }
+
+    // Decrypt label
+    if (node.label) {
+      const labelResult = await validateDecryption(
+        node.label,
+        decryptText,
+        { itemId: node.id, itemType: 'node-label' }
+      );
+
+      if (isDecryptionSuccess(labelResult)) {
+        decryptedLabel = labelResult.data;
+        if (!hasError) circuitBreaker.recordSuccess();
+      } else {
+        if (labelResult.error.code !== 'LOCKED') {
+          circuitBreaker.recordFailure(labelResult.error);
+        }
+        console.warn(
+          `[EncryptedCanvasNodes] Label decryption ${labelResult.status} for node ${node.id}:`,
+          labelResult.error.code
+        );
+      }
+    }
+
+    return {
+      ...node,
+      config: decryptedConfig,
+      label: decryptedLabel,
+    };
+  }, [decryptText, decryptObject, circuitBreaker]);
 
   /**
    * Decrypt all nodes when base nodes change
@@ -250,7 +311,10 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
     nodes: decryptedNodes,
     loading: baseNodes.loading || isDecrypting || encryptionState.isLoading,
     encryptionError,
+    encryptionErrorCode,
     isEncryptionReady,
+    isCircuitBreakerOpen,
+    resetCircuitBreaker,
     addNode,
     updateNode,
     deleteNode: baseNodes.deleteNode,

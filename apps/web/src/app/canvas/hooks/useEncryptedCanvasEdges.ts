@@ -9,6 +9,8 @@
  * - label - edge display name
  * - condition - conditional logic expression
  * - transform - data transformation expression
+ *
+ * Uses structured error handling and circuit breaker for resilience.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -21,17 +23,31 @@ import type {
   CanvasId,
   UseCanvasEdgesResult,
 } from '../types';
+import {
+  validateDecryption,
+  isDecryptionSuccess,
+} from '@/lib/decryptionValidator';
+import { getCircuitBreaker } from '@/lib/decryptionCircuitBreaker';
+import { EncryptionError, isEncryptionError } from '@/lib/encryptionErrors';
 
 interface UseEncryptedCanvasEdgesResult extends Omit<UseCanvasEdgesResult, 'edges'> {
   edges: CanvasEdge[];
   encryptionError: string | null;
+  encryptionErrorCode: string | null;
   isEncryptionReady: boolean;
+  isCircuitBreakerOpen: boolean;
+  resetCircuitBreaker: () => void;
 }
 
 export function useEncryptedCanvasEdges(canvasId: CanvasId | null): UseEncryptedCanvasEdgesResult {
   const [decryptedEdges, setDecryptedEdges] = useState<CanvasEdge[]>([]);
   const [encryptionError, setEncryptionError] = useState<string | null>(null);
+  const [encryptionErrorCode, setEncryptionErrorCode] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
+  const [isCircuitBreakerOpen, setIsCircuitBreakerOpen] = useState(false);
+
+  // Get circuit breaker for canvas edges
+  const circuitBreaker = getCircuitBreaker('canvas-edges');
 
   // Get encryption functions
   const {
@@ -44,54 +60,114 @@ export function useEncryptedCanvasEdges(canvasId: CanvasId | null): UseEncrypted
   // Get base canvas edges
   const baseEdges = useCanvasEdges(canvasId);
 
+  // Subscribe to circuit breaker state changes
+  useEffect(() => {
+    const unsubscribe = circuitBreaker.subscribe((state) => {
+      setIsCircuitBreakerOpen(state.isOpen);
+      if (state.isOpen && state.lastError) {
+        setEncryptionError(state.lastError.getUserMessage());
+        setEncryptionErrorCode(state.lastError.code);
+      }
+    });
+    return unsubscribe;
+  }, [circuitBreaker]);
+
   /**
-   * Decrypt a single edge's sensitive fields
+   * Reset the circuit breaker manually
+   */
+  const resetCircuitBreaker = useCallback(() => {
+    circuitBreaker.reset();
+    setIsCircuitBreakerOpen(false);
+    setEncryptionError(null);
+    setEncryptionErrorCode(null);
+  }, [circuitBreaker]);
+
+  /**
+   * Decrypt a single edge's sensitive fields with validation
    */
   const decryptEdge = useCallback(async (edge: CanvasEdge): Promise<CanvasEdge> => {
-    try {
-      let decryptedLabel = edge.label;
-      let decryptedCondition = edge.condition;
-      let decryptedTransform = edge.transform;
-
-      // Decrypt label
-      if (edge.label) {
-        try {
-          decryptedLabel = await decryptText(edge.label);
-        } catch {
-          // May be plaintext
-          decryptedLabel = edge.label;
-        }
-      }
-
-      // Decrypt condition
-      if (edge.condition) {
-        try {
-          decryptedCondition = await decryptText(edge.condition);
-        } catch {
-          decryptedCondition = edge.condition;
-        }
-      }
-
-      // Decrypt transform
-      if (edge.transform) {
-        try {
-          decryptedTransform = await decryptText(edge.transform);
-        } catch {
-          decryptedTransform = edge.transform;
-        }
-      }
-
-      return {
-        ...edge,
-        label: decryptedLabel,
-        condition: decryptedCondition,
-        transform: decryptedTransform,
-      };
-    } catch (err) {
-      console.warn('[EncryptedCanvasEdges] Decryption failed for edge, may be plaintext:', edge.id);
+    // Check circuit breaker first
+    if (circuitBreaker.isCircuitOpen()) {
       return edge;
     }
-  }, [decryptText]);
+
+    let decryptedLabel = edge.label;
+    let decryptedCondition = edge.condition;
+    let decryptedTransform = edge.transform;
+    let hasSuccess = false;
+
+    // Decrypt label
+    if (edge.label) {
+      const labelResult = await validateDecryption(
+        edge.label,
+        decryptText,
+        { itemId: edge.id, itemType: 'edge-label' }
+      );
+
+      if (isDecryptionSuccess(labelResult)) {
+        decryptedLabel = labelResult.data;
+        hasSuccess = true;
+      } else if (labelResult.error.code !== 'LOCKED') {
+        circuitBreaker.recordFailure(labelResult.error);
+        console.warn(
+          `[EncryptedCanvasEdges] Label decryption ${labelResult.status} for edge ${edge.id}:`,
+          labelResult.error.code
+        );
+      }
+    }
+
+    // Decrypt condition
+    if (edge.condition) {
+      const conditionResult = await validateDecryption(
+        edge.condition,
+        decryptText,
+        { itemId: edge.id, itemType: 'edge-condition' }
+      );
+
+      if (isDecryptionSuccess(conditionResult)) {
+        decryptedCondition = conditionResult.data;
+        hasSuccess = true;
+      } else if (conditionResult.error.code !== 'LOCKED') {
+        circuitBreaker.recordFailure(conditionResult.error);
+        console.warn(
+          `[EncryptedCanvasEdges] Condition decryption ${conditionResult.status} for edge ${edge.id}:`,
+          conditionResult.error.code
+        );
+      }
+    }
+
+    // Decrypt transform
+    if (edge.transform) {
+      const transformResult = await validateDecryption(
+        edge.transform,
+        decryptText,
+        { itemId: edge.id, itemType: 'edge-transform' }
+      );
+
+      if (isDecryptionSuccess(transformResult)) {
+        decryptedTransform = transformResult.data;
+        hasSuccess = true;
+      } else if (transformResult.error.code !== 'LOCKED') {
+        circuitBreaker.recordFailure(transformResult.error);
+        console.warn(
+          `[EncryptedCanvasEdges] Transform decryption ${transformResult.status} for edge ${edge.id}:`,
+          transformResult.error.code
+        );
+      }
+    }
+
+    // Record success if any field was decrypted
+    if (hasSuccess) {
+      circuitBreaker.recordSuccess();
+    }
+
+    return {
+      ...edge,
+      label: decryptedLabel,
+      condition: decryptedCondition,
+      transform: decryptedTransform,
+    };
+  }, [decryptText, circuitBreaker]);
 
   /**
    * Decrypt all edges when base edges change
@@ -251,7 +327,10 @@ export function useEncryptedCanvasEdges(canvasId: CanvasId | null): UseEncrypted
     edges: decryptedEdges,
     loading: baseEdges.loading || isDecrypting || encryptionState.isLoading,
     encryptionError,
+    encryptionErrorCode,
     isEncryptionReady,
+    isCircuitBreakerOpen,
+    resetCircuitBreaker,
     addEdge,
     updateEdge,
     deleteEdge: baseEdges.deleteEdge,
