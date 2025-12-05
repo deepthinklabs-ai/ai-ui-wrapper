@@ -25,6 +25,7 @@ type SidebarProps = {
   onDeleteFolder?: (id: string) => Promise<void>;
   onMoveFolder?: (folderId: string, newParentId: string | null) => Promise<void>;
   onMoveThread?: (threadId: string, folderId: string | null) => Promise<void>;
+  onBulkMoveThreads?: (threadIds: string[], folderId: string | null) => Promise<void>;
   onToggleFolderCollapse?: (folderId: string) => Promise<void>;
 };
 
@@ -47,6 +48,7 @@ export default function Sidebar({
   onDeleteFolder,
   onMoveFolder,
   onMoveThread,
+  onBulkMoveThreads,
   onToggleFolderCollapse,
 }: SidebarProps) {
   // Check if folder features are enabled (all folder props provided)
@@ -56,6 +58,7 @@ export default function Sidebar({
     onDeleteFolder &&
     onMoveFolder &&
     onMoveThread &&
+    onBulkMoveThreads &&
     onToggleFolderCollapse
   );
 
@@ -304,6 +307,7 @@ export default function Sidebar({
             onDeleteFolder={onDeleteFolder}
             onMoveFolder={onMoveFolder}
             onMoveThread={onMoveThread}
+            onBulkMoveThreads={onBulkMoveThreads}
             onToggleFolderCollapse={onToggleFolderCollapse}
           />
         ) : (

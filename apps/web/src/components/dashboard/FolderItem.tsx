@@ -23,6 +23,9 @@ type FolderItemProps = {
   onNewFolderKeyDown?: (e: React.KeyboardEvent) => void;
   onNewFolderBlur?: () => void;
   newFolderInputRef?: React.RefObject<HTMLInputElement | null>;
+  // Multi-select props
+  multiSelectedIds?: Set<string>;
+  onThreadMultiSelect?: (threadId: string, e: React.MouseEvent) => void;
 };
 
 export function FolderItem({
@@ -43,6 +46,8 @@ export function FolderItem({
   onNewFolderKeyDown,
   onNewFolderBlur,
   newFolderInputRef,
+  multiSelectedIds,
+  onThreadMultiSelect,
 }: FolderItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(folder.name);
@@ -345,6 +350,8 @@ export function FolderItem({
               onNewFolderKeyDown={onNewFolderKeyDown}
               onNewFolderBlur={onNewFolderBlur}
               newFolderInputRef={newFolderInputRef}
+              multiSelectedIds={multiSelectedIds}
+              onThreadMultiSelect={onThreadMultiSelect}
             />
           ))}
 
@@ -354,7 +361,9 @@ export function FolderItem({
               key={thread.id}
               thread={thread}
               isSelected={thread.id === selectedThreadId}
+              isMultiSelected={multiSelectedIds?.has(thread.id) ?? false}
               onSelect={() => onSelectThread(thread.id)}
+              onMultiSelect={(e) => onThreadMultiSelect?.(thread.id, e)}
               onDelete={() => onDeleteThread(thread.id)}
               onUpdateTitle={(newTitle) => onUpdateThreadTitle(thread.id, newTitle)}
               depth={depth + 1}

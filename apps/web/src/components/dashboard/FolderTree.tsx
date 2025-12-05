@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -32,6 +32,7 @@ type FolderTreeProps = {
   onDeleteFolder: (id: string) => Promise<void>;
   onMoveFolder: (folderId: string, newParentId: string | null) => Promise<void>;
   onMoveThread: (threadId: string, folderId: string | null) => Promise<void>;
+  onBulkMoveThreads: (threadIds: string[], folderId: string | null) => Promise<void>;
   onToggleFolderCollapse: (folderId: string) => Promise<void>;
 };
 
@@ -44,6 +45,7 @@ type DropIndicatorState = {
   folderName: string;
   x: number;
   y: number;
+  count?: number;
 } | null;
 
 export function FolderTree({
@@ -58,6 +60,7 @@ export function FolderTree({
   onDeleteFolder,
   onMoveFolder,
   onMoveThread,
+  onBulkMoveThreads,
   onToggleFolderCollapse,
 }: FolderTreeProps) {
   const [activeItem, setActiveItem] = useState<DragItem | null>(null);
@@ -68,6 +71,27 @@ export function FolderTree({
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
 
+  // Multi-select state
+  const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
+  const [lastClickedThreadId, setLastClickedThreadId] = useState<string | null>(null);
+
+  // Get all threads in display order (for shift-click range selection)
+  const allThreadsInOrder = useMemo((): Thread[] => {
+    const result: Thread[] = [];
+
+    const collectFromFolder = (folder: FolderWithChildren) => {
+      if (!folder.is_collapsed) {
+        folder.threads.forEach(t => result.push(t));
+        folder.children.forEach(collectFromFolder);
+      }
+    };
+
+    folders.forEach(collectFromFolder);
+    threads.forEach(t => result.push(t));
+
+    return result;
+  }, [folders, threads]);
+
   // Helper to find folder name by id (recursive)
   const findFolderName = (id: string, folderList: FolderWithChildren[]): string | null => {
     for (const folder of folderList) {
@@ -77,6 +101,55 @@ export function FolderTree({
     }
     return null;
   };
+
+  // Handle thread multi-select (Ctrl+click or Shift+click)
+  const handleThreadMultiSelect = useCallback((threadId: string, e: React.MouseEvent) => {
+    if (e.shiftKey && lastClickedThreadId) {
+      // Shift+click: select range
+      const allIds = allThreadsInOrder.map(t => t.id);
+      const startIdx = allIds.indexOf(lastClickedThreadId);
+      const endIdx = allIds.indexOf(threadId);
+
+      if (startIdx !== -1 && endIdx !== -1) {
+        const rangeStart = Math.min(startIdx, endIdx);
+        const rangeEnd = Math.max(startIdx, endIdx);
+        const rangeIds = allIds.slice(rangeStart, rangeEnd + 1);
+
+        setMultiSelectedIds(prev => {
+          const newSet = new Set(prev);
+          rangeIds.forEach(id => newSet.add(id));
+          return newSet;
+        });
+      }
+    } else if (e.ctrlKey || e.metaKey) {
+      // Ctrl+click: toggle individual selection
+      setMultiSelectedIds(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(threadId)) {
+          newSet.delete(threadId);
+        } else {
+          newSet.add(threadId);
+        }
+        return newSet;
+      });
+      setLastClickedThreadId(threadId);
+    }
+  }, [lastClickedThreadId, allThreadsInOrder]);
+
+  // Handle normal thread select (clears multi-selection)
+  const handleThreadSelect = useCallback((threadId: string) => {
+    setMultiSelectedIds(new Set());
+    setLastClickedThreadId(threadId);
+    onSelectThread(threadId);
+  }, [onSelectThread]);
+
+  // Clear multi-selection when clicking elsewhere
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    // Only clear if clicking on the container itself, not its children
+    if (e.target === e.currentTarget) {
+      setMultiSelectedIds(new Set());
+    }
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -129,7 +202,15 @@ export function FolderTree({
           x += event.delta.x;
           y += event.delta.y;
         }
-        setDropIndicator({ folderName, x, y });
+
+        // Check if dragging multiple selected threads
+        const activeThreadId = active.id as string;
+        const isDraggingMultiple = multiSelectedIds.has(activeThreadId) && multiSelectedIds.size > 1;
+        const displayName = isDraggingMultiple
+          ? `${multiSelectedIds.size} threads`
+          : folderName;
+
+        setDropIndicator({ folderName: displayName, x, y, count: isDraggingMultiple ? multiSelectedIds.size : 1 });
       } else {
         setDropIndicator(null);
       }
@@ -148,22 +229,37 @@ export function FolderTree({
 
     const activeType = active.data.current?.type as "folder" | "thread";
     const overType = over.data.current?.type as "folder" | "thread" | "root";
-    const overId = over.id as string;
+    const targetFolderId = over.id as string;
 
     if (activeType === "thread") {
-      // Moving a thread
+      const activeThreadId = active.id as string;
+
+      // Check if we're moving multiple selected threads
+      const isPartOfMultiSelect = multiSelectedIds.has(activeThreadId) && multiSelectedIds.size > 1;
+
       if (overType === "folder") {
-        // Drop thread into folder
-        await onMoveThread(active.id as string, overId);
+        if (isPartOfMultiSelect) {
+          // Bulk move all selected threads
+          await onBulkMoveThreads(Array.from(multiSelectedIds), targetFolderId);
+          setMultiSelectedIds(new Set()); // Clear selection after move
+        } else {
+          // Single thread move
+          await onMoveThread(activeThreadId, targetFolderId);
+        }
       } else if (overType === "root") {
-        // Drop thread to root level
-        await onMoveThread(active.id as string, null);
+        if (isPartOfMultiSelect) {
+          // Bulk move all selected threads to root
+          await onBulkMoveThreads(Array.from(multiSelectedIds), null);
+          setMultiSelectedIds(new Set());
+        } else {
+          await onMoveThread(activeThreadId, null);
+        }
       }
     } else if (activeType === "folder") {
       // Moving a folder
       if (overType === "folder" && active.id !== over.id) {
         // Drop folder into another folder
-        await onMoveFolder(active.id as string, overId);
+        await onMoveFolder(active.id as string, targetFolderId);
       } else if (overType === "root") {
         // Drop folder to root level
         await onMoveFolder(active.id as string, null);
@@ -316,7 +412,7 @@ export function FolderTree({
               folder={folder}
               depth={0}
               selectedThreadId={selectedThreadId}
-              onSelectThread={onSelectThread}
+              onSelectThread={handleThreadSelect}
               onDeleteThread={onDeleteThread}
               onUpdateThreadTitle={onUpdateThreadTitle}
               onUpdateFolder={onUpdateFolder}
@@ -330,6 +426,8 @@ export function FolderTree({
               onNewFolderKeyDown={handleNewFolderKeyDown}
               onNewFolderBlur={handleSaveNewFolder}
               newFolderInputRef={newFolderInputRef}
+              multiSelectedIds={multiSelectedIds}
+              onThreadMultiSelect={handleThreadMultiSelect}
             />
           ))}
 
@@ -339,7 +437,9 @@ export function FolderTree({
               key={thread.id}
               thread={thread}
               isSelected={thread.id === selectedThreadId}
-              onSelect={() => onSelectThread(thread.id)}
+              isMultiSelected={multiSelectedIds.has(thread.id)}
+              onSelect={() => handleThreadSelect(thread.id)}
+              onMultiSelect={(e) => handleThreadMultiSelect(thread.id, e)}
               onDelete={() => onDeleteThread(thread.id)}
               onUpdateTitle={(newTitle) => onUpdateThreadTitle(thread.id, newTitle)}
               depth={0}
@@ -374,7 +474,16 @@ export function FolderTree({
         )}
         {activeItem && activeItem.type === "thread" && (
           <div className="rounded-md bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-slate-200 shadow-lg">
-            {findActiveThread(activeItem.id, folders, threads)?.title || "Thread"}
+            {multiSelectedIds.has(activeItem.id) && multiSelectedIds.size > 1 ? (
+              <div className="flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-xs font-bold">
+                  {multiSelectedIds.size}
+                </span>
+                <span>{multiSelectedIds.size} threads selected</span>
+              </div>
+            ) : (
+              findActiveThread(activeItem.id, folders, threads)?.title || "Thread"
+            )}
           </div>
         )}
       </DragOverlay>
@@ -397,7 +506,10 @@ export function FolderTree({
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            Add to "{dropIndicator.folderName}"
+            {dropIndicator.count && dropIndicator.count > 1
+              ? `Move ${dropIndicator.count} threads to "${dropIndicator.folderName}"`
+              : `Add to "${dropIndicator.folderName}"`
+            }
           </div>
         </div>
       )}

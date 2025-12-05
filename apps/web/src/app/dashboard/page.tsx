@@ -179,6 +179,7 @@ export default function DashboardPage() {
     deleteFolder,
     moveFolder,
     moveThread,
+    bulkMoveThreads,
     toggleFolderCollapse,
     refreshFolders,
   } = useFolders(user?.id, threads, {
@@ -517,6 +518,7 @@ export default function DashboardPage() {
           onDeleteFolder={deleteFolder}
           onMoveFolder={moveFolder}
           onMoveThread={moveThread}
+          onBulkMoveThreads={bulkMoveThreads}
           onToggleFolderCollapse={toggleFolderCollapse}
         />
       </aside>

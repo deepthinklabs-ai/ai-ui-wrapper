@@ -14,6 +14,7 @@ type UseFoldersResult = {
   deleteFolder: (id: string) => Promise<void>;
   moveFolder: (folderId: string, newParentId: string | null) => Promise<void>;
   moveThread: (threadId: string, folderId: string | null) => Promise<void>;
+  bulkMoveThreads: (threadIds: string[], folderId: string | null) => Promise<void>;
   reorderFolders: (folderId: string, newPosition: number, parentId: string | null) => Promise<void>;
   reorderThreads: (threadId: string, newPosition: number, folderId: string | null) => Promise<void>;
   toggleFolderCollapse: (folderId: string) => Promise<void>;
@@ -270,6 +271,44 @@ export function useFolders(
     }
   };
 
+  const bulkMoveThreads = async (threadIds: string[], folderId: string | null): Promise<void> => {
+    if (!userId || threadIds.length === 0) return;
+
+    try {
+      // Get current max position in target folder
+      const folderThreads = threads.filter(t => t.folder_id === folderId && !threadIds.includes(t.id));
+      let nextPosition = folderThreads.length > 0
+        ? Math.max(...folderThreads.map(t => t.position)) + 1
+        : 0;
+
+      // Update all threads in parallel
+      const updatePromises = threadIds.map((threadId, index) =>
+        supabase
+          .from("threads")
+          .update({ folder_id: folderId, position: nextPosition + index })
+          .eq("id", threadId)
+          .eq("user_id", userId)
+      );
+
+      const results = await Promise.all(updatePromises);
+
+      // Check for errors
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        console.error("Supabase errors moving threads:", errors.map(e => e.error?.message));
+        throw new Error(`Failed to move ${errors.length} thread(s)`);
+      }
+
+      // Refresh threads to update the UI
+      if (onThreadMoved) {
+        onThreadMoved();
+      }
+    } catch (err: any) {
+      console.error("Error bulk moving threads:", err?.message || err);
+      setFoldersError(err?.message ?? "Failed to move threads");
+    }
+  };
+
   const reorderFolders = async (
     folderId: string,
     newPosition: number,
@@ -382,6 +421,7 @@ export function useFolders(
     deleteFolder,
     moveFolder,
     moveThread,
+    bulkMoveThreads,
     reorderFolders,
     reorderThreads,
     toggleFolderCollapse,

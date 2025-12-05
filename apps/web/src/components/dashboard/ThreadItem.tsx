@@ -8,7 +8,9 @@ import type { Thread } from "@/types/chat";
 type ThreadItemProps = {
   thread: Thread;
   isSelected: boolean;
+  isMultiSelected: boolean;
   onSelect: () => void;
+  onMultiSelect: (e: React.MouseEvent) => void;
   onDelete: () => Promise<void>;
   onUpdateTitle: (newTitle: string) => Promise<void>;
   depth: number;
@@ -17,7 +19,9 @@ type ThreadItemProps = {
 export function ThreadItem({
   thread,
   isSelected,
+  isMultiSelected,
   onSelect,
+  onMultiSelect,
   onDelete,
   onUpdateTitle,
   depth,
@@ -91,33 +95,67 @@ export function ThreadItem({
 
   const paddingLeft = depth * 12 + 24; // Extra indent for threads within folders
 
+  // Handle click with modifier key detection
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+      // Multi-select mode
+      onMultiSelect(e);
+    } else {
+      // Normal select (also clears multi-selection)
+      onSelect();
+    }
+  };
+
+  // Determine styling based on selection state
+  const getSelectionClasses = () => {
+    if (isMultiSelected) {
+      // Multi-selected threads get a distinct blue highlight
+      return "bg-blue-600/30 text-slate-50 ring-1 ring-blue-500/50";
+    }
+    if (isSelected) {
+      // Currently active thread (for viewing)
+      return "bg-slate-800 text-slate-50";
+    }
+    return "text-slate-200 hover:bg-slate-800/50";
+  };
+
   return (
     <div ref={setNodeRef} style={style}>
       <div
         {...attributes}
         {...listeners}
-        onClick={onSelect}
-        className={`group relative flex items-center rounded-md px-2 py-1.5 cursor-grab active:cursor-grabbing transition-colors ${
-          isSelected
-            ? "bg-slate-800 text-slate-50"
-            : "text-slate-200 hover:bg-slate-800/50"
-        }`}
+        onClick={handleClick}
+        className={`group relative flex items-center rounded-md px-2 py-1.5 cursor-grab active:cursor-grabbing transition-colors ${getSelectionClasses()}`}
         style={{ paddingLeft }}
       >
-        {/* Thread Icon */}
-        <svg
-          className="h-4 w-4 flex-shrink-0 mr-2 text-slate-500"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-          />
-        </svg>
+        {/* Checkbox for multi-select or Thread Icon */}
+        {isMultiSelected ? (
+          <svg
+            className="h-4 w-4 flex-shrink-0 mr-2 text-blue-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        ) : (
+          <svg
+            className="h-4 w-4 flex-shrink-0 mr-2 text-slate-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        )}
 
         {/* Thread Title */}
         {isEditing ? (
