@@ -75,7 +75,16 @@ function buildFolderTree(folders: Folder[], threads: Thread[]): FolderWithChildr
   return rootFolders;
 }
 
-export function useFolders(userId: string | null | undefined, threads: Thread[]): UseFoldersResult {
+type UseFoldersOptions = {
+  onThreadMoved?: () => void; // Callback to refresh threads after move
+};
+
+export function useFolders(
+  userId: string | null | undefined,
+  threads: Thread[],
+  options: UseFoldersOptions = {}
+): UseFoldersResult {
+  const { onThreadMoved } = options;
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [foldersError, setFoldersError] = useState<string | null>(null);
@@ -246,12 +255,18 @@ export function useFolders(userId: string | null | undefined, threads: Thread[])
         .eq("id", threadId)
         .eq("user_id", userId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error moving thread:", error.message, error.details, error.hint);
+        throw new Error(error.message || "Database error");
+      }
 
-      // Note: Thread state is managed by useThreads, so we just trigger a refresh there
+      // Refresh threads to update the UI
+      if (onThreadMoved) {
+        onThreadMoved();
+      }
     } catch (err: any) {
-      console.error("Error moving thread:", err);
-      setFoldersError(err.message ?? "Failed to move thread");
+      console.error("Error moving thread:", err?.message || err);
+      setFoldersError(err?.message ?? "Failed to move thread");
     }
   };
 

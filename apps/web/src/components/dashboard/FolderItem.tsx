@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useDroppable } from "@dnd-kit/core";
 import type { FolderWithChildren } from "@/types/chat";
 import { ThreadItem } from "./ThreadItem";
 
@@ -52,14 +51,7 @@ export function FolderItem({
   const editInputRef = useRef<HTMLInputElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { setNodeRef, isOver: isDroppableOver } = useDroppable({
     id: folder.id,
     data: {
       type: "folder",
@@ -67,11 +59,8 @@ export function FolderItem({
     },
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  // Combine passed isOver prop with internal droppable state
+  const showDropHighlight = isOver || isDroppableOver;
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -147,14 +136,12 @@ export function FolderItem({
   const paddingLeft = depth * 12 + 8;
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef}>
       {/* Folder Header */}
       <div
-        {...attributes}
-        {...listeners}
         onContextMenu={handleContextMenu}
-        className={`group flex items-center gap-1 rounded-md px-2 py-1.5 cursor-grab active:cursor-grabbing transition-colors ${
-          isOver ? "bg-blue-500/20 ring-1 ring-blue-500/50" : "hover:bg-slate-800/50"
+        className={`group flex items-center gap-1 rounded-md px-2 py-1.5 transition-colors ${
+          showDropHighlight ? "bg-blue-500/20 ring-2 ring-blue-500/50" : "hover:bg-slate-800/50"
         }`}
         style={{ paddingLeft }}
       >

@@ -40,6 +40,12 @@ type DragItem = {
   id: string;
 };
 
+type DropIndicatorState = {
+  folderName: string;
+  x: number;
+  y: number;
+} | null;
+
 export function FolderTree({
   folders,
   threads,
@@ -56,10 +62,21 @@ export function FolderTree({
 }: FolderTreeProps) {
   const [activeItem, setActiveItem] = useState<DragItem | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<DropIndicatorState>(null);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper to find folder name by id (recursive)
+  const findFolderName = (id: string, folderList: FolderWithChildren[]): string | null => {
+    for (const folder of folderList) {
+      if (folder.id === id) return folder.name;
+      const found = findFolderName(id, folder.children);
+      if (found) return found;
+    }
+    return null;
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -86,14 +103,46 @@ export function FolderTree({
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event;
-    setOverId(over?.id as string | null);
+    const { over, active } = event;
+    const newOverId = over?.id as string | null;
+    setOverId(newOverId);
+
+    // Only show indicator when dragging a thread over a folder
+    const activeType = active.data.current?.type as "folder" | "thread";
+    const overType = over?.data.current?.type as "folder" | "thread" | "root" | undefined;
+
+    if (activeType === "thread" && overType === "folder" && newOverId) {
+      const folderName = findFolderName(newOverId, folders);
+      if (folderName) {
+        // Get mouse position from the activator event
+        const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent;
+        let x = 0, y = 0;
+        if (activatorEvent instanceof MouseEvent) {
+          x = activatorEvent.clientX;
+          y = activatorEvent.clientY;
+        } else if (activatorEvent instanceof TouchEvent && activatorEvent.touches[0]) {
+          x = activatorEvent.touches[0].clientX;
+          y = activatorEvent.touches[0].clientY;
+        }
+        // Use current mouse position from the delta if available
+        if (event.delta) {
+          x += event.delta.x;
+          y += event.delta.y;
+        }
+        setDropIndicator({ folderName, x, y });
+      } else {
+        setDropIndicator(null);
+      }
+    } else {
+      setDropIndicator(null);
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveItem(null);
     setOverId(null);
+    setDropIndicator(null);
 
     if (!over) return;
 
@@ -329,6 +378,29 @@ export function FolderTree({
           </div>
         )}
       </DragOverlay>
+
+      {/* Drop Indicator Tooltip */}
+      {dropIndicator && (
+        <div
+          className="fixed z-[9999] pointer-events-none px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium shadow-lg whitespace-nowrap"
+          style={{
+            left: dropIndicator.x + 20,
+            top: dropIndicator.y - 10,
+          }}
+        >
+          <div className="flex items-center gap-1.5">
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add to "{dropIndicator.folderName}"
+          </div>
+        </div>
+      )}
     </DndContext>
   );
 }

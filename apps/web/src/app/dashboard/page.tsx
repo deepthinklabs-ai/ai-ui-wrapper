@@ -181,7 +181,9 @@ export default function DashboardPage() {
     moveThread,
     toggleFolderCollapse,
     refreshFolders,
-  } = useFolders(user?.id, threads);
+  } = useFolders(user?.id, threads, {
+    onThreadMoved: refreshThreads,
+  });
 
   const {
     messages,
