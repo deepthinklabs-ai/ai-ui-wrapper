@@ -22,6 +22,7 @@ import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { useFeatureToggles } from "@/hooks/useFeatureToggles";
 import { useSplitView } from "@/hooks/useSplitView";
 import { useThreadContext } from "@/hooks/useThreadContext";
+import { useResizableSidebar } from "@/hooks/useResizableSidebar";
 import { useMCPServers } from "@/hooks/useMCPServers";
 import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
@@ -143,6 +144,9 @@ export default function DashboardPage() {
 
   // MCP servers
   const { connections, tools, isConnecting, servers, isEnabled } = useMCPServers();
+
+  // Resizable sidebar
+  const { isResizing, handleMouseDown: handleSidebarResize, sidebarStyle } = useResizableSidebar();
 
   // Exposed workflows for Master Trigger feature
   const {
@@ -551,7 +555,10 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-row h-screen bg-slate-950 text-slate-50">
       {/* LEFT: sidebar column */}
-      <aside className="w-64 h-screen flex-shrink-0 border-r border-slate-800 bg-slate-950">
+      <aside
+        className="h-screen flex-shrink-0 border-r border-slate-800 bg-slate-950 relative"
+        style={sidebarStyle}
+      >
         <Sidebar
           userEmail={user.email}
           threads={threads}
@@ -577,6 +584,14 @@ export default function DashboardPage() {
           // Thread context props
           threadContextIds={threadContextIds}
           onAddThreadToContext={handleAddThreadToContext}
+        />
+        {/* Resize handle */}
+        <div
+          onMouseDown={handleSidebarResize}
+          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500/50 transition-colors ${
+            isResizing ? "bg-blue-500/50" : "bg-transparent"
+          }`}
+          title="Drag to resize sidebar"
         />
       </aside>
 
