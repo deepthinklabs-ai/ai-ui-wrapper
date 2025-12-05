@@ -27,6 +27,9 @@ type SidebarProps = {
   onMoveThread?: (threadId: string, folderId: string | null) => Promise<void>;
   onBulkMoveThreads?: (threadIds: string[], folderId: string | null) => Promise<void>;
   onToggleFolderCollapse?: (folderId: string) => Promise<void>;
+  // Context panel props
+  threadContextIds?: Set<string>;
+  onAddThreadToContext?: (threadId: string, threadTitle: string) => void;
 };
 
 export default function Sidebar({
@@ -50,6 +53,8 @@ export default function Sidebar({
   onMoveThread,
   onBulkMoveThreads,
   onToggleFolderCollapse,
+  threadContextIds,
+  onAddThreadToContext,
 }: SidebarProps) {
   // Check if folder features are enabled (all folder props provided)
   const hasFolderFeatures = !!(
@@ -367,6 +372,8 @@ export default function Sidebar({
             onMoveThread={onMoveThread}
             onBulkMoveThreads={onBulkMoveThreads}
             onToggleFolderCollapse={onToggleFolderCollapse}
+            threadContextIds={threadContextIds}
+            onAddThreadToContext={onAddThreadToContext}
           />
         ) : (
           <>

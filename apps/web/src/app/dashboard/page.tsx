@@ -21,6 +21,7 @@ import { useContextWindow } from "@/hooks/useContextWindow";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { useFeatureToggles } from "@/hooks/useFeatureToggles";
 import { useSplitView } from "@/hooks/useSplitView";
+import { useThreadContext } from "@/hooks/useThreadContext";
 import { useMCPServers } from "@/hooks/useMCPServers";
 import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
@@ -124,6 +125,21 @@ export default function DashboardPage() {
     setRightPanelName,
     setMessageType,
   } = useSplitView();
+
+  // Thread context - allows adding .thread files to context panel for AI questions
+  const {
+    threadContextSections,
+    isLoadingThread,
+    addThreadToContext,
+    removeThreadFromContext,
+    getContextStrings: getThreadContextStrings,
+  } = useThreadContext();
+
+  // Create a Set of thread IDs in context for quick lookup
+  const threadContextIds = React.useMemo(
+    () => new Set(threadContextSections.map((s) => s.threadId)),
+    [threadContextSections]
+  );
 
   // MCP servers
   const { connections, tools, isConnecting, servers, isEnabled } = useMCPServers();
@@ -362,10 +378,11 @@ export default function DashboardPage() {
   // Context panel (text selection, context questions)
   const {
     isContextPanelOpen,
+    setIsContextPanelOpen,
     selectedContextSections,
     handleAddContext,
-    handleRemoveContextSection,
-    handleCloseContextPanel,
+    handleRemoveContextSection: handleRemoveTextContextSection,
+    handleCloseContextPanel: handleCloseTextContextPanel,
     handleContextSubmit,
   } = useContextPanel({
     selection,
@@ -374,6 +391,42 @@ export default function DashboardPage() {
     userTier: tier,
     userId: user?.id,
   });
+
+  // Combine text selection context with thread context
+  const threadContextStrings = getThreadContextStrings();
+  const combinedContextSections = React.useMemo(
+    () => [...selectedContextSections, ...threadContextStrings],
+    [selectedContextSections, threadContextStrings]
+  );
+
+  // Wrapper to add thread to context and open panel
+  const handleAddThreadToContext = useCallback(async (threadId: string, threadTitle: string) => {
+    await addThreadToContext(threadId, threadTitle);
+    setIsContextPanelOpen(true);
+  }, [addThreadToContext, setIsContextPanelOpen]);
+
+  // Combined removal handler that knows whether to remove from text or thread context
+  const handleRemoveContextSection = useCallback((index: number) => {
+    const textSectionCount = selectedContextSections.length;
+    if (index < textSectionCount) {
+      // It's a text selection section
+      handleRemoveTextContextSection(index);
+    } else {
+      // It's a thread context section
+      const threadIndex = index - textSectionCount;
+      const threadSection = threadContextSections[threadIndex];
+      if (threadSection) {
+        removeThreadFromContext(threadSection.threadId);
+      }
+    }
+  }, [selectedContextSections.length, handleRemoveTextContextSection, threadContextSections, removeThreadFromContext]);
+
+  // Combined close handler
+  const handleCloseContextPanel = useCallback(() => {
+    handleCloseTextContextPanel();
+    // Clear thread context when closing panel
+    threadContextSections.forEach((s) => removeThreadFromContext(s.threadId));
+  }, [handleCloseTextContextPanel, threadContextSections, removeThreadFromContext]);
 
   // Context-to-main-chat feature
   const { isAdding: isAddingContextToMainChat, addContextToMainChat } = useContextToMainChat({
@@ -521,6 +574,9 @@ export default function DashboardPage() {
           onMoveThread={moveThread}
           onBulkMoveThreads={bulkMoveThreads}
           onToggleFolderCollapse={toggleFolderCollapse}
+          // Thread context props
+          threadContextIds={threadContextIds}
+          onAddThreadToContext={handleAddThreadToContext}
         />
       </aside>
 
@@ -706,7 +762,7 @@ export default function DashboardPage() {
         <ContextPanel
           isOpen={isContextPanelOpen}
           onClose={handleCloseContextPanel}
-          contextSections={selectedContextSections}
+          contextSections={combinedContextSections}
           onRemoveSection={handleRemoveContextSection}
           threadMessages={messages.map((m) => ({
             role: m.role as "user" | "assistant",

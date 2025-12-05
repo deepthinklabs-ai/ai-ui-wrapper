@@ -35,6 +35,9 @@ type FolderTreeProps = {
   onMoveThread: (threadId: string, folderId: string | null) => Promise<void>;
   onBulkMoveThreads: (threadIds: string[], folderId: string | null) => Promise<void>;
   onToggleFolderCollapse: (folderId: string) => Promise<void>;
+  // Context panel props
+  threadContextIds?: Set<string>;
+  onAddThreadToContext?: (threadId: string, threadTitle: string) => void;
 };
 
 type DragItem = {
@@ -65,6 +68,8 @@ export function FolderTree({
   onMoveThread,
   onBulkMoveThreads,
   onToggleFolderCollapse,
+  threadContextIds,
+  onAddThreadToContext,
 }: FolderTreeProps) {
   const [activeItem, setActiveItem] = useState<DragItem | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -488,6 +493,8 @@ export function FolderTree({
               newFolderInputRef={newFolderInputRef}
               multiSelectedIds={multiSelectedIds}
               onThreadMultiSelect={handleThreadMultiSelect}
+              threadContextIds={threadContextIds}
+              onAddThreadToContext={onAddThreadToContext}
             />
           ))}
 
@@ -498,10 +505,12 @@ export function FolderTree({
               thread={thread}
               isSelected={thread.id === selectedThreadId}
               isMultiSelected={multiSelectedIds.has(thread.id)}
+              isInContext={threadContextIds?.has(thread.id) ?? false}
               onSelect={() => handleThreadSelect(thread.id)}
               onMultiSelect={(e) => handleThreadMultiSelect(thread.id, e)}
               onDelete={() => onDeleteThread(thread.id)}
               onUpdateTitle={(newTitle) => onUpdateThreadTitle(thread.id, newTitle)}
+              onAddToContext={onAddThreadToContext ? () => onAddThreadToContext(thread.id, thread.title || "Untitled") : undefined}
               depth={0}
             />
           ))}

@@ -21,6 +21,7 @@ type UseContextPanelOptions = {
 
 type UseContextPanelResult = {
   isContextPanelOpen: boolean;
+  setIsContextPanelOpen: (open: boolean) => void;
   selectedContextSections: string[];
   handleAddContext: () => void;
   handleRemoveContextSection: (index: number) => void;
@@ -89,6 +90,7 @@ export function useContextPanel(options: UseContextPanelOptions): UseContextPane
 
   return {
     isContextPanelOpen,
+    setIsContextPanelOpen,
     selectedContextSections,
     handleAddContext,
     handleRemoveContextSection,

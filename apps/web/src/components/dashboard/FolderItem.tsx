@@ -27,6 +27,9 @@ type FolderItemProps = {
   // Multi-select props
   multiSelectedIds?: Set<string>;
   onThreadMultiSelect?: (threadId: string, e: React.MouseEvent) => void;
+  // Context panel props
+  threadContextIds?: Set<string>;
+  onAddThreadToContext?: (threadId: string, threadTitle: string) => void;
 };
 
 export function FolderItem({
@@ -49,6 +52,8 @@ export function FolderItem({
   newFolderInputRef,
   multiSelectedIds,
   onThreadMultiSelect,
+  threadContextIds,
+  onAddThreadToContext,
 }: FolderItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(folder.name);
@@ -383,6 +388,8 @@ export function FolderItem({
               newFolderInputRef={newFolderInputRef}
               multiSelectedIds={multiSelectedIds}
               onThreadMultiSelect={onThreadMultiSelect}
+              threadContextIds={threadContextIds}
+              onAddThreadToContext={onAddThreadToContext}
             />
           ))}
 
@@ -393,10 +400,12 @@ export function FolderItem({
               thread={thread}
               isSelected={thread.id === selectedThreadId}
               isMultiSelected={multiSelectedIds?.has(thread.id) ?? false}
+              isInContext={threadContextIds?.has(thread.id) ?? false}
               onSelect={() => onSelectThread(thread.id)}
               onMultiSelect={(e) => onThreadMultiSelect?.(thread.id, e)}
               onDelete={() => onDeleteThread(thread.id)}
               onUpdateTitle={(newTitle) => onUpdateThreadTitle(thread.id, newTitle)}
+              onAddToContext={onAddThreadToContext ? () => onAddThreadToContext(thread.id, thread.title || "Untitled") : undefined}
               depth={depth + 1}
             />
           ))}

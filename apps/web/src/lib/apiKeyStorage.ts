@@ -9,10 +9,10 @@ const API_KEY_STORAGE_KEY = 'openai_api_key';
 const MODEL_STORAGE_KEY = 'openai_model';
 
 export type AIModel =
-  // OpenAI Models (GPT-5.1 generation)
+  // OpenAI Models (GPT-5 generation)
   | 'gpt-5.1'
-  | 'gpt-5.1-mini'
-  | 'gpt-5.1-nano'
+  | 'gpt-5-mini'
+  | 'gpt-5-nano'
   // OpenAI Models (GPT-4 generation)
   | 'gpt-4o'
   | 'gpt-4o-mini'
@@ -98,17 +98,17 @@ export const AVAILABLE_MODELS: {
     contextWindow: 272000,
   },
   {
-    value: 'gpt-5.1-mini',
-    label: 'GPT-5.1 Mini',
-    description: 'Balanced performance and cost, great for most applications • Supports images',
+    value: 'gpt-5-mini',
+    label: 'GPT-5 Mini',
+    description: 'Faster and more affordable alternative to GPT-5, great balance of power and performance • Supports images',
     provider: 'openai',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 128000,
   },
   {
-    value: 'gpt-5.1-nano',
-    label: 'GPT-5.1 Nano',
-    description: 'Ultra-fast and cost-efficient, ideal for high-volume tasks • Supports images',
+    value: 'gpt-5-nano',
+    label: 'GPT-5 Nano',
+    description: 'Fastest and most affordable reasoning model, excels at summarization and classification • Supports images',
     provider: 'openai',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 128000,

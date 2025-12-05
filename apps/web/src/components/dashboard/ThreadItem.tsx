@@ -9,10 +9,12 @@ type ThreadItemProps = {
   thread: Thread;
   isSelected: boolean;
   isMultiSelected: boolean;
+  isInContext?: boolean;
   onSelect: () => void;
   onMultiSelect: (e: React.MouseEvent) => void;
   onDelete: () => Promise<void>;
   onUpdateTitle: (newTitle: string) => Promise<void>;
+  onAddToContext?: () => void;
   depth: number;
 };
 
@@ -20,10 +22,12 @@ export function ThreadItem({
   thread,
   isSelected,
   isMultiSelected,
+  isInContext = false,
   onSelect,
   onMultiSelect,
   onDelete,
   onUpdateTitle,
+  onAddToContext,
   depth,
 }: ThreadItemProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -106,8 +110,19 @@ export function ThreadItem({
     }
   };
 
+  const handleAddToContext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onAddToContext) {
+      onAddToContext();
+    }
+  };
+
   // Determine styling based on selection state
   const getSelectionClasses = () => {
+    if (isInContext) {
+      // Thread is added to context panel
+      return "bg-purple-600/20 text-slate-50 ring-1 ring-purple-500/50";
+    }
     if (isMultiSelected) {
       // Multi-selected threads get a distinct blue highlight
       return "bg-blue-600/30 text-slate-50 ring-1 ring-blue-500/50";
@@ -181,6 +196,27 @@ export function ThreadItem({
         {/* Quick Actions (visible on hover) */}
         {!isEditing && (
           <div className="absolute right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Add to Context Button */}
+            {onAddToContext && (
+              <button
+                type="button"
+                onClick={handleAddToContext}
+                className={`rounded p-1 hover:bg-slate-700 ${
+                  isInContext
+                    ? "text-purple-400 hover:text-purple-300"
+                    : "text-slate-400 hover:text-purple-400"
+                }`}
+                title={isInContext ? "Already in context" : "Add to context"}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleStartEdit}
