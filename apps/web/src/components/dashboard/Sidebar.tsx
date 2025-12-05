@@ -2,12 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-type Thread = {
-  id: string;
-  title: string | null;
-  created_at?: string;
-};
+import type { Thread, FolderWithChildren } from "@/types/chat";
+import { FolderTree } from "./FolderTree";
 
 type SidebarProps = {
   userEmail: string | null | undefined;
@@ -22,6 +18,14 @@ type SidebarProps = {
   threadLimitReached?: boolean;
   maxThreads?: number;
   userTier?: "free" | "pro";
+  // Folder props
+  folderTree?: FolderWithChildren[];
+  onCreateFolder?: (name: string, parentId?: string | null) => Promise<any>;
+  onUpdateFolder?: (id: string, updates: { name?: string; color?: string; is_collapsed?: boolean }) => Promise<void>;
+  onDeleteFolder?: (id: string) => Promise<void>;
+  onMoveFolder?: (folderId: string, newParentId: string | null) => Promise<void>;
+  onMoveThread?: (threadId: string, folderId: string | null) => Promise<void>;
+  onToggleFolderCollapse?: (folderId: string) => Promise<void>;
 };
 
 export default function Sidebar({
@@ -37,7 +41,26 @@ export default function Sidebar({
   threadLimitReached = false,
   maxThreads = 5,
   userTier = "free",
+  folderTree = [],
+  onCreateFolder,
+  onUpdateFolder,
+  onDeleteFolder,
+  onMoveFolder,
+  onMoveThread,
+  onToggleFolderCollapse,
 }: SidebarProps) {
+  // Check if folder features are enabled (all folder props provided)
+  const hasFolderFeatures = !!(
+    onCreateFolder &&
+    onUpdateFolder &&
+    onDeleteFolder &&
+    onMoveFolder &&
+    onMoveThread &&
+    onToggleFolderCollapse
+  );
+
+  // Get root-level threads (threads without a folder)
+  const rootThreads = threads.filter(t => !t.folder_id);
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
@@ -266,87 +289,109 @@ export default function Sidebar({
         <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
           Genesis Chat Bot Threads
         </div>
-        {threads.length === 0 && (
-          <div className="px-2 py-1 text-xs text-slate-500">
-            No threads yet. Create one to get started.
-          </div>
-        )}
-        <ul className="space-y-1">
-          {threads.map((thread) => {
-            const isActive = thread.id === selectedThreadId;
-            const isEditing = editingThreadId === thread.id;
 
-            return (
-              <li key={thread.id} className="group relative">
-                {isEditing ? (
-                  <div className="flex items-center gap-1 px-2 py-1.5">
-                    <input
-                      ref={editInputRef}
-                      type="text"
-                      value={editedTitle}
-                      onChange={(e) => setEditedTitle(e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, thread.id)}
-                      onBlur={() => saveTitle(thread.id)}
-                      className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => onSelectThread(thread.id)}
-                      className={`w-full rounded-md px-2 py-1.5 pr-16 text-left text-sm transition-colors ${
-                        isActive
-                          ? "bg-slate-800 text-slate-50"
-                          : "text-slate-200 hover:bg-slate-900"
-                      }`}
-                    >
-                      <span className="block truncate">
-                        {thread.title || "New thread"}
-                      </span>
-                    </button>
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={(e) => startEditing(e, thread.id, thread.title || "New thread")}
-                        className="rounded p-1 hover:bg-blue-600/20 text-slate-400 hover:text-blue-400"
-                        title="Edit thread name"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
+        {/* Use FolderTree when folder features are enabled */}
+        {hasFolderFeatures ? (
+          <FolderTree
+            folders={folderTree}
+            threads={rootThreads}
+            selectedThreadId={selectedThreadId}
+            onSelectThread={onSelectThread}
+            onDeleteThread={onDeleteThread}
+            onUpdateThreadTitle={onUpdateThreadTitle}
+            onCreateFolder={onCreateFolder}
+            onUpdateFolder={onUpdateFolder}
+            onDeleteFolder={onDeleteFolder}
+            onMoveFolder={onMoveFolder}
+            onMoveThread={onMoveThread}
+            onToggleFolderCollapse={onToggleFolderCollapse}
+          />
+        ) : (
+          <>
+            {/* Legacy thread list (fallback when folders not enabled) */}
+            {threads.length === 0 && (
+              <div className="px-2 py-1 text-xs text-slate-500">
+                No threads yet. Create one to get started.
+              </div>
+            )}
+            <ul className="space-y-1">
+              {threads.map((thread) => {
+                const isActive = thread.id === selectedThreadId;
+                const isEditing = editingThreadId === thread.id;
+
+                return (
+                  <li key={thread.id} className="group relative">
+                    {isEditing ? (
+                      <div className="flex items-center gap-1 px-2 py-1.5">
+                        <input
+                          ref={editInputRef}
+                          type="text"
+                          value={editedTitle}
+                          onChange={(e) => setEditedTitle(e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, thread.id)}
+                          onBlur={() => saveTitle(thread.id)}
+                          className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onSelectThread(thread.id)}
+                          className={`w-full rounded-md px-2 py-1.5 pr-16 text-left text-sm transition-colors ${
+                            isActive
+                              ? "bg-slate-800 text-slate-50"
+                              : "text-slate-200 hover:bg-slate-900"
+                          }`}
                         >
-                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDelete(e, thread.id, thread.title || "New thread")}
-                        className="rounded p-1 hover:bg-red-600/20 text-slate-400 hover:text-red-400"
-                        title="Delete thread"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                          <span className="block truncate">
+                            {thread.title || "New thread"}
+                          </span>
+                        </button>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(e) => startEditing(e, thread.id, thread.title || "New thread")}
+                            className="rounded p-1 hover:bg-blue-600/20 text-slate-400 hover:text-blue-400"
+                            title="Edit thread name"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(e, thread.id, thread.title || "New thread")}
+                            className="rounded p-1 hover:bg-red-600/20 text-slate-400 hover:text-red-400"
+                            title="Delete thread"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
       </div>
 
     </div>

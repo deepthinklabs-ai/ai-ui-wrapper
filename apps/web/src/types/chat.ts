@@ -5,8 +5,29 @@ export type Thread = {
   id: string;
   user_id: string;
   title: string | null;
+  folder_id: string | null;
+  position: number;
   created_at: string;
   updated_at: string | null;
+};
+
+export type Folder = {
+  id: string;
+  user_id: string;
+  parent_id: string | null;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  position: number;
+  is_collapsed: boolean;
+  created_at: string;
+  updated_at: string | null;
+};
+
+// Folder with nested children for tree rendering
+export type FolderWithChildren = Folder & {
+  children: FolderWithChildren[];
+  threads: Thread[];
 };
 
 export type AttachmentMetadata = {

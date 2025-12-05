@@ -1,0 +1,334 @@
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import type { FolderWithChildren, Thread } from "@/types/chat";
+import { FolderItem } from "./FolderItem";
+import { ThreadItem } from "./ThreadItem";
+
+type FolderTreeProps = {
+  folders: FolderWithChildren[];
+  threads: Thread[]; // Threads without folders (root level)
+  selectedThreadId: string | null;
+  onSelectThread: (id: string) => void;
+  onDeleteThread: (id: string) => Promise<void>;
+  onUpdateThreadTitle: (id: string, newTitle: string) => Promise<void>;
+  onCreateFolder: (name: string, parentId?: string | null) => Promise<any>;
+  onUpdateFolder: (id: string, updates: { name?: string; color?: string; is_collapsed?: boolean }) => Promise<void>;
+  onDeleteFolder: (id: string) => Promise<void>;
+  onMoveFolder: (folderId: string, newParentId: string | null) => Promise<void>;
+  onMoveThread: (threadId: string, folderId: string | null) => Promise<void>;
+  onToggleFolderCollapse: (folderId: string) => Promise<void>;
+};
+
+type DragItem = {
+  type: "folder" | "thread";
+  id: string;
+};
+
+export function FolderTree({
+  folders,
+  threads,
+  selectedThreadId,
+  onSelectThread,
+  onDeleteThread,
+  onUpdateThreadTitle,
+  onCreateFolder,
+  onUpdateFolder,
+  onDeleteFolder,
+  onMoveFolder,
+  onMoveThread,
+  onToggleFolderCollapse,
+}: FolderTreeProps) {
+  const [activeItem, setActiveItem] = useState<DragItem | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const newFolderInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  );
+
+  // Focus input when creating folder
+  useEffect(() => {
+    if (isCreatingFolder && newFolderInputRef.current) {
+      newFolderInputRef.current.focus();
+    }
+  }, [isCreatingFolder]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const itemType = active.data.current?.type as "folder" | "thread";
+    setActiveItem({
+      type: itemType,
+      id: active.id as string,
+    });
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    setOverId(over?.id as string | null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveItem(null);
+    setOverId(null);
+
+    if (!over) return;
+
+    const activeType = active.data.current?.type as "folder" | "thread";
+    const overType = over.data.current?.type as "folder" | "thread" | "root";
+    const overId = over.id as string;
+
+    if (activeType === "thread") {
+      // Moving a thread
+      if (overType === "folder") {
+        // Drop thread into folder
+        await onMoveThread(active.id as string, overId);
+      } else if (overType === "root") {
+        // Drop thread to root level
+        await onMoveThread(active.id as string, null);
+      }
+    } else if (activeType === "folder") {
+      // Moving a folder
+      if (overType === "folder" && active.id !== over.id) {
+        // Drop folder into another folder
+        await onMoveFolder(active.id as string, overId);
+      } else if (overType === "root") {
+        // Drop folder to root level
+        await onMoveFolder(active.id as string, null);
+      }
+    }
+  };
+
+  const handleCreateFolder = async (parentId: string | null = null) => {
+    setNewFolderParentId(parentId);
+    setIsCreatingFolder(true);
+    setNewFolderName("");
+  };
+
+  const handleSaveNewFolder = async () => {
+    const trimmedName = newFolderName.trim();
+    if (!trimmedName) {
+      setIsCreatingFolder(false);
+      return;
+    }
+
+    await onCreateFolder(trimmedName, newFolderParentId);
+    setIsCreatingFolder(false);
+    setNewFolderName("");
+    setNewFolderParentId(null);
+  };
+
+  const handleCancelNewFolder = () => {
+    setIsCreatingFolder(false);
+    setNewFolderName("");
+    setNewFolderParentId(null);
+  };
+
+  const handleNewFolderKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSaveNewFolder();
+    } else if (e.key === "Escape") {
+      handleCancelNewFolder();
+    }
+  };
+
+  // Get all folder and thread IDs for sortable context
+  const getAllIds = (): string[] => {
+    const ids: string[] = [];
+
+    const collectIds = (folder: FolderWithChildren) => {
+      ids.push(folder.id);
+      folder.threads.forEach(t => ids.push(t.id));
+      folder.children.forEach(collectIds);
+    };
+
+    folders.forEach(collectIds);
+    threads.forEach(t => ids.push(t.id));
+
+    return ids;
+  };
+
+  // Find the active folder or thread for the drag overlay
+  const findActiveFolder = (id: string, folders: FolderWithChildren[]): FolderWithChildren | null => {
+    for (const folder of folders) {
+      if (folder.id === id) return folder;
+      const found = findActiveFolder(id, folder.children);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const findActiveThread = (id: string, folders: FolderWithChildren[], rootThreads: Thread[]): Thread | null => {
+    // Check root threads
+    const rootThread = rootThreads.find(t => t.id === id);
+    if (rootThread) return rootThread;
+
+    // Check folder threads recursively
+    const searchFolders = (folders: FolderWithChildren[]): Thread | null => {
+      for (const folder of folders) {
+        const thread = folder.threads.find(t => t.id === id);
+        if (thread) return thread;
+        const found = searchFolders(folder.children);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    return searchFolders(folders);
+  };
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex flex-col">
+        {/* New Folder Button */}
+        <button
+          type="button"
+          onClick={() => handleCreateFolder(null)}
+          className="mb-2 flex items-center gap-2 px-2 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-md transition-colors"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+            />
+          </svg>
+          New Folder
+        </button>
+
+        {/* New Folder Input (at root level) */}
+        {isCreatingFolder && newFolderParentId === null && (
+          <div className="mb-2 flex items-center gap-1 px-2 py-1">
+            <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+              />
+            </svg>
+            <input
+              ref={newFolderInputRef}
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={handleNewFolderKeyDown}
+              onBlur={handleSaveNewFolder}
+              placeholder="Folder name"
+              className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            />
+          </div>
+        )}
+
+        {/* Root Drop Zone */}
+        <div
+          data-droppable="root"
+          className={`min-h-[2px] rounded transition-colors ${
+            overId === "root" ? "bg-blue-500/30" : ""
+          }`}
+        />
+
+        <SortableContext items={getAllIds()} strategy={verticalListSortingStrategy}>
+          {/* Render folders */}
+          {folders.map((folder) => (
+            <FolderItem
+              key={folder.id}
+              folder={folder}
+              depth={0}
+              selectedThreadId={selectedThreadId}
+              onSelectThread={onSelectThread}
+              onDeleteThread={onDeleteThread}
+              onUpdateThreadTitle={onUpdateThreadTitle}
+              onUpdateFolder={onUpdateFolder}
+              onDeleteFolder={onDeleteFolder}
+              onToggleFolderCollapse={onToggleFolderCollapse}
+              onCreateSubfolder={handleCreateFolder}
+              isOver={overId === folder.id}
+              isCreatingSubfolder={isCreatingFolder && newFolderParentId === folder.id}
+              newFolderName={newFolderName}
+              onNewFolderNameChange={setNewFolderName}
+              onNewFolderKeyDown={handleNewFolderKeyDown}
+              onNewFolderBlur={handleSaveNewFolder}
+              newFolderInputRef={newFolderInputRef}
+            />
+          ))}
+
+          {/* Render root-level threads (without folder) */}
+          {threads.map((thread) => (
+            <ThreadItem
+              key={thread.id}
+              thread={thread}
+              isSelected={thread.id === selectedThreadId}
+              onSelect={() => onSelectThread(thread.id)}
+              onDelete={() => onDeleteThread(thread.id)}
+              onUpdateTitle={(newTitle) => onUpdateThreadTitle(thread.id, newTitle)}
+              depth={0}
+            />
+          ))}
+        </SortableContext>
+
+        {/* Empty state */}
+        {folders.length === 0 && threads.length === 0 && !isCreatingFolder && (
+          <div className="px-2 py-3 text-xs text-slate-500 text-center">
+            No threads yet. Create one to get started.
+          </div>
+        )}
+      </div>
+
+      {/* Drag Overlay */}
+      <DragOverlay>
+        {activeItem && activeItem.type === "folder" && (
+          <div className="rounded-md bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-slate-200 shadow-lg">
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                />
+              </svg>
+              {findActiveFolder(activeItem.id, folders)?.name || "Folder"}
+            </div>
+          </div>
+        )}
+        {activeItem && activeItem.type === "thread" && (
+          <div className="rounded-md bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-slate-200 shadow-lg">
+            {findActiveThread(activeItem.id, folders, threads)?.title || "Thread"}
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
+}

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback, type RefObject } from 
 import { redirect } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useThreads } from "@/hooks/useThreads";
+import { useFolders } from "@/hooks/useFolders";
 import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
 import { useUserTier, TIER_LIMITS } from "@/hooks/useUserTier";
 import { useTextSelection } from "@/hooks/useTextSelection";
@@ -169,6 +170,18 @@ export default function DashboardPage() {
     canCreateThread,
     threadLimitReached,
   } = useThreads(user?.id);
+
+  // Folder management
+  const {
+    folderTree,
+    createFolder,
+    updateFolder,
+    deleteFolder,
+    moveFolder,
+    moveThread,
+    toggleFolderCollapse,
+    refreshFolders,
+  } = useFolders(user?.id, threads);
 
   const {
     messages,
@@ -495,6 +508,14 @@ export default function DashboardPage() {
           threadLimitReached={threadLimitReached}
           maxThreads={TIER_LIMITS[tier].maxThreads}
           userTier={tier}
+          // Folder props
+          folderTree={folderTree}
+          onCreateFolder={createFolder}
+          onUpdateFolder={updateFolder}
+          onDeleteFolder={deleteFolder}
+          onMoveFolder={moveFolder}
+          onMoveThread={moveThread}
+          onToggleFolderCollapse={toggleFolderCollapse}
         />
       </aside>
 
