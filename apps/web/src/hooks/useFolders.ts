@@ -7,6 +7,7 @@ import type { Folder, FolderWithChildren, Thread } from "@/types/chat";
 type UseFoldersResult = {
   folders: Folder[];
   folderTree: FolderWithChildren[];
+  defaultFolderId: string | null;
   loadingFolders: boolean;
   foldersError: string | null;
   createFolder: (name: string, parentId?: string | null) => Promise<Folder | null>;
@@ -18,6 +19,7 @@ type UseFoldersResult = {
   reorderFolders: (folderId: string, newPosition: number, parentId: string | null) => Promise<void>;
   reorderThreads: (threadId: string, newPosition: number, folderId: string | null) => Promise<void>;
   toggleFolderCollapse: (folderId: string) => Promise<void>;
+  getOrCreateDefaultFolder: () => Promise<string | null>;
   refreshFolders: () => Promise<void>;
 };
 
@@ -181,6 +183,13 @@ export function useFolders(
 
   const deleteFolder = async (id: string): Promise<void> => {
     if (!userId) return;
+
+    // Prevent deletion of default folder
+    const folder = folders.find(f => f.id === id);
+    if (folder?.is_default) {
+      setFoldersError("Cannot delete the default folder");
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -411,9 +420,62 @@ export function useFolders(
     await updateFolder(folderId, { is_collapsed: !folder.is_collapsed });
   };
 
+  // Get or create the default folder for the user
+  const getOrCreateDefaultFolder = async (): Promise<string | null> => {
+    if (!userId) return null;
+
+    try {
+      // First check if we already have a default folder loaded
+      const existingDefault = folders.find(f => f.is_default);
+      if (existingDefault) return existingDefault.id;
+
+      // Check in database
+      const { data: existing, error: fetchError } = await supabase
+        .from("folders")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_default", true)
+        .single();
+
+      if (existing) return existing.id;
+
+      // Create default folder if it doesn't exist
+      const { data: newFolder, error: createError } = await supabase
+        .from("folders")
+        .insert({
+          user_id: userId,
+          name: "General",
+          is_default: true,
+          position: 0,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error("Error creating default folder:", createError);
+        return null;
+      }
+
+      // Add to local state
+      if (newFolder) {
+        setFolders(prev => [newFolder, ...prev]);
+        return newFolder.id;
+      }
+
+      return null;
+    } catch (err: any) {
+      console.error("Error getting/creating default folder:", err);
+      return null;
+    }
+  };
+
+  // Get the default folder ID from the loaded folders
+  const defaultFolderId = folders.find(f => f.is_default)?.id ?? null;
+
   return {
     folders,
     folderTree,
+    defaultFolderId,
     loadingFolders,
     foldersError,
     createFolder,
@@ -425,6 +487,7 @@ export function useFolders(
     reorderFolders,
     reorderThreads,
     toggleFolderCollapse,
+    getOrCreateDefaultFolder,
     refreshFolders,
   };
 }

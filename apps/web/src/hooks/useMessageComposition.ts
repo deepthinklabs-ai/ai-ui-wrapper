@@ -13,6 +13,7 @@ type UseMessageCompositionOptions = {
   selectedThreadId: string | null;
   sendMessage: (content: string, files?: File[], overrideThreadId?: string) => Promise<void>;
   createThread?: () => Promise<string | null>;
+  onThreadCreated?: () => void;
 };
 
 type UseMessageCompositionResult = {
@@ -24,7 +25,7 @@ type UseMessageCompositionResult = {
 };
 
 export function useMessageComposition(options: UseMessageCompositionOptions): UseMessageCompositionResult {
-  const { selectedThreadId, sendMessage, createThread } = options;
+  const { selectedThreadId, sendMessage, createThread, onThreadCreated } = options;
 
   const [draft, setDraft] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
@@ -44,6 +45,8 @@ export function useMessageComposition(options: UseMessageCompositionOptions): Us
         return;
       }
       threadId = newThreadId;
+      // Notify that a thread was created (may have also created default folder)
+      onThreadCreated?.();
     }
 
     // If we still don't have a thread ID, we can't send the message

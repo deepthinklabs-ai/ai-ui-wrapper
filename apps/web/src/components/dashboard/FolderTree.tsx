@@ -4,10 +4,11 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
+  pointerWithin,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
@@ -40,6 +41,7 @@ type DragItem = {
   type: "folder" | "thread";
   id: string;
 };
+
 
 type DropIndicatorState = {
   folderName: string;
@@ -260,6 +262,11 @@ export function FolderTree({
       } else {
         setDropIndicator(null);
       }
+    }
+    // Show indicator when dragging over root zone (outside any folder)
+    else if (overType === "root" || newOverId === "root") {
+      // No tooltip for root - it's the natural "outside folders" area
+      setDropIndicator(null);
     } else {
       setDropIndicator(null);
     }
@@ -277,6 +284,8 @@ export function FolderTree({
     const overType = over.data.current?.type as "folder" | "thread" | "root";
     const targetFolderId = over.id as string;
 
+    const isRootTarget = overType === "root" || over.id === "root";
+
     if (activeType === "thread") {
       const activeThreadId = active.id as string;
 
@@ -292,7 +301,7 @@ export function FolderTree({
           // Single thread move
           await onMoveThread(activeThreadId, targetFolderId);
         }
-      } else if (overType === "root") {
+      } else if (isRootTarget) {
         if (isPartOfMultiSelect) {
           // Bulk move all selected threads to root
           await onBulkMoveThreads(Array.from(multiSelectedIds), null);
@@ -311,7 +320,7 @@ export function FolderTree({
         }
         // Drop folder into another folder
         await onMoveFolder(activeFolderId, targetFolderId);
-      } else if (overType === "root") {
+      } else if (isRootTarget) {
         // Drop folder to root level
         await onMoveFolder(activeFolderId, null);
       }
@@ -378,6 +387,14 @@ export function FolderTree({
     return null;
   };
 
+  // Root container droppable - for moving items out of folders
+  const { setNodeRef: setRootRef } = useDroppable({
+    id: "root",
+    data: {
+      type: "root",
+    },
+  });
+
   const findActiveThread = (id: string, folders: FolderWithChildren[], rootThreads: Thread[]): Thread | null => {
     // Check root threads
     const rootThread = rootThreads.find(t => t.id === id);
@@ -400,12 +417,12 @@ export function FolderTree({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col">
+      <div ref={setRootRef} className="flex flex-col min-h-[200px]">
         {/* New Folder Button */}
         <button
           type="button"
@@ -446,14 +463,6 @@ export function FolderTree({
             />
           </div>
         )}
-
-        {/* Root Drop Zone */}
-        <div
-          data-droppable="root"
-          className={`min-h-[2px] rounded transition-colors ${
-            overId === "root" ? "bg-blue-500/30" : ""
-          }`}
-        />
 
         <SortableContext items={getAllIds()} strategy={verticalListSortingStrategy}>
           {/* Render folders */}

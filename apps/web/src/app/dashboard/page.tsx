@@ -218,6 +218,7 @@ export default function DashboardPage() {
       selectedThreadId,
       sendMessage,
       createThread,
+      onThreadCreated: refreshFolders, // Refresh folders to show newly created default folder
     });
 
   // Workflow-aware send handler - routes to workflow or regular chat

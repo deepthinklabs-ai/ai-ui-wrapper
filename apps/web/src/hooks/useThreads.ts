@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Thread } from "@/types/chat";
 import { useUserTier, TIER_LIMITS } from "./useUserTier";
@@ -21,17 +21,68 @@ type UseThreadsResult = {
   threadLimitReached: boolean;
 };
 
+/**
+ * Gets or creates the default folder for thread creation
+ */
+async function getOrCreateDefaultFolder(userId: string): Promise<string | null> {
+  try {
+    // Check for existing default folder
+    const { data: existing } = await supabase
+      .from("folders")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("is_default", true)
+      .single();
+
+    if (existing) return existing.id;
+
+    // Create default folder if it doesn't exist
+    const { data: newFolder, error: createError } = await supabase
+      .from("folders")
+      .insert({
+        user_id: userId,
+        name: "General",
+        is_default: true,
+        position: 0,
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error("Error creating default folder:", createError);
+      return null;
+    }
+
+    return newFolder?.id ?? null;
+  } catch (err) {
+    console.error("Error getting/creating default folder:", err);
+    return null;
+  }
+}
+
 export function useThreads(userId: string | null | undefined): UseThreadsResult {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [threadsError, setThreadsError] = useState<string | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const defaultFolderIdRef = useRef<string | null>(null);
 
   // Get user tier to enforce thread limits
   const { tier } = useUserTier(userId);
   const maxThreads = TIER_LIMITS[tier].maxThreads;
   const threadLimitReached = threads.length >= maxThreads;
   const canCreateThread = !threadLimitReached;
+
+  // Fetch default folder on mount
+  useEffect(() => {
+    if (!userId) {
+      defaultFolderIdRef.current = null;
+      return;
+    }
+    getOrCreateDefaultFolder(userId).then(id => {
+      defaultFolderIdRef.current = id;
+    });
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) {
@@ -89,6 +140,7 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
         .insert({
           user_id: userId,
           title: "New thread",
+          folder_id: defaultFolderIdRef.current,
         })
         .select()
         .single();
@@ -127,6 +179,7 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
         .insert({
           user_id: userId,
           title,
+          folder_id: defaultFolderIdRef.current,
         })
         .select()
         .single();
@@ -177,12 +230,14 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
       const originalTitle = originalThread?.title || "Thread";
       const newTitle = `Fork of ${originalTitle}`;
 
-      // 2. Create the new thread
+      // 2. Create the new thread (in same folder as original, or default folder)
+      const originalFolderId = originalThread?.folder_id ?? defaultFolderIdRef.current;
       const { data: newThread, error: threadError } = await supabase
         .from("threads")
         .insert({
           user_id: userId,
           title: newTitle,
+          folder_id: originalFolderId,
         })
         .select()
         .single();

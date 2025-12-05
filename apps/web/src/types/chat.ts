@@ -20,6 +20,7 @@ export type Folder = {
   icon: string | null;
   position: number;
   is_collapsed: boolean;
+  is_default: boolean;
   created_at: string;
   updated_at: string | null;
 };
