@@ -348,7 +348,7 @@ export default function Sidebar({
       {/* Middle: threads list */}
       <div className="flex-1 overflow-y-auto px-2 py-3">
         <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Genesis Chat Bot Threads
+          Directory
         </div>
 
         {/* Use FolderTree when folder features are enabled */}
