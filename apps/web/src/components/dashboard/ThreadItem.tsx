@@ -86,7 +86,7 @@ export function ThreadItem({
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${thread.title || 'New thread'}"?\n\nThis will permanently delete the thread and all its messages.`
+      `Are you sure you want to delete "${thread.title || 'Untitled'}.thread"?\n\nThis will permanently delete the .thread file and all its messages.`
     );
     if (confirmed) {
       await onDelete();
@@ -159,19 +159,22 @@ export function ThreadItem({
 
         {/* Thread Title */}
         {isEditing ? (
-          <input
-            ref={editInputRef}
-            type="text"
-            value={editedTitle}
-            onChange={(e) => setEditedTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleSaveEdit}
-            onClick={(e) => e.stopPropagation()}
-            className="flex-1 rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-          />
+          <div className="flex-1 flex items-center gap-1">
+            <input
+              ref={editInputRef}
+              type="text"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleSaveEdit}
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            />
+            <span className="text-xs text-slate-500">.thread</span>
+          </div>
         ) : (
           <span className="flex-1 truncate text-sm">
-            {thread.title || "New thread"}
+            {thread.title || "Untitled"}<span className="text-slate-500">.thread</span>
           </span>
         )}
 

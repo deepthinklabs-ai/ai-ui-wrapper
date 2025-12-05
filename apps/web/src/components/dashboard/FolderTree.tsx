@@ -437,7 +437,7 @@ export function FolderTree({
               d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
             />
           </svg>
-          New Folder
+          New Directory
         </button>
 
         {/* New Folder Input (at root level) */}
@@ -458,7 +458,7 @@ export function FolderTree({
               onChange={(e) => setNewFolderName(e.target.value)}
               onKeyDown={handleNewFolderKeyDown}
               onBlur={handleSaveNewFolder}
-              placeholder="Folder name"
+              placeholder="Directory name"
               className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
             />
           </div>
@@ -528,7 +528,7 @@ export function FolderTree({
                   d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                 />
               </svg>
-              {findActiveFolder(activeItem.id, folders)?.name || "Folder"}
+              {findActiveFolder(activeItem.id, folders)?.name || "Directory"}
             </div>
           </div>
         )}

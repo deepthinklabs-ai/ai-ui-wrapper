@@ -10,9 +10,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ currentThreadTitle }) => {
   return (
     <header className="flex items-center justify-between border-b border-slate-800 px-4 py-3 bg-slate-950/95">
       <div className="flex flex-col">
-        <span className="text-xs text-slate-500">Current thread</span>
+        <span className="text-xs text-slate-500">Current .thread</span>
         <span className="text-sm font-medium text-slate-50">
-          {currentThreadTitle || "New thread"}
+          {currentThreadTitle || "Untitled"}<span className="text-slate-500">.thread</span>
         </span>
       </div>
 

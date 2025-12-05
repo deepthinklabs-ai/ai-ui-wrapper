@@ -110,7 +110,7 @@ export function useFolders(
       if (error) throw error;
       setFolders(data ?? []);
     } catch (err: any) {
-      setFoldersError(err.message ?? "Failed to load folders");
+      setFoldersError(err.message ?? "Failed to load directories");
     } finally {
       setLoadingFolders(false);
     }
@@ -152,7 +152,7 @@ export function useFolders(
       return data;
     } catch (err: any) {
       console.error("Error creating folder:", err);
-      setFoldersError(err.message ?? "Failed to create folder");
+      setFoldersError(err.message ?? "Failed to create directory");
       return null;
     }
   };
@@ -177,7 +177,7 @@ export function useFolders(
       );
     } catch (err: any) {
       console.error("Error updating folder:", err);
-      setFoldersError(err.message ?? "Failed to update folder");
+      setFoldersError(err.message ?? "Failed to update directory");
     }
   };
 
@@ -187,7 +187,7 @@ export function useFolders(
     // Prevent deletion of default folder
     const folder = folders.find(f => f.id === id);
     if (folder?.is_default) {
-      setFoldersError("Cannot delete the default folder");
+      setFoldersError("Cannot delete the default directory");
       return;
     }
 
@@ -215,7 +215,7 @@ export function useFolders(
       setFolders(prev => prev.filter(f => !idsToRemove.has(f.id)));
     } catch (err: any) {
       console.error("Error deleting folder:", err);
-      setFoldersError(err.message ?? "Failed to delete folder");
+      setFoldersError(err.message ?? "Failed to delete directory");
     }
   };
 
@@ -245,7 +245,7 @@ export function useFolders(
       );
     } catch (err: any) {
       console.error("Error moving folder:", err);
-      setFoldersError(err.message ?? "Failed to move folder");
+      setFoldersError(err.message ?? "Failed to move directory");
     }
   };
 
@@ -364,7 +364,7 @@ export function useFolders(
       );
     } catch (err: any) {
       console.error("Error reordering folders:", err);
-      setFoldersError(err.message ?? "Failed to reorder folders");
+      setFoldersError(err.message ?? "Failed to reorder directories");
     }
   };
 

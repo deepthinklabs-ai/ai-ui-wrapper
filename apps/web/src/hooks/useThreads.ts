@@ -11,7 +11,7 @@ type UseThreadsResult = {
   threadsError: string | null;
   selectedThreadId: string | null;
   selectThread: (id: string) => void;
-  createThread: () => Promise<string | null>;
+  createThread: (name?: string) => Promise<string | null>;
   createThreadWithContext: (contextMessage: string, title?: string) => Promise<string | null>;
   forkThread: (threadId: string, messages: { role: string; content: string; model: string | null }[]) => Promise<string | null>;
   deleteThread: (id: string) => Promise<void>;
@@ -123,7 +123,7 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     setSelectedThreadId(id);
   };
 
-  const createThread = async (): Promise<string | null> => {
+  const createThread = async (name?: string): Promise<string | null> => {
     if (!userId) return null;
 
     // Check thread limit
@@ -139,7 +139,7 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
         .from("threads")
         .insert({
           user_id: userId,
-          title: "New thread",
+          title: name || "Untitled",
           folder_id: defaultFolderIdRef.current,
         })
         .select()

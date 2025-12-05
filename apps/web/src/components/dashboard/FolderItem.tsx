@@ -154,7 +154,7 @@ export function FolderItem({
     setShowContextMenu(false);
     const hasContent = folder.children.length > 0 || folder.threads.length > 0;
     const message = hasContent
-      ? `Delete "${folder.name}" and all its contents?\n\nThis folder contains ${folder.threads.length} thread(s) and ${folder.children.length} subfolder(s). Threads will be moved to the root level.`
+      ? `Delete "${folder.name}" and all its contents?\n\nThis directory contains ${folder.threads.length} thread(s) and ${folder.children.length} subdirectory(ies). Threads will be moved to the root level.`
       : `Delete "${folder.name}"?`;
 
     if (window.confirm(message)) {
@@ -243,7 +243,7 @@ export function FolderItem({
               type="button"
               onClick={handleCreateSubfolder}
               className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-slate-200"
-              title="Create subfolder"
+              title="Create subdirectory"
             >
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -258,7 +258,7 @@ export function FolderItem({
               type="button"
               onClick={handleStartEdit}
               className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-blue-400"
-              title="Rename folder"
+              title="Rename directory"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -268,7 +268,7 @@ export function FolderItem({
               type="button"
               onClick={handleDelete}
               className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-red-400"
-              title="Delete folder"
+              title="Delete directory"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path
@@ -303,7 +303,7 @@ export function FolderItem({
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            New Subfolder
+            New Subdirectory
           </button>
           <button
             onClick={handleStartEdit}
@@ -355,7 +355,7 @@ export function FolderItem({
                 onChange={(e) => onNewFolderNameChange?.(e.target.value)}
                 onKeyDown={onNewFolderKeyDown}
                 onBlur={onNewFolderBlur}
-                placeholder="Folder name"
+                placeholder="Directory name"
                 className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
               />
             </div>
