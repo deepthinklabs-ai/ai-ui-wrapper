@@ -4,13 +4,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { Thread, FolderWithChildren } from "@/types/chat";
 import { FolderTree } from "./FolderTree";
+import NewThreadModal from "./NewThreadModal";
 
 type SidebarProps = {
   userEmail: string | null | undefined;
   threads: Thread[];
   selectedThreadId: string | null;
   onSelectThread: (id: string) => void;
-  onNewThread: (name?: string) => void;
+  onNewThread: (name: string, folderId: string | null) => void;
   onDeleteThread: (id: string) => Promise<void>;
   onUpdateThreadTitle: (id: string, newTitle: string) => Promise<void>;
   onSignOut: () => void;
@@ -73,11 +74,9 @@ export default function Sidebar({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editedTitle, setEditedTitle] = useState("");
-  const [isCreatingThread, setIsCreatingThread] = useState(false);
-  const [newThreadName, setNewThreadName] = useState("");
+  const [isNewThreadModalOpen, setIsNewThreadModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
-  const newThreadInputRef = useRef<HTMLInputElement>(null);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -101,40 +100,27 @@ export default function Sidebar({
     }
   }, [editingThreadId]);
 
-  // Focus input when creating new thread
-  useEffect(() => {
-    if (isCreatingThread && newThreadInputRef.current) {
-      newThreadInputRef.current.focus();
+  // Find the default folder ID
+  const findDefaultFolderId = (folders: FolderWithChildren[]): string | null => {
+    for (const folder of folders) {
+      if (folder.is_default) return folder.id;
+      if (folder.children) {
+        const found = findDefaultFolderId(folder.children);
+        if (found) return found;
+      }
     }
-  }, [isCreatingThread]);
+    return null;
+  };
 
-  const handleStartCreateThread = () => {
+  const defaultFolderId = findDefaultFolderId(folderTree);
+
+  const handleOpenNewThreadModal = () => {
     if (!canCreateThread) return;
-    setNewThreadName("");
-    setIsCreatingThread(true);
+    setIsNewThreadModalOpen(true);
   };
 
-  const handleSaveNewThread = () => {
-    const trimmedName = newThreadName.trim();
-    if (trimmedName) {
-      onNewThread(trimmedName);
-    }
-    setIsCreatingThread(false);
-    setNewThreadName("");
-  };
-
-  const handleCancelNewThread = () => {
-    setIsCreatingThread(false);
-    setNewThreadName("");
-  };
-
-  const handleNewThreadKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSaveNewThread();
-    } else if (e.key === "Escape") {
-      handleCancelNewThread();
-    }
+  const handleCreateThread = (name: string, folderId: string | null) => {
+    onNewThread(name, folderId);
   };
 
   const handleDelete = (e: React.MouseEvent, threadId: string, threadTitle: string) => {
@@ -263,38 +249,19 @@ export default function Sidebar({
           )}
         </div>
 
-        {isCreatingThread ? (
-          <div className="mt-3 flex items-center gap-2">
-            <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <input
-              ref={newThreadInputRef}
-              type="text"
-              value={newThreadName}
-              onChange={(e) => setNewThreadName(e.target.value)}
-              onKeyDown={handleNewThreadKeyDown}
-              onBlur={handleSaveNewThread}
-              placeholder="Thread name"
-              className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-            />
-            <span className="text-xs text-slate-500">.thread</span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleStartCreateThread}
-            disabled={!canCreateThread}
-            className={`mt-3 w-full rounded-md border px-2 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${
-              canCreateThread
-                ? "border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800"
-                : "border-slate-800 bg-slate-900/50 text-slate-500 cursor-not-allowed"
-            }`}
-            title={!canCreateThread ? `Free tier limit: ${maxThreads} threads max` : "Create a new .thread file"}
-          >
-            + New .thread
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleOpenNewThreadModal}
+          disabled={!canCreateThread}
+          className={`mt-3 w-full rounded-md border px-2 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${
+            canCreateThread
+              ? "border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800"
+              : "border-slate-800 bg-slate-900/50 text-slate-500 cursor-not-allowed"
+          }`}
+          title={!canCreateThread ? `Free tier limit: ${maxThreads} threads max` : "Create a new .thread file"}
+        >
+          + New .thread
+        </button>
 
         {/* Thread limit warning */}
         {threadLimitReached && (
@@ -463,6 +430,14 @@ export default function Sidebar({
         )}
       </div>
 
+      {/* New Thread Modal */}
+      <NewThreadModal
+        isOpen={isNewThreadModalOpen}
+        onClose={() => setIsNewThreadModalOpen(false)}
+        onCreateThread={handleCreateThread}
+        folderTree={folderTree}
+        defaultFolderId={defaultFolderId}
+      />
     </div>
   );
 }

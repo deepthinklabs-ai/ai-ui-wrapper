@@ -11,7 +11,7 @@ type UseThreadsResult = {
   threadsError: string | null;
   selectedThreadId: string | null;
   selectThread: (id: string) => void;
-  createThread: (name?: string) => Promise<string | null>;
+  createThread: (name?: string, folderId?: string | null) => Promise<string | null>;
   createThreadWithContext: (contextMessage: string, title?: string) => Promise<string | null>;
   forkThread: (threadId: string, messages: { role: string; content: string; model: string | null }[]) => Promise<string | null>;
   deleteThread: (id: string) => Promise<void>;
@@ -123,7 +123,7 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     setSelectedThreadId(id);
   };
 
-  const createThread = async (name?: string): Promise<string | null> => {
+  const createThread = async (name?: string, folderId?: string | null): Promise<string | null> => {
     if (!userId) return null;
 
     // Check thread limit
@@ -135,12 +135,15 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     }
 
     try {
+      // Use provided folderId, or fall back to default folder
+      const targetFolderId = folderId !== undefined ? folderId : defaultFolderIdRef.current;
+
       const { data, error } = await supabase
         .from("threads")
         .insert({
           user_id: userId,
           title: name || "Untitled",
-          folder_id: defaultFolderIdRef.current,
+          folder_id: targetFolderId,
         })
         .select()
         .single();
