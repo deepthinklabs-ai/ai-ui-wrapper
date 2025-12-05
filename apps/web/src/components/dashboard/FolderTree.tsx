@@ -46,6 +46,7 @@ type DropIndicatorState = {
   x: number;
   y: number;
   count?: number;
+  itemType?: "folder" | "thread";
 } | null;
 
 export function FolderTree({
@@ -100,6 +101,28 @@ export function FolderTree({
       if (found) return found;
     }
     return null;
+  };
+
+  // Helper to check if targetId is a descendant of folderId (to prevent circular references)
+  const isDescendantOf = (targetId: string, folderId: string, folderList: FolderWithChildren[]): boolean => {
+    const findFolder = (id: string, list: FolderWithChildren[]): FolderWithChildren | null => {
+      for (const folder of list) {
+        if (folder.id === id) return folder;
+        const found = findFolder(id, folder.children);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const sourceFolder = findFolder(folderId, folderList);
+    if (!sourceFolder) return false;
+
+    const checkDescendants = (folder: FolderWithChildren): boolean => {
+      if (folder.id === targetId) return true;
+      return folder.children.some(checkDescendants);
+    };
+
+    return checkDescendants(sourceFolder);
   };
 
   // Handle thread multi-select (Ctrl+click or Shift+click)
@@ -180,28 +203,32 @@ export function FolderTree({
     const newOverId = over?.id as string | null;
     setOverId(newOverId);
 
-    // Only show indicator when dragging a thread over a folder
     const activeType = active.data.current?.type as "folder" | "thread";
     const overType = over?.data.current?.type as "folder" | "thread" | "root" | undefined;
 
+    // Get mouse position for drop indicator
+    const getMousePosition = () => {
+      const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent;
+      let x = 0, y = 0;
+      if (activatorEvent instanceof MouseEvent) {
+        x = activatorEvent.clientX;
+        y = activatorEvent.clientY;
+      } else if (activatorEvent instanceof TouchEvent && activatorEvent.touches[0]) {
+        x = activatorEvent.touches[0].clientX;
+        y = activatorEvent.touches[0].clientY;
+      }
+      if (event.delta) {
+        x += event.delta.x;
+        y += event.delta.y;
+      }
+      return { x, y };
+    };
+
+    // Show indicator when dragging a thread over a folder
     if (activeType === "thread" && overType === "folder" && newOverId) {
       const folderName = findFolderName(newOverId, folders);
       if (folderName) {
-        // Get mouse position from the activator event
-        const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent;
-        let x = 0, y = 0;
-        if (activatorEvent instanceof MouseEvent) {
-          x = activatorEvent.clientX;
-          y = activatorEvent.clientY;
-        } else if (activatorEvent instanceof TouchEvent && activatorEvent.touches[0]) {
-          x = activatorEvent.touches[0].clientX;
-          y = activatorEvent.touches[0].clientY;
-        }
-        // Use current mouse position from the delta if available
-        if (event.delta) {
-          x += event.delta.x;
-          y += event.delta.y;
-        }
+        const { x, y } = getMousePosition();
 
         // Check if dragging multiple selected threads
         const activeThreadId = active.id as string;
@@ -210,7 +237,26 @@ export function FolderTree({
           ? `${multiSelectedIds.size} threads`
           : folderName;
 
-        setDropIndicator({ folderName: displayName, x, y, count: isDraggingMultiple ? multiSelectedIds.size : 1 });
+        setDropIndicator({ folderName: displayName, x, y, count: isDraggingMultiple ? multiSelectedIds.size : 1, itemType: "thread" });
+      } else {
+        setDropIndicator(null);
+      }
+    }
+    // Show indicator when dragging a folder over another folder
+    else if (activeType === "folder" && overType === "folder" && newOverId && active.id !== newOverId) {
+      const activeFolderId = active.id as string;
+
+      // Prevent dropping folder into itself or its descendants
+      if (isDescendantOf(newOverId, activeFolderId, folders)) {
+        setDropIndicator(null);
+        return;
+      }
+
+      const targetFolderName = findFolderName(newOverId, folders);
+      const sourceFolderName = findFolderName(activeFolderId, folders);
+      if (targetFolderName && sourceFolderName) {
+        const { x, y } = getMousePosition();
+        setDropIndicator({ folderName: targetFolderName, x, y, itemType: "folder" });
       } else {
         setDropIndicator(null);
       }
@@ -256,13 +302,18 @@ export function FolderTree({
         }
       }
     } else if (activeType === "folder") {
+      const activeFolderId = active.id as string;
       // Moving a folder
       if (overType === "folder" && active.id !== over.id) {
+        // Prevent dropping folder into itself or its descendants
+        if (isDescendantOf(targetFolderId, activeFolderId, folders)) {
+          return; // Don't allow circular reference
+        }
         // Drop folder into another folder
-        await onMoveFolder(active.id as string, targetFolderId);
+        await onMoveFolder(activeFolderId, targetFolderId);
       } else if (overType === "root") {
         // Drop folder to root level
-        await onMoveFolder(active.id as string, null);
+        await onMoveFolder(activeFolderId, null);
       }
     }
   };
@@ -498,18 +549,34 @@ export function FolderTree({
           }}
         >
           <div className="flex items-center gap-1.5">
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            {dropIndicator.count && dropIndicator.count > 1
-              ? `Move ${dropIndicator.count} threads to "${dropIndicator.folderName}"`
-              : `Add to "${dropIndicator.folderName}"`
-            }
+            {dropIndicator.itemType === "folder" ? (
+              <>
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                  />
+                </svg>
+                Move into "{dropIndicator.folderName}"
+              </>
+            ) : (
+              <>
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                {dropIndicator.count && dropIndicator.count > 1
+                  ? `Move ${dropIndicator.count} threads to "${dropIndicator.folderName}"`
+                  : `Add to "${dropIndicator.folderName}"`
+                }
+              </>
+            )}
           </div>
         </div>
       )}

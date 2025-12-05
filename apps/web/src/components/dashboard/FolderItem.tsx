@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useDroppable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import type { FolderWithChildren } from "@/types/chat";
 import { ThreadItem } from "./ThreadItem";
 
@@ -56,7 +57,7 @@ export function FolderItem({
   const editInputRef = useRef<HTMLInputElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
-  const { setNodeRef, isOver: isDroppableOver } = useDroppable({
+  const { setNodeRef: setDroppableRef, isOver: isDroppableOver } = useDroppable({
     id: folder.id,
     data: {
       type: "folder",
@@ -64,8 +65,36 @@ export function FolderItem({
     },
   });
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: folder.id,
+    data: {
+      type: "folder",
+      folder,
+    },
+  });
+
+  // Combine both refs
+  const setNodeRef = (node: HTMLElement | null) => {
+    setDroppableRef(node);
+    setDraggableRef(node);
+  };
+
   // Combine passed isOver prop with internal droppable state
   const showDropHighlight = isOver || isDroppableOver;
+
+  // Transform style for dragging
+  const style = transform
+    ? {
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.5 : 1,
+      }
+    : undefined;
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -141,14 +170,16 @@ export function FolderItem({
   const paddingLeft = depth * 12 + 8;
 
   return (
-    <div ref={setNodeRef}>
+    <div ref={setNodeRef} style={style}>
       {/* Folder Header */}
       <div
         onContextMenu={handleContextMenu}
-        className={`group flex items-center gap-1 rounded-md px-2 py-1.5 transition-colors ${
+        className={`group flex items-center gap-1 rounded-md px-2 py-1.5 transition-colors cursor-grab active:cursor-grabbing ${
           showDropHighlight ? "bg-blue-500/20 ring-2 ring-blue-500/50" : "hover:bg-slate-800/50"
-        }`}
+        } ${isDragging ? "z-50" : ""}`}
         style={{ paddingLeft }}
+        {...attributes}
+        {...listeners}
       >
         {/* Collapse/Expand Arrow */}
         <button
