@@ -11,8 +11,9 @@
 
 import { NextResponse } from "next/server";
 import { getAuthenticatedSupabaseClient } from "@/lib/serverAuth";
-import { standardRatelimit, rateLimitErrorResponse } from "@/lib/ratelimit";
+import { standardRatelimit } from "@/lib/ratelimit";
 import { headers } from "next/headers";
+import { apiError, APIErrors, handleAPIError } from "@/lib/apiErrors";
 
 interface EncryptionBundle {
   salt: string;
@@ -48,17 +49,15 @@ export async function GET(request: Request) {
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
   if (authError || !supabase || !user) {
-    return NextResponse.json(
-      { error: authError || "Unauthorized - Authentication required" },
-      { status: 401 }
-    );
+    return APIErrors.unauthorized(authError || undefined);
   }
 
   try {
     // Rate limiting
     const rateLimitResult = standardRatelimit(`encryption-get-${user.id}`);
     if (!rateLimitResult.success) {
-      return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      return apiError('RATE_LIMITED', `Rate limit exceeded. Retry after ${retryAfter}s`);
     }
 
     // Fetch user's encryption settings
@@ -70,10 +69,9 @@ export async function GET(request: Request) {
 
     if (error && error.code !== "PGRST116") { // PGRST116 = no rows found
       console.error("[Encryption API] Error fetching profile:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch encryption settings" },
-        { status: 500 }
-      );
+      return apiError('INTERNAL_ERROR', 'Failed to fetch encryption settings', {
+        supabaseError: error.message,
+      });
     }
 
     const typedProfile = profile as UserProfile | null;
@@ -104,11 +102,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error("[Encryption API] Unexpected error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleAPIError(error, '[Encryption API] GET');
   }
 }
 
@@ -121,10 +115,7 @@ export async function POST(request: Request) {
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
   if (authError || !supabase || !user) {
-    return NextResponse.json(
-      { error: authError || "Unauthorized - Authentication required" },
-      { status: 401 }
-    );
+    return APIErrors.unauthorized(authError || undefined);
   }
 
   try {
@@ -132,7 +123,8 @@ export async function POST(request: Request) {
     const headersList = await headers();
     const rateLimitResult = standardRatelimit(`encryption-setup-${user.id}`);
     if (!rateLimitResult.success) {
-      return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      return apiError('RATE_LIMITED', `Rate limit exceeded. Retry after ${retryAfter}s`);
     }
 
     const body = await request.json();
@@ -140,17 +132,15 @@ export async function POST(request: Request) {
 
     // Validate input
     if (!keyBundle?.salt || !keyBundle?.wrappedDataKey || !keyBundle?.wrappedKeyIV) {
-      return NextResponse.json(
-        { error: "Invalid key bundle" },
-        { status: 400 }
-      );
+      return APIErrors.validation('Invalid key bundle', {
+        required: ['salt', 'wrappedDataKey', 'wrappedKeyIV'],
+      });
     }
 
     if (!recoveryBundle?.codeHashes || !recoveryBundle?.wrappedKeys) {
-      return NextResponse.json(
-        { error: "Invalid recovery bundle" },
-        { status: 400 }
-      );
+      return APIErrors.validation('Invalid recovery bundle', {
+        required: ['codeHashes', 'wrappedKeys'],
+      });
     }
 
     // Save to user profile (using type assertion for new columns)
@@ -169,10 +159,9 @@ export async function POST(request: Request) {
 
     if (updateError) {
       console.error("[Encryption API] Error saving bundle:", updateError);
-      return NextResponse.json(
-        { error: "Failed to save encryption settings" },
-        { status: 500 }
-      );
+      return apiError('INTERNAL_ERROR', 'Failed to save encryption settings', {
+        supabaseError: updateError.message,
+      });
     }
 
     // Log the setup event
@@ -186,11 +175,7 @@ export async function POST(request: Request) {
       message: "Encryption enabled successfully",
     });
   } catch (error) {
-    console.error("[Encryption API] Unexpected error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleAPIError(error, '[Encryption API] POST');
   }
 }
 
@@ -203,10 +188,7 @@ export async function PUT(request: Request) {
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
   if (authError || !supabase || !user) {
-    return NextResponse.json(
-      { error: authError || "Unauthorized - Authentication required" },
-      { status: 401 }
-    );
+    return APIErrors.unauthorized(authError || undefined);
   }
 
   try {
@@ -214,7 +196,8 @@ export async function PUT(request: Request) {
     const headersList = await headers();
     const rateLimitResult = standardRatelimit(`encryption-update-${user.id}`);
     if (!rateLimitResult.success) {
-      return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      return apiError('RATE_LIMITED', `Rate limit exceeded. Retry after ${retryAfter}s`);
     }
 
     const body = await request.json();
@@ -222,10 +205,9 @@ export async function PUT(request: Request) {
 
     if (action === "mark_code_used") {
       if (!recoveryBundle || !usedCodeHash) {
-        return NextResponse.json(
-          { error: "Missing required fields" },
-          { status: 400 }
-        );
+        return APIErrors.validation('Missing required fields', {
+          required: ['recoveryBundle', 'usedCodeHash'],
+        });
       }
 
       // Update the recovery bundle
@@ -241,10 +223,9 @@ export async function PUT(request: Request) {
 
       if (updateError) {
         console.error("[Encryption API] Error updating bundle:", updateError);
-        return NextResponse.json(
-          { error: "Failed to update recovery codes" },
-          { status: 500 }
-        );
+        return apiError('INTERNAL_ERROR', 'Failed to update recovery codes', {
+          supabaseError: updateError.message,
+        });
       }
 
       // Log the recovery event
@@ -259,16 +240,9 @@ export async function PUT(request: Request) {
       });
     }
 
-    return NextResponse.json(
-      { error: "Unknown action" },
-      { status: 400 }
-    );
+    return APIErrors.badRequest('Unknown action', { validActions: ['mark_code_used'] });
   } catch (error) {
-    console.error("[Encryption API] Unexpected error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleAPIError(error, '[Encryption API] PUT');
   }
 }
 
