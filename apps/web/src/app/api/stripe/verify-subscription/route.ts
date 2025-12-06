@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If we already have an active subscription in DB, we're good
-    if (subscription.status === 'active') {
+    // If we already have an active or trialing subscription in DB, we're good
+    if (subscription.status === 'active' || subscription.status === 'trialing') {
       // Make sure user_profiles is also updated
       await supabase
         .from('user_profiles')
@@ -53,49 +53,58 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         verified: true,
         tier: 'pro',
-        message: 'Subscription is active',
+        message: `Subscription is ${subscription.status}`,
       });
     }
 
     // Check Stripe directly for subscription status
     if (subscription.stripe_customer_id) {
       try {
-        // List customer's subscriptions from Stripe
-        const stripeSubscriptions = await stripe.subscriptions.list({
+        // List customer's active subscriptions from Stripe
+        let stripeSubscriptions = await stripe.subscriptions.list({
           customer: subscription.stripe_customer_id,
           status: 'active',
           limit: 1,
         });
 
+        // If no active, check for trialing (7-day free trial)
+        if (stripeSubscriptions.data.length === 0) {
+          stripeSubscriptions = await stripe.subscriptions.list({
+            customer: subscription.stripe_customer_id,
+            status: 'trialing',
+            limit: 1,
+          });
+        }
+
         if (stripeSubscriptions.data.length > 0) {
-          const activeSub = stripeSubscriptions.data[0];
+          const sub = stripeSubscriptions.data[0];
 
           // Update subscriptions table
           await supabase
             .from('subscriptions')
             .update({
-              stripe_subscription_id: activeSub.id,
-              stripe_price_id: activeSub.items.data[0]?.price.id,
-              status: 'active',
-              current_period_start: new Date(activeSub.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(activeSub.current_period_end * 1000).toISOString(),
-              cancel_at_period_end: activeSub.cancel_at_period_end,
+              stripe_subscription_id: sub.id,
+              stripe_price_id: sub.items.data[0]?.price.id,
+              status: sub.status, // 'active' or 'trialing'
+              current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+              cancel_at_period_end: sub.cancel_at_period_end,
               updated_at: new Date().toISOString(),
             })
             .eq('user_id', userId);
 
-          // Update user_profiles tier
+          // Update user_profiles tier to 'pro' (both active and trialing get pro access)
           await supabase
             .from('user_profiles')
             .update({ tier: 'pro' })
             .eq('id', userId);
 
-          console.log(`✅ Verified subscription for user ${userId}, upgraded to pro`);
+          console.log(`✅ Verified subscription for user ${userId} (${sub.status}), upgraded to pro`);
 
           return NextResponse.json({
             verified: true,
             tier: 'pro',
-            message: 'Subscription verified and activated',
+            message: `Subscription verified (${sub.status})`,
           });
         }
       } catch (stripeError) {
@@ -106,7 +115,7 @@ export async function POST(req: NextRequest) {
     // No active subscription found
     return NextResponse.json({
       verified: false,
-      tier: 'free',
+      tier: 'trial',
       message: 'No active subscription found in Stripe',
     });
   } catch (error: any) {

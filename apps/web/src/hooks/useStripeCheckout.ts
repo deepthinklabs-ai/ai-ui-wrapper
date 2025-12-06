@@ -1,8 +1,8 @@
 /**
  * useStripeCheckout Hook
  *
- * Handles the Stripe checkout flow for upgrading to Pro.
- * Separates business logic from UI components.
+ * Handles the Stripe checkout flow for subscribing to Pro.
+ * Supports optional trial period for new users.
  */
 
 import { useState } from "react";
@@ -16,7 +16,7 @@ export function useStripeCheckout({ userId, priceId }: UseStripeCheckoutOptions)
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const startCheckout = async () => {
+  const startCheckout = async (trialDays?: number) => {
     if (!userId || !priceId) {
       setError("Configuration error. Please contact support.");
       return;
@@ -33,6 +33,7 @@ export function useStripeCheckout({ userId, priceId }: UseStripeCheckoutOptions)
         body: JSON.stringify({
           userId,
           priceId,
+          trialDays,
         }),
       });
 

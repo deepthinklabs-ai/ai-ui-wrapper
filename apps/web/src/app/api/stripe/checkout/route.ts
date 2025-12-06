@@ -11,7 +11,7 @@ import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, priceId } = body;
+    const { userId, priceId, trialDays } = body;
 
     // Validate required fields
     if (!userId) {
@@ -115,6 +115,12 @@ export async function POST(req: NextRequest) {
         user_id: userId,
       },
       allow_promotion_codes: true, // Allow users to apply promo codes
+      // Add trial period if specified (for 7-day free trial)
+      ...(trialDays && trialDays > 0 ? {
+        subscription_data: {
+          trial_period_days: trialDays,
+        },
+      } : {}),
     });
 
     return NextResponse.json({

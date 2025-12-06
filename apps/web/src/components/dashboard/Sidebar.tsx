@@ -18,7 +18,7 @@ type SidebarProps = {
   canCreateThread?: boolean;
   threadLimitReached?: boolean;
   maxThreads?: number;
-  userTier?: "free" | "pro";
+  userTier?: "trial" | "pro" | "expired";
   // Folder props
   folderTree?: FolderWithChildren[];
   onCreateFolder?: (name: string, parentId?: string | null) => Promise<any>;
@@ -45,7 +45,7 @@ export default function Sidebar({
   canCreateThread = true,
   threadLimitReached = false,
   maxThreads = 5,
-  userTier = "free",
+  userTier = "trial",
   folderTree = [],
   onCreateFolder,
   onUpdateFolder,
@@ -182,13 +182,19 @@ export default function Sidebar({
           >
             <div className="flex items-center gap-2 truncate">
               <span className="truncate">{userEmail ?? "Signed in"}</span>
-              {userTier === "pro" ? (
-                <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
+              {userTier === "pro" && (
+                <span className="inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
                   Pro
                 </span>
-              ) : (
-                <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-0.5 text-xs font-medium text-slate-400 ring-1 ring-inset ring-slate-500/20">
-                  Free
+              )}
+              {userTier === "trial" && (
+                <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">
+                  Trial
+                </span>
+              )}
+              {userTier === "expired" && (
+                <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">
+                  Expired
                 </span>
               )}
             </div>
@@ -258,24 +264,23 @@ export default function Sidebar({
               ? "border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800"
               : "border-slate-800 bg-slate-900/50 text-slate-500 cursor-not-allowed"
           }`}
-          title={!canCreateThread ? `Free tier limit: ${maxThreads} threads max` : "Create a new .thread file"}
+          title={!canCreateThread ? "Thread limit reached. Subscribe to Pro for unlimited threads." : "Create a new .thread file"}
         >
           + New .thread
         </button>
 
-        {/* Thread limit warning */}
-        {threadLimitReached && (
-          <div className="mt-2 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-2 text-xs text-amber-400">
-            <div className="font-semibold mb-1">Thread Limit Reached</div>
-            <div className="text-amber-400/80">
-              Free tier: {threads.length}/{maxThreads} threads. Delete a thread or{" "}
+        {/* Thread limit warning - only shown for expired tier */}
+        {threadLimitReached && userTier === "expired" && (
+          <div className="mt-2 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-2 text-xs text-red-400">
+            <div className="font-semibold mb-1">Trial Expired</div>
+            <div className="text-red-400/80">
+              Your trial has ended. Subscribe to Pro to continue creating threads and using AI features.{" "}
               <button
                 onClick={() => router.push("/settings")}
-                className="underline hover:text-amber-300"
+                className="underline hover:text-red-300"
               >
-                upgrade to Pro
-              </button>{" "}
-              for unlimited threads.
+                Subscribe Now
+              </button>
             </div>
           </div>
         )}

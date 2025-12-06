@@ -1,48 +1,62 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-export type UserTier = "free" | "pro";
+export type UserTier = "trial" | "pro" | "expired";
 
 export const TIER_LIMITS = {
-  free: {
-    maxThreads: 5,
+  trial: {
+    maxThreads: Infinity, // Unlimited threads during trial
   },
   pro: {
     maxThreads: Infinity, // Unlimited
   },
+  expired: {
+    maxThreads: 0, // Read-only, no new threads
+  },
 };
+
+// Helper to check if a trial has expired
+function isTrialExpired(trialEndsAt: string | null): boolean {
+  if (!trialEndsAt) return false;
+  return new Date(trialEndsAt) < new Date();
+}
+
+// Calculate days remaining in trial
+function getDaysRemaining(trialEndsAt: string | null): number {
+  if (!trialEndsAt) return 0;
+  const endDate = new Date(trialEndsAt);
+  const now = new Date();
+  const diffMs = endDate.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
 
 type UseUserTierResult = {
   tier: UserTier;
   loading: boolean;
   error: string | null;
   refreshTier: () => Promise<void>;
+  trialEndsAt: string | null;
+  daysRemaining: number;
+  isExpired: boolean;
+  canUseServices: boolean; // true for trial and pro, false for expired
 };
 
 /**
  * Hook to fetch and manage user's subscription tier
- * Defaults to 'free' if no profile exists yet
+ * Handles trial expiration automatically
  */
 export function useUserTier(userId: string | null | undefined): UseUserTierResult {
-  const [tier, setTier] = useState<UserTier>("free");
+  const [tier, setTier] = useState<UserTier>("trial");
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const refreshTier = useCallback(async () => {
     if (!userId) {
-      setTier("free");
-      setLoading(false);
-      return;
-    }
-    void refreshTier();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  const refreshTier = async () => {
-    if (!userId) {
-      setTier("free");
+      setTier("trial");
+      setTrialEndsAt(null);
       setLoading(false);
       return;
     }
@@ -51,42 +65,99 @@ export function useUserTier(userId: string | null | undefined): UseUserTierResul
     setError(null);
 
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from("user_profiles")
-        .select("tier")
+        .select("tier, trial_ends_at")
         .eq("id", userId)
         .single();
 
-      if (error) {
-        // If profile doesn't exist, create it with free tier
-        if (error.code === "PGRST116") {
+      if (fetchError) {
+        // If profile doesn't exist, create it with trial tier
+        if (fetchError.code === "PGRST116") {
+          const trialEnd = new Date();
+          trialEnd.setDate(trialEnd.getDate() + 7);
+          const trialEndStr = trialEnd.toISOString();
+
           const { error: insertError } = await supabase
             .from("user_profiles")
-            .insert({ id: userId, tier: "free" });
+            .insert({
+              id: userId,
+              tier: "trial",
+              trial_ends_at: trialEndStr,
+            });
 
           if (insertError) {
             console.error("Error creating user profile:", insertError);
           }
-          setTier("free");
+          setTier("trial");
+          setTrialEndsAt(trialEndStr);
         } else {
-          throw error;
+          throw fetchError;
         }
-      } else {
-        setTier((data?.tier as UserTier) || "free");
+      } else if (data) {
+        // Handle tier from database
+        let currentTier = (data.tier as string) || "trial";
+        let currentTrialEndsAt = data.trial_ends_at;
+
+        // Handle legacy "free" tier - treat as expired (safe default)
+        // The database migration should properly convert free → trial or expired
+        // based on whether the user had a subscription or not
+        if (currentTier === "free") {
+          console.warn(
+            "[useUserTier] Found legacy 'free' tier - treating as 'expired'. " +
+            "Run migration 017_fix_sync_user_tier_function.sql to fix."
+          );
+          // Don't auto-migrate to trial - that could grant unintended access
+          // if this was actually a user with a canceled subscription.
+          // Treat as expired until DB migration runs.
+          currentTier = "expired";
+        }
+
+        // Check if trial has expired and update if needed
+        if (currentTier === "trial" && isTrialExpired(currentTrialEndsAt)) {
+          // Update tier to expired in database
+          await supabase
+            .from("user_profiles")
+            .update({ tier: "expired" })
+            .eq("id", userId);
+          currentTier = "expired";
+        }
+
+        setTier(currentTier as UserTier);
+        setTrialEndsAt(currentTrialEndsAt);
       }
     } catch (err: any) {
-      console.error("Error fetching user tier:", err);
-      setError(err.message ?? "Failed to load user tier");
-      setTier("free"); // Default to free on error
+      console.error("Error fetching user tier:", JSON.stringify(err, null, 2));
+      console.error("Error details:", err?.message, err?.code, err?.details);
+      setError(err?.message ?? err?.code ?? "Failed to load user tier");
+      setTier("trial"); // Default to trial on error
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setTier("trial");
+      setTrialEndsAt(null);
+      setLoading(false);
+      return;
+    }
+    void refreshTier();
+  }, [userId, refreshTier]);
+
+  const daysRemaining = getDaysRemaining(trialEndsAt);
+  const isExpired = tier === "expired";
+  const canUseServices = tier === "trial" || tier === "pro";
 
   return {
     tier,
     loading,
     error,
     refreshTier,
+    trialEndsAt,
+    daysRemaining,
+    isExpired,
+    canUseServices,
   };
 }

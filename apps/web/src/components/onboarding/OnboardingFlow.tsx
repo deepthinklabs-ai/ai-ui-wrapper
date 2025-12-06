@@ -5,9 +5,9 @@
  * Steps:
  * 1. Encryption Welcome - Educate about privacy and encryption
  * 2. Encryption Setup - Set password and save recovery codes
- * 3. Plan Selection (Free or Pro)
- * 4. If Free -> Redirect to settings to add API keys
- * 5. If Pro -> Redirect to Stripe checkout
+ * 3. Plan Selection (7-day Trial or Pro)
+ * 4. If Trial -> Redirect to dashboard (trial includes API access)
+ * 5. If Pro -> Redirect to Stripe checkout ($50/month)
  */
 
 "use client";
@@ -71,29 +71,29 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
     }
   }, [saveEncryptionSetup, setDataKey]);
 
-  // Step 3a: User selected free plan
+  // Step 3a: User selected trial plan (7-day free trial with credit card)
   const handleSelectFreePlan = async () => {
     setIsProcessing(true);
     try {
-      // Mark onboarding as complete
+      // Mark onboarding as complete before going to Stripe
       await onComplete();
 
-      // Redirect to settings page to add API keys
-      router.push('/settings?onboarding=true');
+      // Redirect to Stripe checkout with 7-day trial
+      await startCheckout(7);
     } catch (err) {
-      console.error('Error completing onboarding:', err);
+      console.error('Error starting trial:', err);
       setIsProcessing(false);
     }
   };
 
-  // Step 3b: User selected pro plan
+  // Step 3b: User selected pro plan (immediate billing, no trial)
   const handleSelectProPlan = async () => {
     setIsProcessing(true);
     try {
       // Mark onboarding as complete before going to Stripe
       await onComplete();
 
-      // Redirect to Stripe checkout
+      // Redirect to Stripe checkout (no trial, immediate billing)
       await startCheckout();
     } catch (err) {
       console.error('Error starting Pro upgrade:', err);

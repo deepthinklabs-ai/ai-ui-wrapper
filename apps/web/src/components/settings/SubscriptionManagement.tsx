@@ -11,7 +11,7 @@ type SubscriptionManagementProps = {
 
 export default function SubscriptionManagement({ priceId }: SubscriptionManagementProps) {
   const { user } = useAuthSession();
-  const { tier, loading: tierLoading } = useUserTier(user?.id);
+  const { tier, loading: tierLoading, daysRemaining, isExpired } = useUserTier(user?.id);
 
   // Stripe checkout hook (upgrade to Pro)
   const {
@@ -33,11 +33,12 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
   });
 
   const isPro = tier === "pro";
+  const isTrial = tier === "trial";
   const error = checkoutError || portalError;
 
   if (tierLoading) {
     return (
-      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6" data-subscription-section>
         <div className="animate-pulse">
           <div className="h-6 w-32 bg-slate-700 rounded mb-2"></div>
           <div className="h-4 w-48 bg-slate-800 rounded"></div>
@@ -47,78 +48,80 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
   }
 
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+    <div className="rounded-lg border border-slate-700 bg-slate-900 p-6" data-subscription-section>
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-slate-100">Subscription Plan</h3>
           <p className="text-sm text-slate-400 mt-1">
-            {isPro ? "You're on the Pro plan" : "You're on the Free plan"}
+            {isPro && "You're on the Pro plan"}
+            {isTrial && `7-day free trial - ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining`}
+            {isExpired && "Your trial has expired"}
           </p>
         </div>
         <div>
-          {isPro ? (
-            <span className="inline-flex items-center rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
+          {isPro && (
+            <span className="inline-flex items-center rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
               Pro
             </span>
-          ) : (
-            <span className="inline-flex items-center rounded-full bg-slate-500/10 px-3 py-1 text-sm font-medium text-slate-400 ring-1 ring-inset ring-slate-500/20">
-              Free
+          )}
+          {isTrial && (
+            <span className="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">
+              Trial
+            </span>
+          )}
+          {isExpired && (
+            <span className="inline-flex items-center rounded-full bg-red-500/10 px-3 py-1 text-sm font-medium text-red-400 ring-1 ring-inset ring-red-500/20">
+              Expired
             </span>
           )}
         </div>
       </div>
 
-      {/* Free plan features */}
-      {!isPro && (
+      {/* Trial plan - show upgrade prompt */}
+      {isTrial && (
         <div className="mb-6">
-          <div className="text-sm text-slate-400 mb-3">Current plan includes:</div>
+          <div className="text-sm text-slate-400 mb-3">Trial includes:</div>
           <ul className="space-y-2 text-sm text-slate-300">
             <li className="flex items-center">
-              <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-4 w-4 mr-2 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              5 conversation threads
+              Access to all AI models (OpenAI, Claude, Grok)
             </li>
             <li className="flex items-center">
-              <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-4 w-4 mr-2 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              Bring your own API keys
+              Unlimited conversation threads
             </li>
             <li className="flex items-center">
-              <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              <svg className="h-4 w-4 mr-2 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
               </svg>
-              All basic features
+              <span className="text-slate-400">25% of Pro rate limits</span>
             </li>
           </ul>
 
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <div className="text-sm font-semibold text-blue-400 mb-2">Upgrade to Pro</div>
+          <div className="mt-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+            <div className="text-sm font-semibold text-purple-400 mb-2">Upgrade to Pro - $50/month</div>
             <ul className="space-y-2 text-sm text-slate-300 mb-4">
               <li className="flex items-center">
-                <svg className="h-4 w-4 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                Unlimited conversation threads
+                Full rate limits (4x more than trial)
               </li>
               <li className="flex items-center">
-                <svg className="h-4 w-4 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                Included API access (no keys needed)
+                All premium AI models included
               </li>
               <li className="flex items-center">
-                <svg className="h-4 w-4 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
                 Priority support
-              </li>
-              <li className="flex items-center">
-                <svg className="h-4 w-4 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                Advanced features
               </li>
             </ul>
 
@@ -131,9 +134,66 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
             <button
               onClick={startCheckout}
               disabled={isUpgrading || !priceId}
-              className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isUpgrading ? "Redirecting to checkout..." : !priceId ? "Configure pricing first" : "Upgrade to Pro"}
+              {isUpgrading ? "Redirecting to checkout..." : !priceId ? "Configure pricing first" : "Subscribe Now"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Expired trial - urgent upgrade prompt */}
+      {isExpired && (
+        <div className="mb-6">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
+            <div className="flex items-start gap-3">
+              <svg className="h-5 w-5 text-red-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <div className="text-sm font-semibold text-red-300">Your trial has expired</div>
+                <div className="text-xs text-red-400/80 mt-1">
+                  Subscribe to Pro to continue using all AI features. Your threads are saved and will be accessible after subscribing.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+            <div className="text-sm font-semibold text-purple-400 mb-2">Subscribe to Pro - $50/month</div>
+            <ul className="space-y-2 text-sm text-slate-300 mb-4">
+              <li className="flex items-center">
+                <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Access to GPT-5, Claude Sonnet/Opus, Grok
+              </li>
+              <li className="flex items-center">
+                <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Unlimited threads and full rate limits
+              </li>
+              <li className="flex items-center">
+                <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Priority support
+              </li>
+            </ul>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={startCheckout}
+              disabled={isUpgrading || !priceId}
+              className="w-full rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUpgrading ? "Redirecting to checkout..." : !priceId ? "Configure pricing first" : "Subscribe Now"}
             </button>
           </div>
         </div>
@@ -145,19 +205,25 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
           <div className="text-sm text-slate-400 mb-3">Pro plan includes:</div>
           <ul className="space-y-2 text-sm text-slate-300 mb-6">
             <li className="flex items-center">
-              <svg className="h-4 w-4 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              All AI models (GPT-5, Claude, Grok)
+            </li>
+            <li className="flex items-center">
+              <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Full rate limits
+            </li>
+            <li className="flex items-center">
+              <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
               Unlimited conversation threads
             </li>
             <li className="flex items-center">
-              <svg className="h-4 w-4 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              Included API access
-            </li>
-            <li className="flex items-center">
-              <svg className="h-4 w-4 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
               Priority support

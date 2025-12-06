@@ -1,7 +1,7 @@
 /**
  * PlanSelection Component
  *
- * Displays Free and Pro plan options with features and pricing.
+ * Displays Trial and Pro plan options with features and pricing.
  * Allows user to choose their plan during onboarding.
  */
 
@@ -10,7 +10,7 @@
 import React from 'react';
 
 type PlanSelectionProps = {
-  onSelectFreePlan: () => void;
+  onSelectFreePlan: () => void;  // Now starts 7-day trial
   onSelectProPlan: () => void;
   loading?: boolean;
 };
@@ -29,52 +29,44 @@ export default function PlanSelection({
             Welcome to AI Chat Platform
           </h1>
           <p className="text-lg text-slate-400">
-            Choose the plan that's right for you
+            Start with a free trial or go Pro for full access
           </p>
         </div>
 
         {/* Plan Cards */}
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* Free Plan */}
-          <div className="rounded-xl border-2 border-slate-700 bg-slate-900/50 p-8 hover:border-slate-600 transition-all">
+          {/* Trial Plan */}
+          <div className="rounded-xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-8 hover:border-amber-500 transition-all">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-slate-100 mb-2">Free Tier</h2>
+              <h2 className="text-2xl font-bold text-slate-100 mb-2">7-Day Free Trial</h2>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-bold text-slate-100">$0</span>
-                <span className="text-slate-400">/month</span>
+                <span className="text-slate-400">for 7 days</span>
               </div>
+              <p className="text-sm text-slate-500 mt-2">Then $50/month. Cancel anytime.</p>
             </div>
 
             <ul className="space-y-4 mb-8">
               <li className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <span className="text-slate-200 font-medium">Up to 5 threads</span>
-                  <p className="text-sm text-slate-400">Create and manage up to 5 conversation threads</p>
+                  <span className="text-slate-200 font-medium">Access to all AI models</span>
+                  <p className="text-sm text-slate-400">GPT-5, GPT-4o, Claude Sonnet, Opus, Grok, and more</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <span className="text-slate-200 font-medium">Bring your own API keys</span>
-                  <p className="text-sm text-slate-400">Use your OpenAI or Claude API keys</p>
+                  <span className="text-slate-200 font-medium">Unlimited conversation threads</span>
+                  <p className="text-sm text-slate-400">Create as many threads as you need</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <div>
-                  <span className="text-slate-200 font-medium">Access to all models</span>
-                  <p className="text-sm text-slate-400">GPT-4, GPT-5, Claude Sonnet, Opus, and more</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
@@ -82,55 +74,64 @@ export default function PlanSelection({
                   <p className="text-sm text-slate-400">File uploads, voice input, text conversion, and more</p>
                 </div>
               </li>
+              <li className="flex items-start gap-3">
+                <svg className="h-5 w-5 text-slate-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <span className="text-slate-400 font-medium">25% of Pro rate limits</span>
+                  <p className="text-sm text-slate-500">Lower daily request and token limits</p>
+                </div>
+              </li>
             </ul>
 
             <button
               onClick={onSelectFreePlan}
               disabled={loading}
-              className="w-full rounded-lg bg-slate-700 px-6 py-3 text-base font-semibold text-white hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full rounded-lg bg-amber-600 px-6 py-3 text-base font-semibold text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Start with Free Plan
+              Start Free Trial
             </button>
           </div>
 
           {/* Pro Plan */}
-          <div className="rounded-xl border-2 border-blue-500 bg-gradient-to-br from-blue-500/10 to-purple-500/10 p-8 relative hover:border-blue-400 transition-all">
+          <div className="rounded-xl border-2 border-purple-500 bg-gradient-to-br from-purple-500/10 to-blue-500/10 p-8 relative hover:border-purple-400 transition-all">
             {/* Popular Badge */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <span className="inline-flex items-center rounded-full bg-blue-500 px-4 py-1 text-sm font-semibold text-white">
-                Recommended
+              <span className="inline-flex items-center rounded-full bg-purple-500 px-4 py-1 text-sm font-semibold text-white">
+                Best Value
               </span>
             </div>
 
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-slate-100 mb-2">Pro Plan</h2>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-slate-100">$20</span>
+                <span className="text-4xl font-bold text-slate-100">$50</span>
                 <span className="text-slate-400">/month</span>
               </div>
             </div>
 
             <ul className="space-y-4 mb-8">
               <li className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <span className="text-slate-100 font-medium">Unlimited threads</span>
-                  <p className="text-sm text-slate-300">Create as many conversation threads as you need</p>
+                  <span className="text-slate-100 font-medium">All AI models included</span>
+                  <p className="text-sm text-slate-300">GPT-5, GPT-4o, Claude Sonnet, Opus, Grok - no API keys needed</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <span className="text-slate-100 font-medium">API access included</span>
-                  <p className="text-sm text-slate-300">No need to provide your own API keys - we've got you covered</p>
+                  <span className="text-slate-100 font-medium">Full rate limits</span>
+                  <p className="text-sm text-slate-300">4x more requests and tokens than trial</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
@@ -139,12 +140,12 @@ export default function PlanSelection({
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <span className="text-slate-100 font-medium">All features included</span>
-                  <p className="text-sm text-slate-300">Everything from Free, plus unlimited usage</p>
+                  <span className="text-slate-100 font-medium">Unlimited everything</span>
+                  <p className="text-sm text-slate-300">Threads, file uploads, voice input, and all features</p>
                 </div>
               </li>
             </ul>
@@ -152,16 +153,16 @@ export default function PlanSelection({
             <button
               onClick={onSelectProPlan}
               disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-6 py-3 text-base font-semibold text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-blue-500/20"
+              className="w-full rounded-lg bg-purple-600 px-6 py-3 text-base font-semibold text-white hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-purple-500/20"
             >
-              Upgrade to Pro
+              Subscribe to Pro
             </button>
           </div>
         </div>
 
         {/* Fine Print */}
         <p className="text-center text-sm text-slate-500 mt-8">
-          You can change your plan anytime from the Settings page
+          Cancel anytime during your trial. You can manage your subscription from the Settings page.
         </p>
       </div>
     </div>
