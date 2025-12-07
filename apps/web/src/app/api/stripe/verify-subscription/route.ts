@@ -44,15 +44,17 @@ export async function POST(req: NextRequest) {
 
     // If we already have an active or trialing subscription in DB, we're good
     if (subscription.status === 'active' || subscription.status === 'trialing') {
-      // Make sure user_profiles is also updated
+      // Set tier based on subscription status: trialing = trial, active = pro
+      const userTier = subscription.status === 'trialing' ? 'trial' : 'pro';
+
       await supabase
         .from('user_profiles')
-        .update({ tier: 'pro' })
+        .update({ tier: userTier })
         .eq('id', userId);
 
       return NextResponse.json({
         verified: true,
-        tier: 'pro',
+        tier: userTier,
         message: `Subscription is ${subscription.status}`,
       });
     }
@@ -78,6 +80,13 @@ export async function POST(req: NextRequest) {
 
         if (stripeSubscriptions.data.length > 0) {
           const sub = stripeSubscriptions.data[0];
+          // Set tier based on subscription status: trialing = trial, active = pro
+          const userTier = sub.status === 'trialing' ? 'trial' : 'pro';
+
+          // Get trial end date if trialing
+          const trialEndsAt = sub.trial_end
+            ? new Date(sub.trial_end * 1000).toISOString()
+            : null;
 
           // Update subscriptions table
           await supabase
@@ -93,17 +102,20 @@ export async function POST(req: NextRequest) {
             })
             .eq('user_id', userId);
 
-          // Update user_profiles tier to 'pro' (both active and trialing get pro access)
+          // Update user_profiles tier and trial_ends_at
           await supabase
             .from('user_profiles')
-            .update({ tier: 'pro' })
+            .update({
+              tier: userTier,
+              trial_ends_at: trialEndsAt,
+            })
             .eq('id', userId);
 
-          console.log(`✅ Verified subscription for user ${userId} (${sub.status}), upgraded to pro`);
+          console.log(`✅ Verified subscription for user ${userId} (${sub.status}), set to ${userTier}`);
 
           return NextResponse.json({
             verified: true,
-            tier: 'pro',
+            tier: userTier,
             message: `Subscription verified (${sub.status})`,
           });
         }

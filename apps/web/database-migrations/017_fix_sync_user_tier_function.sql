@@ -27,12 +27,17 @@ CHECK (tier IN ('free', 'trial', 'pro', 'expired'));
 CREATE OR REPLACE FUNCTION public.sync_user_tier()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- If subscription is active or trialing, upgrade to pro
-  IF NEW.status IN ('active', 'trialing') THEN
+  -- If subscription is active, upgrade to pro
+  IF NEW.status = 'active' THEN
     UPDATE public.user_profiles
     SET tier = 'pro', updated_at = NOW()
     WHERE id = NEW.user_id;
-  -- If subscription is canceled, past_due, or unpaid, set to expired (not 'free')
+  -- If subscription is trialing, set to trial (7-day free trial)
+  ELSIF NEW.status = 'trialing' THEN
+    UPDATE public.user_profiles
+    SET tier = 'trial', updated_at = NOW()
+    WHERE id = NEW.user_id;
+  -- If subscription is canceled, past_due, or unpaid, set to expired
   ELSIF NEW.status IN ('canceled', 'past_due', 'unpaid', 'incomplete_expired') THEN
     UPDATE public.user_profiles
     SET tier = 'expired', updated_at = NOW()

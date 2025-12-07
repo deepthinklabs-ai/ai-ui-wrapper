@@ -58,24 +58,37 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        // Update subscription record with subscription ID
+        // Fetch the subscription from Stripe to get actual status
+        const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const subStatus = stripeSubscription.status; // 'trialing' or 'active'
+        const userTier = subStatus === 'trialing' ? 'trial' : 'pro';
+        const trialEndsAt = stripeSubscription.trial_end
+          ? new Date(stripeSubscription.trial_end * 1000).toISOString()
+          : null;
+
+        // Update subscription record with subscription ID and actual status
         await supabase
           .from('subscriptions')
           .update({
             stripe_subscription_id: subscriptionId,
-            status: 'active',
+            status: subStatus,
+            current_period_start: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', userId)
           .eq('stripe_customer_id', customerId);
 
-        // Update user_profiles tier to 'pro' (backup, DB trigger should also do this)
+        // Update user_profiles tier based on subscription status
         await supabase
           .from('user_profiles')
-          .update({ tier: 'pro' })
+          .update({
+            tier: userTier,
+            trial_ends_at: trialEndsAt,
+          })
           .eq('id', userId);
 
-        console.log(`✅ Checkout completed for user ${userId}, upgraded to pro`);
+        console.log(`✅ Checkout completed for user ${userId}, set to ${userTier} (status: ${subStatus})`);
         break;
       }
 
@@ -96,6 +109,21 @@ export async function POST(req: NextRequest) {
           break;
         }
 
+        // Determine tier based on subscription status
+        let userTier: string | null = null;
+        let trialEndsAt: string | null = null;
+
+        if (subscription.status === 'trialing') {
+          userTier = 'trial';
+          trialEndsAt = subscription.trial_end
+            ? new Date(subscription.trial_end * 1000).toISOString()
+            : null;
+        } else if (subscription.status === 'active') {
+          userTier = 'pro';
+        } else if (['canceled', 'past_due', 'unpaid'].includes(subscription.status)) {
+          userTier = 'expired';
+        }
+
         // Update subscription status
         await supabase
           .from('subscriptions')
@@ -111,7 +139,18 @@ export async function POST(req: NextRequest) {
           .eq('user_id', existingRecord.user_id)
           .eq('stripe_customer_id', customerId);
 
-        console.log(`✅ Subscription ${event.type} for customer ${customerId}: ${subscription.status}`);
+        // Update user_profiles tier if we determined one
+        if (userTier) {
+          await supabase
+            .from('user_profiles')
+            .update({
+              tier: userTier,
+              ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
+            })
+            .eq('id', existingRecord.user_id);
+        }
+
+        console.log(`✅ Subscription ${event.type} for customer ${customerId}: ${subscription.status} -> tier: ${userTier}`);
         break;
       }
 

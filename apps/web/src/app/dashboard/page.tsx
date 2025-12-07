@@ -70,7 +70,7 @@ export default function DashboardPage() {
         const data = await response.json();
         console.log('[Dashboard] Subscription verification:', data);
 
-        if (data.verified && data.tier === 'pro') {
+        if (data.verified && (data.tier === 'pro' || data.tier === 'trial')) {
           // Refresh the tier from database
           await refreshTier();
           // Clean up URL
