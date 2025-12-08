@@ -24,7 +24,7 @@ interface GmailToolConfig {
 type UseMessagesOptions = {
   onThreadTitleUpdated?: () => void;
   systemPromptAddition?: string;
-  userTier?: 'free' | 'pro';
+  userTier?: 'trial' | 'pro' | 'expired';
   userId?: string;
   enableWebSearch?: boolean;
   disableMCPTools?: boolean;

@@ -3,26 +3,11 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  getApiKey,
-  setApiKey,
-  clearApiKey,
   getSelectedModel,
   setSelectedModel,
   type AIModel,
 } from "@/lib/apiKeyStorage";
-import {
-  getClaudeApiKey,
-  setClaudeApiKey,
-  clearClaudeApiKey,
-} from "@/lib/apiKeyStorage.claude";
-import {
-  getGrokApiKey,
-  setGrokApiKey,
-  clearGrokApiKey,
-} from "@/lib/apiKeyStorage.grok";
-import ApiKeyInput from "@/components/settings/ApiKeyInput";
 import ModelSelector from "@/components/settings/ModelSelector";
-import SecurityWarning from "@/components/settings/SecurityWarning";
 import SubscriptionManagement from "@/components/settings/SubscriptionManagement";
 import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal";
 import FeatureToggles from "@/components/settings/FeatureToggles";
@@ -37,172 +22,34 @@ function SettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthSession();
-  const { tier } = useUserTier(user?.id);
-  const [openaiApiKey, setOpenaiApiKeyState] = useState("");
-  const [claudeApiKey, setClaudeApiKeyState] = useState("");
-  const [grokApiKey, setGrokApiKeyState] = useState("");
+  const { tier, daysRemaining, isExpired, canUseServices } = useUserTier(user?.id);
   const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5.1");
-  const [isTesting, setIsTesting] = useState(false);
-  const [isTestingClaude, setIsTestingClaude] = useState(false);
-  const [isTestingGrok, setIsTestingGrok] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isOpenaiKeySaved, setIsOpenaiKeySaved] = useState(false);
-  const [isClaudeKeySaved, setIsClaudeKeySaved] = useState(false);
-  const [isGrokKeySaved, setIsGrokKeySaved] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-
-  const isPro = tier === 'pro';
 
   // Check if user came from onboarding
   useEffect(() => {
     const isFromOnboarding = searchParams.get('onboarding') === 'true';
-    if (isFromOnboarding && !isPro) {
+    if (isFromOnboarding && tier === 'trial') {
       setShowOnboardingModal(true);
     }
-  }, [searchParams, isPro]);
+  }, [searchParams, tier]);
 
   // Load existing settings on mount
   useEffect(() => {
-    const existingOpenAIKey = getApiKey();
-    const existingClaudeKey = getClaudeApiKey();
-    const existingGrokKey = getGrokApiKey();
     const existingModel = getSelectedModel();
-
-    if (existingOpenAIKey) {
-      setIsOpenaiKeySaved(true);
-    }
-    if (existingClaudeKey) {
-      setIsClaudeKeySaved(true);
-    }
-    if (existingGrokKey) {
-      setIsGrokKeySaved(true);
-    }
     setSelectedModelState(existingModel);
   }, []);
-
-  const handleOpenAIKeyChange = (value: string) => {
-    setOpenaiApiKeyState(value);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleClaudeKeyChange = (value: string) => {
-    setClaudeApiKeyState(value);
-    setHasUnsavedChanges(true);
-  };
 
   const handleModelChange = (model: AIModel) => {
     setSelectedModelState(model);
     setHasUnsavedChanges(true);
   };
 
-  const testOpenAIKey = async (): Promise<boolean> => {
-    setIsTesting(true);
-    try {
-      const response = await fetch("https://api.openai.com/v1/models", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${openaiApiKey}`,
-        },
-      });
-      return response.ok;
-    } catch (error) {
-      console.error("Error testing OpenAI API key:", error);
-      return false;
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const testClaudeKey = async (): Promise<boolean> => {
-    setIsTestingClaude(true);
-    try {
-      console.log("Testing Claude API key...");
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": claudeApiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-3-5-haiku-20241022",
-          max_tokens: 10,
-          messages: [{ role: "user", content: "Hi" }],
-        }),
-      });
-
-      console.log("Claude API response status:", response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Claude API error details:", errorData);
-      }
-
-      return response.ok;
-    } catch (error) {
-      console.error("Error testing Claude API key:", error);
-      return false;
-    } finally {
-      setIsTestingClaude(false);
-    }
-  };
-
   const handleSave = () => {
-    if (openaiApiKey.trim()) {
-      setApiKey(openaiApiKey);
-      setIsOpenaiKeySaved(true);
-      setOpenaiApiKeyState("");
-    }
-    if (claudeApiKey.trim()) {
-      setClaudeApiKey(claudeApiKey);
-      setIsClaudeKeySaved(true);
-      setClaudeApiKeyState("");
-    }
     setSelectedModel(selectedModel);
     setHasUnsavedChanges(false);
     router.push("/dashboard");
-  };
-
-  const handleClearOpenAIKey = () => {
-    if (confirm("Are you sure you want to remove your OpenAI API key?")) {
-      clearApiKey();
-      setOpenaiApiKeyState("");
-      setIsOpenaiKeySaved(false);
-      setHasUnsavedChanges(false);
-    }
-  };
-
-  const handleClearClaudeKey = () => {
-    if (confirm("Are you sure you want to remove your Claude API key?")) {
-      clearClaudeApiKey();
-      setClaudeApiKeyState("");
-      setIsClaudeKeySaved(false);
-      setHasUnsavedChanges(false);
-    }
-  };
-
-  const handleGrokKeyChange = (value: string) => {
-    setGrokApiKeyState(value);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleSaveGrokKey = () => {
-    if (grokApiKey.trim()) {
-      setGrokApiKey(grokApiKey.trim());
-      setIsGrokKeySaved(true);
-      setGrokApiKeyState("");
-      setHasUnsavedChanges(false);
-      alert("Grok API key saved successfully!");
-    }
-  };
-
-  const handleClearGrokKey = () => {
-    if (confirm("Are you sure you want to remove your Grok API key?")) {
-      clearGrokApiKey();
-      setGrokApiKeyState("");
-      setIsGrokKeySaved(false);
-      setHasUnsavedChanges(false);
-    }
   };
 
   return (
@@ -250,438 +97,102 @@ function SettingsPageContent() {
           {/* MCP Credentials Migration Banner */}
           <MCPMigrationBanner />
 
-          {/* Security Best Practices Warning */}
-          <SecurityWarning />
-
           {/* Subscription Management Section */}
           <SubscriptionManagement
             priceId={process.env.NEXT_PUBLIC_STRIPE_PRICE_ID}
           />
 
+          {/* API Access Status Section */}
+          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-slate-100">API Access</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                All API access is provided through Genesis Chat Bot. No API keys required.
+              </p>
+            </div>
+
+            {/* Trial tier status */}
+            {tier === 'trial' && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
+                <div className="flex items-center gap-3">
+                  <svg className="h-6 w-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-amber-300">7-Day Free Trial</div>
+                    <div className="text-xs text-amber-400/80 mt-1">
+                      {daysRemaining > 0
+                        ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining in your trial. You have access to all AI models with trial rate limits.`
+                        : 'Your trial has expired. Subscribe to continue using the service.'
+                      }
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-slate-400">
+                  Included: OpenAI (GPT-5, GPT-4), Claude (Sonnet, Opus, Haiku), Grok
+                </div>
+              </div>
+            )}
+
+            {/* Pro tier status */}
+            {tier === 'pro' && (
+              <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                <div className="flex items-center gap-3">
+                  <svg className="h-6 w-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-green-300">Pro Subscription Active</div>
+                    <div className="text-xs text-green-400/80 mt-1">
+                      You have full access to all AI models with unlimited usage.
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-slate-400">
+                  Included: OpenAI (GPT-5, GPT-4), Claude (Sonnet, Opus, Haiku), Grok - Full rate limits
+                </div>
+              </div>
+            )}
+
+            {/* Expired tier status */}
+            {tier === 'expired' && (
+              <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+                <div className="flex items-center gap-3">
+                  <svg className="h-6 w-6 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-red-300">Trial Expired</div>
+                    <div className="text-xs text-red-400/80 mt-1">
+                      Your free trial has ended. Subscribe to Pro to continue using all AI features.
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <button
+                    onClick={() => {
+                      // Scroll to subscription section
+                      document.querySelector('[data-subscription-section]')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
+                  >
+                    Subscribe Now - $50/month
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+
           {/* Encryption Settings Section */}
           <EncryptionSettings userEmail={user?.email} />
-
-          {/* Claude API Key Section */}
-          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-100">OpenAI API Key</h2>
-              {isPro ? (
-                <div className="mt-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-                  <div className="flex items-center gap-3">
-                    <svg className="h-6 w-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <div>
-                      <div className="text-sm font-semibold text-blue-300">API Access Included with Pro</div>
-                      <div className="text-xs text-blue-400/80 mt-1">No need to provide your own API key. Enjoy unlimited access to OpenAI models!</div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-slate-400">
-                  Your API key is stored locally in your browser and never sent to our servers.
-                  We only use it to make direct calls to OpenAI on your behalf.
-                </p>
-              )}
-            </div>
-
-            {!isPro && (
-              <>
-
-            {/* Instructions */}
-            <div className="mb-6 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-blue-300">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                How to get your OpenAI API key (takes 30 seconds)
-              </h3>
-              <ol className="space-y-2 text-sm text-slate-300">
-                <li className="flex items-start gap-2">
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
-                    1
-                  </span>
-                  <span>
-                    Click the button below to open OpenAI's API key page in a new tab
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
-                    2
-                  </span>
-                  <span>Sign in to your OpenAI account (or create one if you don't have one)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
-                    3
-                  </span>
-                  <span>Click "Create new secret key" and give it a name</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
-                    4
-                  </span>
-                  <span>Copy the key (it starts with "sk-") and paste it below</span>
-                </li>
-              </ol>
-              <a
-                href="https://platform.openai.com/api-keys"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  />
-                </svg>
-                Get Your OpenAI API Key
-              </a>
-            </div>
-
-            {/* API Key Status or Input */}
-            <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-slate-200">
-                API Key
-              </label>
-
-              {isOpenaiKeySaved && !openaiApiKey ? (
-                // Show masked status when key is saved and not being edited
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-800 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <div>
-                        <div className="text-sm font-medium text-slate-200">API Key Configured</div>
-                        <div className="text-xs text-slate-400">sk-••••••••••••••••••••••••••</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleClearOpenAIKey}
-                      className="rounded-md px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    Your API key is securely stored in your browser. To update it, remove the current key and add a new one.
-                  </p>
-                </div>
-              ) : (
-                // Show input when no key is saved or user is adding a new key
-                <>
-                  <ApiKeyInput
-                    value={openaiApiKey}
-                    onChange={handleOpenAIKeyChange}
-                    onTest={testOpenAIKey}
-                    isTesting={isTesting}
-                  />
-                  {isOpenaiKeySaved && openaiApiKey && (
-                    <button
-                      onClick={() => {
-                        setOpenaiApiKeyState("");
-                        setHasUnsavedChanges(false);
-                      }}
-                      className="mt-3 text-sm text-slate-400 hover:text-slate-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-            </>
-            )}
-          </section>
-
-          {/* Claude API Key Section */}
-          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-100">Claude (Anthropic) API Key</h2>
-              {isPro ? (
-                <div className="mt-4 rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
-                  <div className="flex items-center gap-3">
-                    <svg className="h-6 w-6 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <div>
-                      <div className="text-sm font-semibold text-orange-300">Claude API Access Included with Pro</div>
-                      <div className="text-xs text-orange-400/80 mt-1">No need to provide your own API key. Enjoy unlimited access to Claude models!</div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-slate-400">
-                  Optional: Add your Claude API key to use Anthropic's Claude models.
-                </p>
-              )}
-            </div>
-
-            {!isPro && (
-              <>
-
-            {/* Instructions */}
-            <div className="mb-6 rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-orange-300">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                How to get your Claude API key
-              </h3>
-              <a
-                href="https://console.anthropic.com/settings/keys"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-500 transition-colors"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  />
-                </svg>
-                Get Your Claude API Key
-              </a>
-            </div>
-
-            {/* Claude API Key Status or Input */}
-            <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-slate-200">
-                Claude API Key
-              </label>
-
-              {isClaudeKeySaved && !claudeApiKey ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-800 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <div>
-                        <div className="text-sm font-medium text-slate-200">Claude API Key Configured</div>
-                        <div className="text-xs text-slate-400">sk-ant-••••••••••••••••••••••••••</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleClearClaudeKey}
-                      className="rounded-md px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    Your Claude API key is securely stored in your browser.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <input
-                        type="password"
-                        value={claudeApiKey}
-                        onChange={(e) => handleClaudeKeyChange(e.target.value)}
-                        placeholder="sk-ant-..."
-                        className="w-full rounded-md border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                    </div>
-                    {claudeApiKey && !claudeApiKey.startsWith("sk-ant-") && (
-                      <div className="flex items-center gap-2 text-xs text-amber-400">
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <span>Claude API keys should start with 'sk-ant-'</span>
-                      </div>
-                    )}
-                    <p className="text-xs text-slate-400">
-                      Note: Claude API doesn't support browser-based key testing. Your key will be validated when you use a Claude model.
-                    </p>
-                  </div>
-                  {isClaudeKeySaved && claudeApiKey && (
-                    <button
-                      onClick={() => {
-                        setClaudeApiKeyState("");
-                        setHasUnsavedChanges(false);
-                      }}
-                      className="mt-3 text-sm text-slate-400 hover:text-slate-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-            </>
-            )}
-          </section>
-
-          {/* Grok (xAI) API Key Section */}
-          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-100">Grok (xAI) API Key</h2>
-              {isPro ? (
-                <div className="mt-4 rounded-lg border border-purple-500/20 bg-purple-500/10 p-4">
-                  <div className="flex items-center gap-3">
-                    <svg className="h-6 w-6 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <div>
-                      <div className="text-sm font-semibold text-purple-300">Grok API Access Included with Pro</div>
-                      <div className="text-xs text-purple-400/80 mt-1">No need to provide your own API key. Enjoy unlimited access to Grok models!</div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-slate-400">
-                  Optional: Add your xAI Grok API key to use Grok models with real-time knowledge.
-                </p>
-              )}
-            </div>
-
-            {!isPro && (
-              <>
-
-            {/* Instructions */}
-            <div className="mb-6 rounded-lg border border-purple-500/20 bg-purple-500/10 p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-purple-300">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                How to get your Grok API key
-              </h3>
-              <a
-                href="https://console.x.ai/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  />
-                </svg>
-                Get Your Grok API Key
-              </a>
-            </div>
-
-            {/* Grok API Key Status or Input */}
-            <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-slate-200">
-                Grok API Key
-              </label>
-
-              {isGrokKeySaved && !grokApiKey ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-800 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <div>
-                        <div className="text-sm font-medium text-slate-200">Grok API Key Configured</div>
-                        <div className="text-xs text-slate-400">xai-••••••••••••••••••••••••••</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleClearGrokKey}
-                      className="rounded-md px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    Your Grok API key is securely stored in your browser.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <input
-                        type="password"
-                        value={grokApiKey}
-                        onChange={(e) => handleGrokKeyChange(e.target.value)}
-                        placeholder="xai-..."
-                        className="w-full rounded-md border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    {grokApiKey && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSaveGrokKey}
-                          className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
-                        >
-                          Save Grok Key
-                        </button>
-                      </div>
-                    )}
-                    <p className="text-xs text-slate-400">
-                      Your Grok API key will be stored locally in your browser and never sent to our servers.
-                    </p>
-                  </div>
-                  {isGrokKeySaved && grokApiKey && (
-                    <button
-                      onClick={() => {
-                        setGrokApiKeyState("");
-                        setHasUnsavedChanges(false);
-                      }}
-                      className="mt-3 text-sm text-slate-400 hover:text-slate-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-            </>
-            )}
-          </section>
 
           {/* Model Selection Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-100">Model Selection</h2>
+              <h2 className="text-xl font-semibold text-slate-100">Default Model</h2>
               <p className="mt-2 text-sm text-slate-400">
-                Choose which OpenAI model to use for your conversations. Different models have
-                different capabilities and pricing.
+                Choose which AI model to use by default for your conversations. You can also switch models
+                on any message.
               </p>
             </div>
 
@@ -689,16 +200,8 @@ function SettingsPageContent() {
 
             <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
               <p className="text-xs text-slate-400">
-                <strong className="text-slate-300">Note:</strong> Pricing varies by model. Check{" "}
-                <a
-                  href="https://openai.com/api/pricing/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-purple-400 hover:text-purple-300"
-                >
-                  OpenAI's pricing page
-                </a>{" "}
-                for details. You'll be charged directly by OpenAI based on your usage.
+                <strong className="text-slate-300">Note:</strong> All API usage is included in your subscription.
+                Trial users have reduced rate limits (25% of Pro). Pro users have unlimited access.
               </p>
             </div>
           </section>

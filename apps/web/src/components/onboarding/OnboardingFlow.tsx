@@ -39,6 +39,9 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
   // Get Stripe price ID from environment
   const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
 
+  // DEBUG: Log the price ID from client
+  console.log('[OnboardingFlow] Price ID from env:', priceId);
+
   const { startCheckout, isUpgrading } = useStripeCheckout({
     userId,
     priceId,

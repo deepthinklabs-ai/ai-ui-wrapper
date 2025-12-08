@@ -28,6 +28,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // DEBUG: Log the price ID being used
+    console.log('[Stripe Checkout] Creating session with:', {
+      priceId,
+      userId,
+      trialDays,
+      envPriceId: process.env.STRIPE_PRICE_ID,
+    });
+
     // Initialize Supabase client (server-side with service role key)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

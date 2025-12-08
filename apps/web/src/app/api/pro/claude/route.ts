@@ -1,9 +1,14 @@
 /**
- * Pro User Claude (Anthropic) API Proxy
+ * Claude (Anthropic) API Proxy
  *
- * This route allows Pro users to use Claude models without providing their own API keys.
+ * This route allows authenticated users (trial and pro) to use Claude models
+ * without providing their own API keys.
  * Uses the app's Claude API key (stored in env vars) instead.
  * Includes rate limiting and usage tracking.
+ *
+ * - Trial users: 25% of pro rate limits
+ * - Pro users: Full rate limits
+ * - Expired users: Blocked
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Verify user is Pro tier
+    // Verify user tier
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('tier')
@@ -72,15 +77,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (profile.tier !== 'pro') {
+    const userTier = profile.tier as 'trial' | 'pro' | 'expired';
+
+    // Block expired users
+    if (userTier === 'expired') {
       return NextResponse.json(
-        { error: 'This endpoint is only available for Pro users. Please upgrade to Pro or use your own API key.' },
+        { error: 'Your trial has expired. Please subscribe to continue using the service.' },
         { status: 403 }
       );
     }
 
-    // Rate limiting check
-    const rateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+    // Only allow trial and pro users
+    if (userTier !== 'trial' && userTier !== 'pro') {
+      return NextResponse.json(
+        { error: 'Invalid user tier. Please contact support.' },
+        { status: 403 }
+      );
+    }
+
+    // Rate limiting check (uses tier-specific limits)
+    console.log(`[API Claude] Checking rate limit for user=${userId}, tier=${userTier}, model=${model}`);
+    const rateLimitResult = await checkRateLimit(supabase, userId, userTier, model);
 
     if (!rateLimitResult.allowed) {
       const errorMessage = getRateLimitErrorMessage(rateLimitResult.status);
@@ -299,7 +316,7 @@ export async function POST(req: NextRequest) {
     await recordUsage(supabase, userId, model, totalTokens);
 
     // Get updated rate limit status for headers
-    const updatedRateLimitResult = await checkRateLimit(supabase, userId, 'pro', model);
+    const updatedRateLimitResult = await checkRateLimit(supabase, userId, userTier, model);
     const rateLimitHeaders = getRateLimitHeaders(updatedRateLimitResult.status);
 
     // Check if web search was used in this response

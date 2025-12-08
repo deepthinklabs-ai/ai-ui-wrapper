@@ -12,38 +12,20 @@ import { hasClaudeApiKey } from "./apiKeyStorage.claude";
 import { hasGrokApiKey } from "./apiKeyStorage.grok";
 
 /**
- * Get which providers the user has API keys for
- * @param userTier - Optional user tier ('free' | 'pro')
+ * Get which providers the user has access to
+ * @param userTier - Optional user tier ('trial' | 'pro' | 'expired')
  */
-export function getAvailableProviders(userTier?: "free" | "pro"): ModelProvider[] {
-  // Pro users have access to all providers via backend API keys
-  if (userTier === "pro") {
-    return ["openai", "claude", "grok"];
-  }
-
-  // Free users only get models for providers they have API keys for
-  const providers: ModelProvider[] = [];
-
-  if (hasApiKey()) {
-    providers.push("openai");
-  }
-
-  if (hasClaudeApiKey()) {
-    providers.push("claude");
-  }
-
-  if (hasGrokApiKey()) {
-    providers.push("grok");
-  }
-
-  return providers;
+export function getAvailableProviders(userTier?: "trial" | "pro" | "expired"): ModelProvider[] {
+  // All users (trial and pro) have access to all providers via backend API keys
+  // Expired users are blocked at API level, but UI still shows all providers
+  return ["openai", "claude", "grok"];
 }
 
 /**
- * Get all models that the user has access to based on their API keys or tier
- * @param userTier - Optional user tier ('free' | 'pro')
+ * Get all models that the user has access to based on their tier
+ * @param userTier - Optional user tier ('trial' | 'pro' | 'expired')
  */
-export function getAvailableModels(userTier?: "free" | "pro"): typeof AVAILABLE_MODELS {
+export function getAvailableModels(userTier?: "trial" | "pro" | "expired"): typeof AVAILABLE_MODELS {
   const availableProviders = getAvailableProviders(userTier);
 
   // Filter models to only include those from providers the user has access to

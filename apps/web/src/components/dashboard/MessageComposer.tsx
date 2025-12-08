@@ -44,7 +44,7 @@ type MessageComposerProps = {
   // Web search toggle
   enableWebSearch?: boolean;
   onToggleWebSearch?: () => void;
-  userTier?: "free" | "pro";
+  userTier?: "trial" | "pro" | "expired";
   isFeatureEnabled?: (featureId: FeatureId) => boolean;
   // Workflow selection props
   workflows?: ExposedWorkflow[];
