@@ -33,10 +33,12 @@ export default function EmailVerification({
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const hasSentInitialCode = useRef(false);
 
-  // Send verification code on mount
+  // Send verification code on mount (only once, even in React Strict Mode)
   useEffect(() => {
-    if (!codeSent) {
+    if (!hasSentInitialCode.current) {
+      hasSentInitialCode.current = true;
       sendVerificationCode();
     }
   }, []);
