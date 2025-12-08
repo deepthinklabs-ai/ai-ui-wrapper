@@ -269,17 +269,27 @@ export default function EmailVerification({
           </div>
         </div>
 
-        {/* Back button */}
-        {onBack && (
-          <div className="text-center">
+        {/* Back / Sign out buttons */}
+        <div className="text-center space-y-2">
+          {onBack && (
             <button
               onClick={onBack}
-              className="text-sm text-slate-400 hover:text-slate-300"
+              className="text-sm text-slate-400 hover:text-slate-300 block w-full"
             >
               Go back
             </button>
-          </div>
-        )}
+          )}
+          <button
+            onClick={async () => {
+              const { supabase } = await import('@/lib/supabaseClient');
+              await supabase.auth.signOut();
+              window.location.href = '/auth';
+            }}
+            className="text-sm text-red-400 hover:text-red-300"
+          >
+            Sign out and start over
+          </button>
+        </div>
       </div>
     </div>
   );

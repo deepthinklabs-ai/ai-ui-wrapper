@@ -82,7 +82,18 @@ export default function AuthPage() {
       }
     } catch (err: any) {
       console.error("Auth error:", err);
-      setError(err.message || "Authentication failed");
+      const errorMessage = err.message || "Authentication failed";
+
+      // Check if user already exists (during signup)
+      if (isSignUp && (
+        errorMessage.toLowerCase().includes("already registered") ||
+        errorMessage.toLowerCase().includes("already been registered") ||
+        errorMessage.toLowerCase().includes("user already exists")
+      )) {
+        setError("This email is already registered. Please sign in instead.");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -209,7 +220,19 @@ export default function AuthPage() {
 
             {error && (
               <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
-                {error}
+                <p>{error}</p>
+                {error.includes("already registered") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(false);
+                      setError(null);
+                    }}
+                    className="mt-2 text-blue-400 hover:text-blue-300 underline"
+                  >
+                    Go to Sign In
+                  </button>
+                )}
               </div>
             )}
 
