@@ -1,0 +1,235 @@
+/**
+ * Two-Factor Login Component
+ *
+ * Displayed after password authentication for users with 2FA enabled.
+ * User must enter the 6-digit code sent to their email.
+ */
+
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+
+type TwoFactorLoginProps = {
+  userId: string;
+  userEmail: string;
+  onVerified: () => void;
+  onCancel: () => void;
+};
+
+export default function TwoFactorLogin({
+  userId,
+  userEmail,
+  onVerified,
+  onCancel,
+}: TwoFactorLoginProps) {
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [codeSent, setCodeSent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Send verification code on mount
+  useEffect(() => {
+    if (!codeSent) {
+      sendVerificationCode();
+    }
+  }, []);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const sendVerificationCode = async () => {
+    setIsSending(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email: userEmail,
+          purpose: 'login',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send verification code');
+      }
+
+      setCodeSent(true);
+      setResendCooldown(60);
+      setSuccess('Verification code sent!');
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send verification code');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleCodeChange = (index: number, value: string) => {
+    if (value && !/^\d$/.test(value)) return;
+
+    const newCode = [...code];
+    newCode[index] = value;
+    setCode(newCode);
+
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    if (value && index === 5 && newCode.every(d => d !== '')) {
+      verifyCode(newCode.join(''));
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim();
+
+    if (/^\d{6}$/.test(pastedData)) {
+      const newCode = pastedData.split('');
+      setCode(newCode);
+      inputRefs.current[5]?.focus();
+      verifyCode(pastedData);
+    }
+  };
+
+  const verifyCode = async (codeString?: string) => {
+    const codeToVerify = codeString || code.join('');
+
+    if (codeToVerify.length !== 6) {
+      setError('Please enter all 6 digits');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          code: codeToVerify,
+          purpose: 'login',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Verification failed');
+      }
+
+      setSuccess('Verified! Signing you in...');
+      setTimeout(() => onVerified(), 1000);
+    } catch (err: any) {
+      setError(err.message || 'Verification failed');
+      setCode(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Mask email for privacy
+  const maskedEmail = userEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 mb-4">
+          <svg className="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-semibold text-slate-100">Two-Factor Authentication</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          Enter the code sent to {maskedEmail}
+        </p>
+      </div>
+
+      {/* Code Input */}
+      <div className="flex justify-center gap-2">
+        {code.map((digit, index) => (
+          <input
+            key={index}
+            ref={el => { inputRefs.current[index] = el; }}
+            type="text"
+            inputMode="numeric"
+            maxLength={1}
+            value={digit}
+            onChange={e => handleCodeChange(index, e.target.value)}
+            onKeyDown={e => handleKeyDown(index, e)}
+            onPaste={index === 0 ? handlePaste : undefined}
+            disabled={isLoading}
+            className="w-10 h-12 text-center text-xl font-bold rounded-md border border-slate-700 bg-slate-900 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            autoFocus={index === 0}
+          />
+        ))}
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400 text-center">{error}</p>
+        </div>
+      )}
+
+      {/* Success message */}
+      {success && (
+        <div className="p-3 rounded-md bg-green-500/10 border border-green-500/20">
+          <p className="text-sm text-green-400 text-center">{success}</p>
+        </div>
+      )}
+
+      {/* Verify button */}
+      <button
+        onClick={() => verifyCode()}
+        disabled={isLoading || code.some(d => d === '')}
+        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isLoading ? 'Verifying...' : 'Verify'}
+      </button>
+
+      {/* Resend / Cancel */}
+      <div className="flex items-center justify-between text-sm">
+        <button
+          onClick={sendVerificationCode}
+          disabled={isSending || resendCooldown > 0}
+          className="text-blue-400 hover:text-blue-300 disabled:text-slate-500 disabled:cursor-not-allowed"
+        >
+          {isSending ? 'Sending...' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="text-slate-400 hover:text-slate-300"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}

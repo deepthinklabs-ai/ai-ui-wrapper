@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { usePasswordStrength } from "@/hooks/usePasswordStrength";
 import PasswordStrengthIndicator from "@/components/auth/PasswordStrengthIndicator";
+import TwoFactorLogin from "@/components/auth/TwoFactorLogin";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -14,6 +15,11 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // 2FA state
+  const [show2FA, setShow2FA] = useState(false);
+  const [pending2FAUserId, setPending2FAUserId] = useState<string | null>(null);
+  const [pending2FAEmail, setPending2FAEmail] = useState<string | null>(null);
 
   // Password strength checking (only enabled during signup)
   const passwordStrength = usePasswordStrength({
@@ -43,7 +49,16 @@ export default function AuthPage() {
           setTimeout(() => router.push("/dashboard"), 1500);
         }
       } else {
-        // Sign in
+        // Sign in - first check if user has 2FA enabled
+        const check2FAResponse = await fetch('/api/auth/check-2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+
+        const check2FAData = await check2FAResponse.json();
+
+        // Attempt to sign in with password
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -52,8 +67,17 @@ export default function AuthPage() {
         if (signInError) throw signInError;
 
         if (data.user) {
-          // Redirect to dashboard
-          router.push("/dashboard");
+          // Check if 2FA is required
+          if (check2FAData.requires2FA) {
+            // Sign out temporarily and show 2FA screen
+            await supabase.auth.signOut();
+            setPending2FAUserId(data.user.id);
+            setPending2FAEmail(email);
+            setShow2FA(true);
+          } else {
+            // No 2FA required, redirect to dashboard
+            router.push("/dashboard");
+          }
         }
       }
     } catch (err: any) {
@@ -63,6 +87,59 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
+
+  // Handle 2FA verification success
+  const handle2FAVerified = async () => {
+    // Re-authenticate with the stored credentials
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: pending2FAEmail!,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      console.error("Re-auth error:", err);
+      setError("Failed to complete sign in. Please try again.");
+      setShow2FA(false);
+    }
+  };
+
+  // Handle 2FA cancellation
+  const handle2FACancel = () => {
+    setShow2FA(false);
+    setPending2FAUserId(null);
+    setPending2FAEmail(null);
+    setPassword(""); // Clear password for security
+  };
+
+  // Show 2FA screen if needed
+  if (show2FA && pending2FAUserId && pending2FAEmail) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-slate-100">
+              AI Chat Platform
+            </h1>
+          </div>
+
+          <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+            <TwoFactorLogin
+              userId={pending2FAUserId}
+              userEmail={pending2FAEmail}
+              onVerified={handle2FAVerified}
+              onCancel={handle2FACancel}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">

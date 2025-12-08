@@ -3,17 +3,19 @@
  *
  * Orchestrates the onboarding process for new users.
  * Steps:
- * 1. Encryption Welcome - Educate about privacy and encryption
- * 2. Encryption Setup - Set password and save recovery codes
- * 3. Plan Selection (7-day Trial or Pro)
- * 4. If Trial -> Redirect to dashboard (trial includes API access)
- * 5. If Pro -> Redirect to Stripe checkout ($50/month)
+ * 1. Email Verification (2FA setup)
+ * 2. Encryption Welcome - Educate about privacy and encryption
+ * 3. Encryption Setup - Set password and save recovery codes
+ * 4. Plan Selection (7-day Trial or Pro)
+ * 5. If Trial -> Redirect to dashboard (trial includes API access)
+ * 6. If Pro -> Redirect to Stripe checkout ($50/month)
  */
 
 "use client";
 
 import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import EmailVerification from './EmailVerification';
 import EncryptionWelcome from './EncryptionWelcome';
 import EncryptionSetupOnboarding from './EncryptionSetupOnboarding';
 import PlanSelection from './PlanSelection';
@@ -27,11 +29,11 @@ type OnboardingFlowProps = {
   onComplete: () => Promise<void>;
 };
 
-type OnboardingStep = 'encryption-welcome' | 'encryption-setup' | 'plan-selection';
+type OnboardingStep = 'email-verification' | 'encryption-welcome' | 'encryption-setup' | 'plan-selection';
 
 export default function OnboardingFlow({ userId, userEmail, onComplete }: OnboardingFlowProps) {
   const router = useRouter();
-  const [step, setStep] = useState<OnboardingStep>('encryption-welcome');
+  const [step, setStep] = useState<OnboardingStep>('email-verification');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { saveEncryptionSetup, setDataKey } = useEncryption();
@@ -47,7 +49,12 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
     priceId,
   });
 
-  // Step 1: User understood encryption, move to setup
+  // Step 1: Email verification complete, move to encryption welcome
+  const handleEmailVerificationComplete = useCallback(() => {
+    setStep('encryption-welcome');
+  }, []);
+
+  // Step 2: User understood encryption, move to setup
   const handleEncryptionWelcomeContinue = useCallback(() => {
     setStep('encryption-setup');
   }, []);
@@ -106,6 +113,15 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
 
   // Render current step
   switch (step) {
+    case 'email-verification':
+      return (
+        <EmailVerification
+          userId={userId}
+          userEmail={userEmail || ''}
+          onComplete={handleEmailVerificationComplete}
+        />
+      );
+
     case 'encryption-welcome':
       return (
         <EncryptionWelcome
