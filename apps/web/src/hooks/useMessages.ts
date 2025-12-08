@@ -41,7 +41,7 @@ type UseMessagesResult = {
   sendMessage: (content: string, files?: File[], overrideThreadId?: string) => Promise<void>;
   summarizeThread: () => Promise<void>;
   generateSummary: () => Promise<string>;
-  refreshMessages: () => Promise<void>;
+  refreshMessages: (overrideThreadId?: string) => Promise<void>;
 };
 
 export function useMessages(
@@ -66,15 +66,16 @@ export function useMessages(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
-  const refreshMessages = async () => {
-    if (!threadId) return;
+  const refreshMessages = async (overrideThreadId?: string) => {
+    const targetThreadId = overrideThreadId || threadId;
+    if (!targetThreadId) return;
     setLoadingMessages(true);
     setMessagesError(null);
     try {
       const { data, error } = await supabase
         .from("messages")
         .select("*")
-        .eq("thread_id", threadId)
+        .eq("thread_id", targetThreadId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
@@ -522,7 +523,7 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
       }
 
       // 8) FINAL: force a full refresh from DB to ensure consistency
-      await refreshMessages();
+      await refreshMessages(activeThreadId);
     } catch (err: any) {
       console.error("Error sending message:", err);
       setMessagesError(err.message ?? "Error sending message");

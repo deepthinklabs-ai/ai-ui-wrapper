@@ -132,7 +132,7 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
             )}
 
             <button
-              onClick={startCheckout}
+              onClick={() => startCheckout()}
               disabled={isUpgrading || !priceId}
               className="w-full rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -189,7 +189,7 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
             )}
 
             <button
-              onClick={startCheckout}
+              onClick={() => startCheckout()}
               disabled={isUpgrading || !priceId}
               className="w-full rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >

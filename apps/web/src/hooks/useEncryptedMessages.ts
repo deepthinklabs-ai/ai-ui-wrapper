@@ -12,7 +12,7 @@
  * Uses structured error handling and circuit breaker for resilience.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useMessages } from "./useMessages";
 import type { Message } from "@/types/chat";
@@ -60,7 +60,7 @@ type UseEncryptedMessagesResult = {
   sendMessage: (content: string, files?: File[], overrideThreadId?: string) => Promise<void>;
   summarizeThread: () => Promise<void>;
   generateSummary: () => Promise<string>;
-  refreshMessages: () => Promise<void>;
+  refreshMessages: (overrideThreadId?: string) => Promise<void>;
   resetCircuitBreaker: () => void;
 };
 
@@ -169,7 +169,13 @@ export function useEncryptedMessages(
 
   /**
    * Decrypt all messages when base messages change
+   *
+   * IMPORTANT: We use a ref to track already-decrypted message IDs to enable
+   * incremental updates. When new messages are added optimistically, we can
+   * immediately show them while decrypting only the new ones.
    */
+  const decryptedIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     // Don't try to decrypt if encryption isn't unlocked
     if (!isEncryptionReady || baseMessages.loadingMessages) {
@@ -194,7 +200,21 @@ export function useEncryptedMessages(
       if (baseMessages.messages.length === 0) {
         setDecryptedMessages([]);
         setDecryptionStats({ total: 0, successful: 0, plaintext: 0, failed: 0 });
+        decryptedIdsRef.current.clear();
         return;
+      }
+
+      // Identify which messages are new (not yet decrypted)
+      const newMessages = baseMessages.messages.filter(m => !decryptedIdsRef.current.has(m.id));
+
+      // Immediately show new messages (optimistically added ones are already plaintext)
+      // This provides instant feedback for user messages before async decryption completes
+      if (newMessages.length > 0) {
+        // Get the current decrypted versions of existing messages, use new messages as-is
+        setDecryptedMessages(prev => {
+          const prevMap = new Map(prev.map(m => [m.id, m]));
+          return baseMessages.messages.map(m => prevMap.get(m.id) || m);
+        });
       }
 
       setIsDecrypting(true);
@@ -215,8 +235,9 @@ export function useEncryptedMessages(
         };
         setDecryptionStats(stats);
 
-        // Extract messages
+        // Extract messages and update decrypted IDs ref
         const messages = results.map(r => r.message);
+        decryptedIdsRef.current = new Set(messages.map(m => m.id));
         setDecryptedMessages(messages);
 
         // Set error if any failures (excluding plaintext)

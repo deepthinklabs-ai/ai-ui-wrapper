@@ -15,7 +15,7 @@ type ModelDropdownProps = {
   selectedModel: AIModel;
   onModelChange: (model: AIModel) => void;
   disabled?: boolean;
-  userTier?: "free" | "pro";
+  userTier?: "trial" | "pro" | "expired";
 };
 
 const ModelDropdown: React.FC<ModelDropdownProps> = ({
