@@ -16,6 +16,7 @@ type ThreadItemProps = {
   onUpdateTitle: (newTitle: string) => Promise<void>;
   onAddToContext?: () => void;
   onExport?: () => void;
+  onShowInfo?: () => void;
   depth: number;
 };
 
@@ -30,6 +31,7 @@ export function ThreadItem({
   onUpdateTitle,
   onAddToContext,
   onExport,
+  onShowInfo,
   depth,
 }: ThreadItemProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -123,6 +125,13 @@ export function ThreadItem({
     e.stopPropagation();
     if (onExport) {
       onExport();
+    }
+  };
+
+  const handleShowInfo = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onShowInfo) {
+      onShowInfo();
     }
   };
 
@@ -238,6 +247,23 @@ export function ThreadItem({
                   <path
                     fillRule="evenodd"
                     d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            )}
+            {/* Info Button */}
+            {onShowInfo && (
+              <button
+                type="button"
+                onClick={handleShowInfo}
+                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-cyan-400"
+                title="Thread properties"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                     clipRule="evenodd"
                   />
                 </svg>

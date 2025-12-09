@@ -26,6 +26,7 @@ import { useResizableSidebar } from "@/hooks/useResizableSidebar";
 import { useMCPServers } from "@/hooks/useMCPServers";
 import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
 import { useThreadExport } from "@/hooks/useThreadExport";
+import { useEncryption } from "@/contexts/EncryptionContext";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
 import { supabase } from "@/lib/supabaseClient";
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -40,6 +41,7 @@ import TextSelectionPopup from "@/components/contextPanel/TextSelectionPopup";
 import ContextPanel from "@/components/contextPanel/ContextPanel";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import SplitChatView from "@/components/splitView/SplitChatView";
+import ThreadInfoModal from "@/components/dashboard/ThreadInfoModal";
 
 export default function DashboardPage() {
   const { user, loadingUser, error: userError, signOut } = useAuthSession();
@@ -50,6 +52,14 @@ export default function DashboardPage() {
 
   // Verify subscription on upgrade success redirect
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
+
+  // Thread info modal state - stores the thread ID to show info for
+  const [threadInfoId, setThreadInfoId] = useState<string | null>(null);
+
+  // Get encryption function for importing threads
+  const { encryptText, isReady: isEncryptionReadyForImport, state: encryptionState } = useEncryption();
+  // Only provide encryption function if encryption is set up and unlocked
+  const encryptForImport = isEncryptionReadyForImport && encryptionState.isUnlocked ? encryptText : undefined;
 
   useEffect(() => {
     const verifyUpgrade = async (retryCount = 0) => {
@@ -167,6 +177,7 @@ export default function DashboardPage() {
   // Thread export
   const { exportThread, isExporting: isExportingThread } = useThreadExport({
     userId: user?.id,
+    userEmail: user?.email || undefined,
     onExportComplete: (filename) => {
       console.log(`[Dashboard] Thread exported: ${filename}`);
     },
@@ -613,12 +624,16 @@ export default function DashboardPage() {
           onAddThreadToContext={handleAddThreadToContext}
           // Export prop
           onExportThread={exportThread}
+          // Thread info prop
+          onShowThreadInfo={setThreadInfoId}
           // Import props
           userId={user?.id}
           onThreadImported={async () => {
             await refreshThreads();
             await refreshFolders();
           }}
+          // Encryption props for importing threads
+          encryptForStorage={encryptForImport}
         />
         {/* Resize handle */}
         <div
@@ -668,7 +683,11 @@ export default function DashboardPage() {
                 {/* Header at top of chat column with Split View button and MCP indicator */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1">
-                    <ChatHeader currentThreadTitle={currentThread?.title ?? null} />
+                    <ChatHeader
+                      currentThreadTitle={currentThread?.title ?? null}
+                      hasThread={!!selectedThreadId}
+                      onShowInfo={() => selectedThreadId && setThreadInfoId(selectedThreadId)}
+                    />
                     <MCPServerIndicator
                       connections={connections}
                       tools={tools}
@@ -863,6 +882,15 @@ export default function DashboardPage() {
           isAddingToMainChat={isAddingContextToMainChat}
         />
       )}
+
+      {/* Thread Info Modal */}
+      <ThreadInfoModal
+        isOpen={!!threadInfoId}
+        onClose={() => setThreadInfoId(null)}
+        thread={threadInfoId ? (threads.find(t => t.id === threadInfoId) ?? null) : null}
+        messages={threadInfoId === selectedThreadId ? messages : []}
+        userEmail={user?.email || undefined}
+      />
     </div>
   );
 }

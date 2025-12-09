@@ -26,10 +26,9 @@ function FolderItem({ folder, selectedFolderId, onSelect, depth = 0 }: FolderIte
 
   return (
     <div>
-      <button
-        type="button"
+      <div
         onClick={() => onSelect(folder.id)}
-        className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-md transition-colors ${
+        className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-md transition-colors cursor-pointer ${
           isSelected
             ? "bg-blue-600/30 text-blue-200 ring-1 ring-blue-500/50"
             : "hover:bg-slate-700/50 text-slate-300"
@@ -68,7 +67,7 @@ function FolderItem({ folder, selectedFolderId, onSelect, depth = 0 }: FolderIte
         {folder.is_default && (
           <span className="text-xs text-slate-500 ml-1">(default)</span>
         )}
-      </button>
+      </div>
 
       {/* Render children */}
       {hasChildren && isExpanded && (

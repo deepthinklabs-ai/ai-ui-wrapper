@@ -81,6 +81,16 @@ export function createThreadFile(
     message_count: messages.length,
   };
 
+  // Add user info if provided
+  if (options.exportedBy) {
+    metadata.exported_by = options.exportedBy;
+  }
+  if (options.createdBy) {
+    metadata.created_by = options.createdBy;
+    // Default last_modified_by to created_by if not set separately
+    metadata.last_modified_by = options.createdBy;
+  }
+
   const fileMessages = messages.map(msg => messageToThreadFileMessage(msg, options));
 
   return {

@@ -39,6 +39,8 @@ type UseThreadImportOptions = {
   refreshThreads?: () => Promise<void>;
   /** Callback to select the newly imported thread */
   selectThread?: (threadId: string) => void;
+  /** Optional encryption function for encrypting imported messages */
+  encryptForStorage?: (plaintext: string) => Promise<string>;
 };
 
 /**
@@ -52,6 +54,7 @@ export function useThreadImport(options: UseThreadImportOptions): UseThreadImpor
     onImportError,
     refreshThreads,
     selectThread,
+    encryptForStorage,
   } = options;
 
   const [isImporting, setIsImporting] = useState(false);
@@ -104,12 +107,18 @@ export function useThreadImport(options: UseThreadImportOptions): UseThreadImpor
 
     // Prepare messages for insertion
     // Only include basic fields that are always present - let DB generate timestamps
-    const messagesToInsert = threadFile.messages.map((msg) => {
+    // Encrypt content if encryption is enabled
+    const messagesToInsert = await Promise.all(threadFile.messages.map(async (msg) => {
+      // Encrypt content if encryption function is provided
+      const content = encryptForStorage
+        ? await encryptForStorage(msg.content)
+        : msg.content;
+
       // Build the message object with only fields that have values
       const messageData: Record<string, any> = {
         thread_id: newThread.id,
         role: msg.role,
-        content: msg.content,
+        content,
         model: msg.model || null,
       };
 
@@ -137,7 +146,7 @@ export function useThreadImport(options: UseThreadImportOptions): UseThreadImpor
       }
 
       return messageData;
-    });
+    }));
 
     // Insert all messages
     if (messagesToInsert.length > 0) {
@@ -158,7 +167,7 @@ export function useThreadImport(options: UseThreadImportOptions): UseThreadImpor
       threadId: newThread.id,
       messageCount: messagesToInsert.length,
     };
-  }, [userId, folderId]);
+  }, [userId, folderId, encryptForStorage]);
 
   /**
    * Import a thread from a File object

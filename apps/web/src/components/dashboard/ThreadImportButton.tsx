@@ -26,6 +26,8 @@ type ThreadImportButtonProps = {
   className?: string;
   /** Whether to show as a compact button (icon only) */
   compact?: boolean;
+  /** Optional encryption function for encrypting imported messages */
+  encryptForStorage?: (plaintext: string) => Promise<string>;
 };
 
 export function ThreadImportButton({
@@ -36,6 +38,7 @@ export function ThreadImportButton({
   selectThread,
   className = "",
   compact = false,
+  encryptForStorage,
 }: ThreadImportButtonProps) {
   const {
     importThread,
@@ -56,6 +59,7 @@ export function ThreadImportButton({
     },
     refreshThreads,
     selectThread,
+    encryptForStorage,
   });
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

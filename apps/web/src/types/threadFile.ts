@@ -42,6 +42,16 @@ export type ThreadFileMessage = {
 };
 
 /**
+ * User info for file metadata
+ */
+export type ThreadFileUserInfo = {
+  /** User's display name or email */
+  name: string;
+  /** User's email (optional, may be hidden for privacy) */
+  email?: string;
+};
+
+/**
  * Metadata about the thread
  */
 export type ThreadFileMetadata = {
@@ -55,6 +65,12 @@ export type ThreadFileMetadata = {
   exported_at: string;
   /** Total number of messages in the thread */
   message_count: number;
+  /** User who created the original thread */
+  created_by?: ThreadFileUserInfo;
+  /** User who last modified the thread (sent last message) */
+  last_modified_by?: ThreadFileUserInfo;
+  /** User who exported this file */
+  exported_by?: ThreadFileUserInfo;
 };
 
 /**
@@ -92,6 +108,10 @@ export type ThreadExportOptions = {
   includeCitations?: boolean;
   /** Whether to include attachments metadata (not the actual files) */
   includeAttachments?: boolean;
+  /** User info for the person exporting the file */
+  exportedBy?: ThreadFileUserInfo;
+  /** User info for the person who created the thread */
+  createdBy?: ThreadFileUserInfo;
 };
 
 /**

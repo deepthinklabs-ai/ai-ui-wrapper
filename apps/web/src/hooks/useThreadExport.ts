@@ -8,7 +8,7 @@
  * contains plaintext that can be imported by any user.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useEncryption } from '@/contexts/EncryptionContext';
 import {
@@ -19,7 +19,7 @@ import {
 } from '@/lib/threadFileUtils';
 import { validateDecryption, isDecryptionSuccess } from '@/lib/decryptionValidator';
 import type { Thread, Message } from '@/types/chat';
-import type { ThreadExportOptions } from '@/types/threadFile';
+import type { ThreadExportOptions, ThreadFileUserInfo } from '@/types/threadFile';
 
 type UseThreadExportResult = {
   /** Export a thread by its ID */
@@ -37,6 +37,10 @@ type UseThreadExportResult = {
 type UseThreadExportOptions = {
   /** User ID for loading threads */
   userId?: string;
+  /** User's email address */
+  userEmail?: string;
+  /** User's display name (optional, defaults to email) */
+  userName?: string;
   /** Export options */
   exportOptions?: ThreadExportOptions;
   /** Callback when export completes successfully */
@@ -49,13 +53,22 @@ type UseThreadExportOptions = {
  * Hook for exporting threads as .thread files
  */
 export function useThreadExport(options: UseThreadExportOptions = {}): UseThreadExportResult {
-  const { userId, exportOptions, onExportComplete, onExportError } = options;
+  const { userId, userEmail, userName, exportOptions, onExportComplete, onExportError } = options;
 
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Get decryption function from encryption context
   const { decryptText, isReady: isEncryptionReady, state: encryptionState } = useEncryption();
+
+  // Build user info for export metadata
+  const userInfo: ThreadFileUserInfo | undefined = useMemo(() => {
+    if (!userEmail) return undefined;
+    return {
+      name: userName || userEmail.split('@')[0], // Use name or derive from email
+      email: userEmail,
+    };
+  }, [userEmail, userName]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -140,8 +153,15 @@ export function useThreadExport(options: UseThreadExportOptions = {}): UseThread
       // DECRYPT messages before export so the file contains plaintext
       const decryptedMessages = await decryptMessages((messages || []) as Message[]);
 
+      // Build export options with user info
+      const finalExportOptions: ThreadExportOptions = {
+        ...exportOptions,
+        exportedBy: userInfo,
+        createdBy: userInfo, // Same user owns the thread
+      };
+
       // Create and download the file with decrypted content
-      const threadFile = createThreadFile(thread as Thread, decryptedMessages, exportOptions);
+      const threadFile = createThreadFile(thread as Thread, decryptedMessages, finalExportOptions);
       const content = serializeThreadFile(threadFile);
       const filename = generateThreadFilename(thread as Thread);
 
@@ -157,7 +177,7 @@ export function useThreadExport(options: UseThreadExportOptions = {}): UseThread
     } finally {
       setIsExporting(false);
     }
-  }, [userId, exportOptions, onExportComplete, onExportError, encryptionState.hasEncryption, encryptionState.isUnlocked, decryptMessages]);
+  }, [userId, exportOptions, onExportComplete, onExportError, encryptionState.hasEncryption, encryptionState.isUnlocked, decryptMessages, userInfo]);
 
   /**
    * Export using already-loaded thread and messages data
@@ -168,7 +188,14 @@ export function useThreadExport(options: UseThreadExportOptions = {}): UseThread
       // Decrypt messages in case they're still encrypted
       const decryptedMessages = await decryptMessages(messages);
 
-      const threadFile = createThreadFile(thread, decryptedMessages, exportOptions);
+      // Build export options with user info
+      const finalExportOptions: ThreadExportOptions = {
+        ...exportOptions,
+        exportedBy: userInfo,
+        createdBy: userInfo,
+      };
+
+      const threadFile = createThreadFile(thread, decryptedMessages, finalExportOptions);
       const content = serializeThreadFile(threadFile);
       const filename = generateThreadFilename(thread);
 
@@ -182,7 +209,7 @@ export function useThreadExport(options: UseThreadExportOptions = {}): UseThread
       setError(errorMsg);
       onExportError?.(errorMsg);
     }
-  }, [exportOptions, onExportComplete, onExportError, decryptMessages]);
+  }, [exportOptions, onExportComplete, onExportError, decryptMessages, userInfo]);
 
   return {
     exportThread,

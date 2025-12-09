@@ -422,6 +422,14 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
         citations: response.citations || null,
       };
 
+      // Log token usage for debugging
+      console.log('[Token Tracking] API response usage:', response.usage);
+      console.log('[Token Tracking] Attempting to save tokens:', {
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+        total_tokens: response.usage.total_tokens,
+      });
+
       const result = await supabase
         .from("messages")
         .insert(assistantMessageWithTokens)
@@ -433,7 +441,8 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
 
       // If error (likely due to missing columns), retry without token/tool fields
       if (insertAssistantError) {
-        console.warn("Failed to insert with token/tool fields, retrying without them. Run the database migration to enable token tracking and tool calling.");
+        console.warn("[Token Tracking] FAILED to insert with token/tool fields!", insertAssistantError);
+        console.warn("[Token Tracking] Retrying without token fields. Run database-migrations/add-token-usage-columns.sql to enable token tracking.");
         const assistantMessageWithoutTokens = {
           thread_id: activeThreadId,
           role: "assistant",
@@ -454,6 +463,14 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
       if (insertAssistantError) throw insertAssistantError;
       if (!insertedAssistant)
         throw new Error("Failed to insert assistant message");
+
+      // Log what was actually saved
+      console.log('[Token Tracking] Message saved successfully:', {
+        id: insertedAssistant.id,
+        input_tokens: insertedAssistant.input_tokens,
+        output_tokens: insertedAssistant.output_tokens,
+        total_tokens: insertedAssistant.total_tokens,
+      });
 
       // 8) Optimistically add assistant message (with plaintext for display)
       const assistantMessageForDisplay = { ...insertedAssistant, content: finalContent } as Message;

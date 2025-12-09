@@ -34,9 +34,13 @@ type SidebarProps = {
   onAddThreadToContext?: (threadId: string, threadTitle: string) => void;
   // Export/import props
   onExportThread?: (threadId: string) => void;
+  // Thread info props
+  onShowThreadInfo?: (threadId: string) => void;
   // Import props
   userId?: string;
   onThreadImported?: () => void;
+  // Encryption props
+  encryptForStorage?: (plaintext: string) => Promise<string>;
 };
 
 export default function Sidebar({
@@ -63,8 +67,10 @@ export default function Sidebar({
   threadContextIds,
   onAddThreadToContext,
   onExportThread,
+  onShowThreadInfo,
   userId,
   onThreadImported,
+  encryptForStorage,
 }: SidebarProps) {
   // Check if folder features are enabled (all folder props provided)
   const hasFolderFeatures = !!(
@@ -284,6 +290,7 @@ export default function Sidebar({
               userId={userId}
               folderId={defaultFolderId}
               onImportComplete={onThreadImported}
+              encryptForStorage={encryptForStorage}
               compact
               className="border border-slate-700 bg-slate-900 hover:bg-slate-800"
             />
@@ -368,6 +375,7 @@ export default function Sidebar({
             threadContextIds={threadContextIds}
             onAddThreadToContext={onAddThreadToContext}
             onExportThread={onExportThread}
+            onShowThreadInfo={onShowThreadInfo}
           />
         ) : (
           <>
