@@ -44,37 +44,6 @@ function formatSize(bytes: number): string {
 }
 
 /**
- * Calculate total tokens from messages
- */
-function calculateTotalTokens(messages: Message[]): { input: number; output: number; total: number } {
-  let input = 0;
-  let output = 0;
-  let total = 0;
-
-  // Debug: log token fields for each message
-  console.log('[ThreadInfoModal] Calculating tokens from', messages.length, 'messages');
-  for (const msg of messages) {
-    console.log('[ThreadInfoModal] Message', msg.id, 'tokens:', {
-      role: msg.role,
-      input_tokens: msg.input_tokens,
-      output_tokens: msg.output_tokens,
-      total_tokens: msg.total_tokens,
-    });
-    if (msg.input_tokens) input += msg.input_tokens;
-    if (msg.output_tokens) output += msg.output_tokens;
-    if (msg.total_tokens) total += msg.total_tokens;
-  }
-
-  // If total wasn't tracked, calculate from input + output
-  if (total === 0 && (input > 0 || output > 0)) {
-    total = input + output;
-  }
-
-  console.log('[ThreadInfoModal] Final token totals:', { input, output, total });
-  return { input, output, total };
-}
-
-/**
  * Get the models used in the thread
  */
 function getModelsUsed(messages: Message[]): string[] {
@@ -148,7 +117,6 @@ const ThreadInfoModal: React.FC<ThreadInfoModalProps> = ({
 
   if (!isOpen || !thread) return null;
 
-  const tokens = calculateTotalTokens(messages);
   const modelsUsed = getModelsUsed(messages);
   const estimatedSize = estimateSize(thread, messages);
   const userCount = messages.filter(m => m.role === "user").length;
@@ -273,21 +241,6 @@ const ThreadInfoModal: React.FC<ThreadInfoModalProps> = ({
               <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wide">Usage</h3>
 
               <div className="grid grid-cols-[120px_1fr] gap-y-1.5">
-                <span className="text-slate-500">Total tokens:</span>
-                <span className="text-slate-300">
-                  {tokens.total > 0 ? tokens.total.toLocaleString() : "—"}
-                </span>
-
-                <span className="text-slate-500">Input tokens:</span>
-                <span className="text-slate-300">
-                  {tokens.input > 0 ? tokens.input.toLocaleString() : "—"}
-                </span>
-
-                <span className="text-slate-500">Output tokens:</span>
-                <span className="text-slate-300">
-                  {tokens.output > 0 ? tokens.output.toLocaleString() : "—"}
-                </span>
-
                 <span className="text-slate-500">Models used:</span>
                 <span className="text-slate-300">
                   {modelsUsed.length > 0 ? modelsUsed.join(", ") : "—"}
