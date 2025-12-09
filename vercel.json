@@ -4,10 +4,5 @@
   "installCommand": "cd apps/web && npm install",
   "outputDirectory": "apps/web/.next",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "functions": {
-    "apps/web/src/app/api/**/*.ts": {
-      "maxDuration": 60
-    }
-  }
+  "regions": ["iad1"]
 }
