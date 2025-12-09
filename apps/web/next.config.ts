@@ -1,8 +1,28 @@
 import type { NextConfig } from "next";
 
+/**
+ * Next.js Configuration
+ *
+ * Environment-aware configuration for development, staging, and production.
+ * Vercel automatically sets VERCEL_ENV to 'production', 'preview', or 'development'
+ */
+
+const isProduction = process.env.NODE_ENV === 'production';
+const isVercel = !!process.env.VERCEL;
+
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+
+  // Enable source maps in production for debugging
+  productionBrowserSourceMaps: true,
+
+  // Logging configuration for debugging
+  logging: {
+    fetches: {
+      fullUrl: !isProduction, // Log full URLs in development only
+    },
+  },
 
   // Security headers
   async headers() {
@@ -54,7 +74,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://api.x.ai",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://api.x.ai https://api.stripe.com https://*.vercel-insights.com https://*.vercel-analytics.com",
               "media-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
