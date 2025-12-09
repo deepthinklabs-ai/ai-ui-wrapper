@@ -30,6 +30,8 @@ type FolderItemProps = {
   // Context panel props
   threadContextIds?: Set<string>;
   onAddThreadToContext?: (threadId: string, threadTitle: string) => void;
+  // Export prop
+  onExportThread?: (threadId: string) => void;
 };
 
 export function FolderItem({
@@ -54,6 +56,7 @@ export function FolderItem({
   onThreadMultiSelect,
   threadContextIds,
   onAddThreadToContext,
+  onExportThread,
 }: FolderItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(folder.name);
@@ -390,6 +393,7 @@ export function FolderItem({
               onThreadMultiSelect={onThreadMultiSelect}
               threadContextIds={threadContextIds}
               onAddThreadToContext={onAddThreadToContext}
+              onExportThread={onExportThread}
             />
           ))}
 
@@ -406,6 +410,7 @@ export function FolderItem({
               onDelete={() => onDeleteThread(thread.id)}
               onUpdateTitle={(newTitle) => onUpdateThreadTitle(thread.id, newTitle)}
               onAddToContext={onAddThreadToContext ? () => onAddThreadToContext(thread.id, thread.title || "Untitled") : undefined}
+              onExport={onExportThread ? () => onExportThread(thread.id) : undefined}
               depth={depth + 1}
             />
           ))}

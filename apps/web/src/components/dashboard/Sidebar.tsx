@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Thread, FolderWithChildren } from "@/types/chat";
 import { FolderTree } from "./FolderTree";
 import NewThreadModal from "./NewThreadModal";
+import { ThreadImportButton } from "./ThreadImportButton";
 
 type SidebarProps = {
   userEmail: string | null | undefined;
@@ -31,6 +32,11 @@ type SidebarProps = {
   // Context panel props
   threadContextIds?: Set<string>;
   onAddThreadToContext?: (threadId: string, threadTitle: string) => void;
+  // Export/import props
+  onExportThread?: (threadId: string) => void;
+  // Import props
+  userId?: string;
+  onThreadImported?: () => void;
 };
 
 export default function Sidebar({
@@ -56,6 +62,9 @@ export default function Sidebar({
   onToggleFolderCollapse,
   threadContextIds,
   onAddThreadToContext,
+  onExportThread,
+  userId,
+  onThreadImported,
 }: SidebarProps) {
   // Check if folder features are enabled (all folder props provided)
   const hasFolderFeatures = !!(
@@ -255,19 +264,31 @@ export default function Sidebar({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpenNewThreadModal}
-          disabled={!canCreateThread}
-          className={`mt-3 w-full rounded-md border px-2 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${
-            canCreateThread
-              ? "border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800"
-              : "border-slate-800 bg-slate-900/50 text-slate-500 cursor-not-allowed"
-          }`}
-          title={!canCreateThread ? "Thread limit reached. Subscribe to Pro for unlimited threads." : "Create a new .thread file"}
-        >
-          + New .thread
-        </button>
+        {/* New Thread and Import buttons */}
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={handleOpenNewThreadModal}
+            disabled={!canCreateThread}
+            className={`flex-1 rounded-md border px-2 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${
+              canCreateThread
+                ? "border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800"
+                : "border-slate-800 bg-slate-900/50 text-slate-500 cursor-not-allowed"
+            }`}
+            title={!canCreateThread ? "Thread limit reached. Subscribe to Pro for unlimited threads." : "Create a new .thread file"}
+          >
+            + New .thread
+          </button>
+          {userId && (
+            <ThreadImportButton
+              userId={userId}
+              folderId={defaultFolderId}
+              onImportComplete={onThreadImported}
+              compact
+              className="border border-slate-700 bg-slate-900 hover:bg-slate-800"
+            />
+          )}
+        </div>
 
         {/* Thread limit warning - only shown for expired tier */}
         {threadLimitReached && userTier === "expired" && (
@@ -346,6 +367,7 @@ export default function Sidebar({
             onToggleFolderCollapse={onToggleFolderCollapse}
             threadContextIds={threadContextIds}
             onAddThreadToContext={onAddThreadToContext}
+            onExportThread={onExportThread}
           />
         ) : (
           <>

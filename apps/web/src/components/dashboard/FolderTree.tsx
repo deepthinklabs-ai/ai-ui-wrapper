@@ -38,6 +38,8 @@ type FolderTreeProps = {
   // Context panel props
   threadContextIds?: Set<string>;
   onAddThreadToContext?: (threadId: string, threadTitle: string) => void;
+  // Export prop
+  onExportThread?: (threadId: string) => void;
 };
 
 type DragItem = {
@@ -70,6 +72,7 @@ export function FolderTree({
   onToggleFolderCollapse,
   threadContextIds,
   onAddThreadToContext,
+  onExportThread,
 }: FolderTreeProps) {
   const [activeItem, setActiveItem] = useState<DragItem | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -495,6 +498,7 @@ export function FolderTree({
               onThreadMultiSelect={handleThreadMultiSelect}
               threadContextIds={threadContextIds}
               onAddThreadToContext={onAddThreadToContext}
+              onExportThread={onExportThread}
             />
           ))}
 
@@ -511,6 +515,7 @@ export function FolderTree({
               onDelete={() => onDeleteThread(thread.id)}
               onUpdateTitle={(newTitle) => onUpdateThreadTitle(thread.id, newTitle)}
               onAddToContext={onAddThreadToContext ? () => onAddThreadToContext(thread.id, thread.title || "Untitled") : undefined}
+              onExport={onExportThread ? () => onExportThread(thread.id) : undefined}
               depth={0}
             />
           ))}

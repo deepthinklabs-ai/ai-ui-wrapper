@@ -25,6 +25,7 @@ import { useThreadContext } from "@/hooks/useThreadContext";
 import { useResizableSidebar } from "@/hooks/useResizableSidebar";
 import { useMCPServers } from "@/hooks/useMCPServers";
 import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
+import { useThreadExport } from "@/hooks/useThreadExport";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
 import { supabase } from "@/lib/supabaseClient";
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -162,6 +163,17 @@ export default function DashboardPage() {
 
   // Resizable sidebar
   const { isResizing, handleMouseDown: handleSidebarResize, sidebarStyle } = useResizableSidebar();
+
+  // Thread export
+  const { exportThread, isExporting: isExportingThread } = useThreadExport({
+    userId: user?.id,
+    onExportComplete: (filename) => {
+      console.log(`[Dashboard] Thread exported: ${filename}`);
+    },
+    onExportError: (error) => {
+      console.error(`[Dashboard] Export failed: ${error}`);
+    },
+  });
 
   // Exposed workflows for Master Trigger feature
   const {
@@ -599,6 +611,14 @@ export default function DashboardPage() {
           // Thread context props
           threadContextIds={threadContextIds}
           onAddThreadToContext={handleAddThreadToContext}
+          // Export prop
+          onExportThread={exportThread}
+          // Import props
+          userId={user?.id}
+          onThreadImported={async () => {
+            await refreshThreads();
+            await refreshFolders();
+          }}
         />
         {/* Resize handle */}
         <div
