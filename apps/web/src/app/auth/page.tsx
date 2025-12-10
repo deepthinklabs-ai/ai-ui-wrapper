@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { usePasswordStrength } from "@/hooks/usePasswordStrength";
 import PasswordStrengthIndicator from "@/components/auth/PasswordStrengthIndicator";
 import TwoFactorLogin from "@/components/auth/TwoFactorLogin";
+import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -20,6 +21,9 @@ export default function AuthPage() {
   const [show2FA, setShow2FA] = useState(false);
   const [pending2FAUserId, setPending2FAUserId] = useState<string | null>(null);
   const [pending2FAEmail, setPending2FAEmail] = useState<string | null>(null);
+
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Password strength checking (only enabled during signup)
   const passwordStrength = usePasswordStrength({
@@ -152,6 +156,31 @@ export default function AuthPage() {
     );
   }
 
+  // Show forgot password screen if needed
+  if (showForgotPassword) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-slate-100">
+              AI Chat Platform
+            </h1>
+            <p className="mt-2 text-sm text-slate-400">
+              Reset your password
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+            <ForgotPasswordForm
+              onBack={() => setShowForgotPassword(false)}
+              initialEmail={email}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
       <div className="w-full max-w-md space-y-8">
@@ -215,6 +244,19 @@ export default function AuthPage() {
                   feedback={passwordStrength.feedback}
                   show={true}
                 />
+              )}
+
+              {/* Forgot password link (only show on sign in) */}
+              {!isSignUp && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-blue-400 hover:text-blue-300"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               )}
             </div>
 
