@@ -68,7 +68,20 @@
       "Bash(cmd /c \"if exist C:\\dev\\ai-ui-wrapper\\apps\\web\\.next rmdir /s /q C:\\dev\\ai-ui-wrapper\\apps\\web\\.next\")",
       "Bash(cmd /c \"netstat -ano | findstr 3000\")",
       "Bash(npx tsc:*)",
-      "WebFetch(domain:platform.openai.com)"
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(cmd /c \"taskkill /F /PID 22908\")",
+      "Bash(find:*)",
+      "Bash(cmd /c \"taskkill /F /PID 34860\")",
+      "Bash(cmd /c:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell \"Stop-Process -Id 35076 -Force -ErrorAction SilentlyContinue; Get-Process -Id 35076 -ErrorAction SilentlyContinue\")",
+      "Bash(wmic process where \"ProcessId=35076\" delete)",
+      "Bash(wmic process where \"name=''node.exe''\" delete)",
+      "WebFetch(domain:docs.stripe.com)",
+      "WebFetch(domain:resend.com)",
+      "Bash(grep:*)",
+      "Bash(npm update:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []
