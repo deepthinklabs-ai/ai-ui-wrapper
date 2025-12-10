@@ -8,6 +8,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useEncryption } from '@/contexts/EncryptionContext';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { unlockDataKey } from '@/lib/encryption';
@@ -15,7 +16,15 @@ import type { EncryptionKeyBundle, RecoveryCodeBundle } from '@/lib/encryption';
 import EncryptionSetupModal from './EncryptionSetupModal';
 import EncryptionUnlockModal from './EncryptionUnlockModal';
 
+// Pages where encryption modals should NOT be shown
+const EXCLUDED_PATHS = [
+  '/auth',
+  '/auth/reset-password',
+  '/auth/callback',
+];
+
 export default function EncryptionModals() {
+  const pathname = usePathname();
   const { user } = useAuthSession();
   const [unlockCancelled, setUnlockCancelled] = useState(false);
   const {
@@ -67,6 +76,11 @@ export default function EncryptionModals() {
 
   // Don't render anything if still loading
   if (state.isLoading) {
+    return null;
+  }
+
+  // Don't render on auth pages (login, password reset, etc.)
+  if (pathname && EXCLUDED_PATHS.some(path => pathname.startsWith(path))) {
     return null;
   }
 
