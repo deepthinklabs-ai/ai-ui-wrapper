@@ -24,7 +24,7 @@
     "@xyflow/react": "^12.9.3",
     "crypto-js": "^4.2.0",
     "googleapis": "^166.0.0",
-    "next": "^16.0.8",
+    "next": "^16.0.9",
     "openai": "^6.8.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
