@@ -43,7 +43,7 @@ export default function PlanSelection({
                 <span className="text-4xl font-bold text-slate-100">$0</span>
                 <span className="text-slate-400">for 7 days</span>
               </div>
-              <p className="text-sm text-slate-500 mt-2">Then $50/month. Cancel anytime.</p>
+              <p className="text-sm text-slate-500 mt-2">Then $5/month. Cancel anytime.</p>
             </div>
 
             <ul className="space-y-4 mb-8">
@@ -52,8 +52,8 @@ export default function PlanSelection({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <span className="text-slate-200 font-medium">Access to all AI models</span>
-                  <p className="text-sm text-slate-400">GPT-5, GPT-4o, Claude Sonnet, Opus, Grok, and more</p>
+                  <span className="text-slate-200 font-medium">Use your own API keys</span>
+                  <p className="text-sm text-slate-400">OpenAI, Claude, Grok, Gemini - securely stored</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -106,7 +106,7 @@ export default function PlanSelection({
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-slate-100 mb-2">Pro Plan</h2>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-slate-100">$50</span>
+                <span className="text-4xl font-bold text-slate-100">$5</span>
                 <span className="text-slate-400">/month</span>
               </div>
             </div>
@@ -117,8 +117,8 @@ export default function PlanSelection({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <span className="text-slate-100 font-medium">All AI models included</span>
-                  <p className="text-sm text-slate-300">GPT-5, GPT-4o, Claude Sonnet, Opus, Grok - no API keys needed</p>
+                  <span className="text-slate-100 font-medium">Use your own API keys</span>
+                  <p className="text-sm text-slate-300">OpenAI, Claude, Grok, Gemini - securely stored</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">

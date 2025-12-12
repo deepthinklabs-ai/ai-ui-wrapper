@@ -74,7 +74,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://api.x.ai https://api.stripe.com https://*.vercel-insights.com https://*.vercel-analytics.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://api.x.ai https://api.stripe.com https://*.vercel-insights.com https://*.vercel-analytics.com https://secretmanager.googleapis.com https://generativelanguage.googleapis.com",
               "media-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",

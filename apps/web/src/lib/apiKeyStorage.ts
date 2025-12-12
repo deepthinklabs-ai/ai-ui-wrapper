@@ -29,9 +29,13 @@ export type AIModel =
   | 'grok-4-fast-non-reasoning'
   | 'grok-4-1-fast-reasoning'
   | 'grok-4-1-fast-non-reasoning'
-  | 'grok-code-fast-1';
+  | 'grok-code-fast-1'
+  // Gemini Models
+  | 'gemini-2.0-flash'
+  | 'gemini-1.5-pro'
+  | 'gemini-1.5-flash';
 
-export type ModelProvider = 'openai' | 'claude' | 'grok';
+export type ModelProvider = 'openai' | 'claude' | 'grok' | 'gemini';
 
 export type ModelCapabilities = {
   supportsImages: boolean;
@@ -187,6 +191,31 @@ export const AVAILABLE_MODELS: {
     provider: 'grok',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 256000,
+  },
+  // Gemini Models (Google)
+  {
+    value: 'gemini-2.0-flash',
+    label: 'Gemini 2.0 Flash',
+    description: 'Google\'s latest multimodal model, fast and capable • Supports images and files',
+    provider: 'gemini',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 1000000,
+  },
+  {
+    value: 'gemini-1.5-pro',
+    label: 'Gemini 1.5 Pro',
+    description: 'Google\'s powerful model with extended context • Supports images and files',
+    provider: 'gemini',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 2000000,
+  },
+  {
+    value: 'gemini-1.5-flash',
+    label: 'Gemini 1.5 Flash',
+    description: 'Fast and cost-effective Gemini model • Supports images and files',
+    provider: 'gemini',
+    capabilities: { supportsImages: true, supportsFiles: true },
+    contextWindow: 1000000,
   },
 ];
 

@@ -86,7 +86,7 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
               <svg className="h-4 w-4 mr-2 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              Access to all AI models (OpenAI, Claude, Grok)
+              Use your own API keys (OpenAI, Claude, Grok, Gemini)
             </li>
             <li className="flex items-center">
               <svg className="h-4 w-4 mr-2 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -103,7 +103,7 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
           </ul>
 
           <div className="mt-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-            <div className="text-sm font-semibold text-purple-400 mb-2">Upgrade to Pro - $50/month</div>
+            <div className="text-sm font-semibold text-purple-400 mb-2">Upgrade to Pro - $5/month</div>
             <ul className="space-y-2 text-sm text-slate-300 mb-4">
               <li className="flex items-center">
                 <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
@@ -115,7 +115,7 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
                 <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                All premium AI models included
+                Secure API key storage (Google Secret Manager)
               </li>
               <li className="flex items-center">
                 <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
@@ -160,13 +160,13 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
           </div>
 
           <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-            <div className="text-sm font-semibold text-purple-400 mb-2">Subscribe to Pro - $50/month</div>
+            <div className="text-sm font-semibold text-purple-400 mb-2">Subscribe to Pro - $5/month</div>
             <ul className="space-y-2 text-sm text-slate-300 mb-4">
               <li className="flex items-center">
                 <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                Access to GPT-5, Claude Sonnet/Opus, Grok
+                Use your own API keys (OpenAI, Claude, Grok, Gemini)
               </li>
               <li className="flex items-center">
                 <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
@@ -208,7 +208,7 @@ export default function SubscriptionManagement({ priceId }: SubscriptionManageme
               <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              All AI models (GPT-5, Claude, Grok)
+              Use your own API keys (OpenAI, Claude, Grok, Gemini)
             </li>
             <li className="flex items-center">
               <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">

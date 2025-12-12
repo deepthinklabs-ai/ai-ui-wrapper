@@ -1,14 +1,11 @@
 /**
- * Claude (Anthropic) API Proxy
+ * Claude (Anthropic) API Proxy (BYOK)
  *
- * This route allows authenticated users (trial and pro) to use Claude models
- * without providing their own API keys.
- * Uses the app's Claude API key (stored in env vars) instead.
+ * This route allows authenticated users to use Claude models
+ * using their own API keys stored in Google Secret Manager.
  * Includes rate limiting and usage tracking.
  *
- * - Trial users: 25% of pro rate limits
- * - Pro users: Full rate limits
- * - Expired users: Blocked
+ * BYOK: Users must configure their Claude API key in Settings.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,6 +17,7 @@ import {
   getRateLimitErrorMessage,
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
+import { getProviderKey } from '@/lib/secretManager/getKey';
 
 // Map our internal model names to Claude API model names
 const CLAUDE_API_MODEL_MAP: Record<string, string> = {
@@ -47,13 +45,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Missing messages array' },
         { status: 400 }
-      );
-    }
-
-    if (!process.env.CLAUDE_API_KEY) {
-      return NextResponse.json(
-        { error: 'Claude API key not configured on server' },
-        { status: 500 }
       );
     }
 
@@ -95,6 +86,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // BYOK: Get user's Claude API key from Secret Manager
+    let userApiKey = await getProviderKey(userId, 'claude');
+    if (!userApiKey) {
+      return NextResponse.json(
+        {
+          error: 'API key required',
+          message: 'Please configure your Claude API key in Settings to use this model.',
+          code: 'BYOK_KEY_MISSING',
+        },
+        { status: 403 }
+      );
+    }
+
     // Rate limiting check (uses tier-specific limits)
     console.log(`[API Claude] Checking rate limit for user=${userId}, tier=${userTier}, model=${model}`);
     const rateLimitResult = await checkRateLimit(supabase, userId, userTier, model);
@@ -104,6 +108,9 @@ export async function POST(req: NextRequest) {
       const headers = getRateLimitHeaders(rateLimitResult.status);
 
       console.log(`[PRO API Claude] Rate limited: user=${userId}, model=${model}, reason=${rateLimitResult.status.block_reason}`);
+
+      // Security: Clear API key from memory
+      userApiKey = null;
 
       return NextResponse.json(
         {
@@ -226,9 +233,10 @@ export async function POST(req: NextRequest) {
     const startTime = Date.now();
 
     // Build headers - add beta header if web search is enabled
+    // BYOK: Use user's API key
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-api-key': process.env.CLAUDE_API_KEY!,
+      'x-api-key': userApiKey,
       'anthropic-version': '2023-06-01',
     };
 
@@ -243,6 +251,9 @@ export async function POST(req: NextRequest) {
       headers,
       body: JSON.stringify(requestBody),
     });
+
+    // Security: Clear API key from memory after use
+    userApiKey = null;
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
