@@ -104,8 +104,8 @@ async function getClient(): Promise<SecretManagerServiceClient> {
       const client = new SecretManagerServiceClient({ authClient });
       console.log('[SecretManager] WIF client created successfully');
 
-      // Clean up token file after creating client
-      try { fs.unlinkSync(tokenPath); } catch { /* ignore */ }
+      // NOTE: Don't delete the token file here - it's read lazily when the client makes API calls
+      // The file will be cleaned up by the OS temp directory cleanup
 
       return client;
     } catch (error) {
