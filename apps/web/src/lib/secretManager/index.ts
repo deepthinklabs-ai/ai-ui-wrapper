@@ -5,7 +5,7 @@
  * Keys are stored as a JSON blob per user with all provider keys.
  *
  * Authentication:
- * - Production (Vercel): Uses Workload Identity Federation via GOOGLE_APPLICATION_CREDENTIALS
+ * - Production (Vercel): Uses Workload Identity Federation with Vercel OIDC
  * - Local development: Uses base64-encoded service account key via GCP_SERVICE_ACCOUNT_KEY
  *
  * Security Requirements:
@@ -16,9 +16,7 @@
  */
 
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { GoogleAuth, ExternalAccountClient } from 'google-auth-library';
 
 // Provider types supported
 export type BYOKProvider = 'openai' | 'claude' | 'grok' | 'gemini';
@@ -46,33 +44,48 @@ let client: SecretManagerServiceClient | null = null;
  * Initialize the Secret Manager client
  *
  * Supports two authentication methods:
- * 1. Workload Identity Federation (Vercel production) - uses GCP_WIF_CONFIG env var
+ * 1. Workload Identity Federation (Vercel production) - uses GCLOUD_* env vars
  * 2. Service Account Key (local dev) - uses GCP_SERVICE_ACCOUNT_KEY env var
  */
-function getClient(): SecretManagerServiceClient {
+async function getClient(): Promise<SecretManagerServiceClient> {
   if (client) return client;
 
   console.log('[SecretManager] Initializing client...');
-  console.log('[SecretManager] GCP_WIF_CONFIG present:', !!process.env.GCP_WIF_CONFIG);
-  console.log('[SecretManager] GCP_SERVICE_ACCOUNT_KEY present:', !!process.env.GCP_SERVICE_ACCOUNT_KEY);
-  console.log('[SecretManager] GCP_PROJECT_ID:', process.env.GCP_PROJECT_ID);
+
+  // Check for Vercel WIF environment variables
+  const projectNumber = process.env.GCLOUD_PROJECT_NUMBER;
+  const poolId = process.env.GCLOUD_WORKLOAD_IDENTITY_POOL_ID;
+  const providerId = process.env.GCLOUD_WORKLOAD_IDENTITY_POOL_PROVIDER_ID;
+  const serviceAccountEmail = process.env.GCLOUD_SERVICE_ACCOUNT_EMAIL;
+
+  console.log('[SecretManager] GCLOUD_PROJECT_NUMBER present:', !!projectNumber);
+  console.log('[SecretManager] GCLOUD_WORKLOAD_IDENTITY_POOL_ID present:', !!poolId);
+  console.log('[SecretManager] GCLOUD_SERVICE_ACCOUNT_KEY present:', !!process.env.GCP_SERVICE_ACCOUNT_KEY);
 
   // Method 1: Workload Identity Federation (for Vercel)
-  const wifConfig = process.env.GCP_WIF_CONFIG;
-  if (wifConfig) {
+  if (projectNumber && poolId && providerId && serviceAccountEmail) {
     try {
-      console.log('[SecretManager] Using WIF authentication');
-      // Write WIF config to a temp file (required by Google Auth library)
-      const tempDir = os.tmpdir();
-      const configPath = path.join(tempDir, 'gcp-wif-config.json');
-      fs.writeFileSync(configPath, wifConfig, 'utf-8');
-      console.log('[SecretManager] WIF config written to:', configPath);
+      console.log('[SecretManager] Using Vercel WIF authentication');
 
-      // Set the environment variable that Google libraries look for
-      process.env.GOOGLE_APPLICATION_CREDENTIALS = configPath;
+      const authClient = ExternalAccountClient.fromJSON({
+        type: 'external_account',
+        audience: `//iam.googleapis.com/projects/${projectNumber}/locations/global/workloadIdentityPools/${poolId}/providers/${providerId}`,
+        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+        token_url: 'https://sts.googleapis.com/v1/token',
+        service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccountEmail}:generateAccessToken`,
+        credential_source: {
+          url: `https://vercel.com/oidc/token?audience=aud:vercel-gcp`,
+          format: {
+            type: 'text',
+          },
+        },
+      });
 
-      // Create client - it will automatically use the WIF config
-      client = new SecretManagerServiceClient();
+      if (!authClient) {
+        throw new Error('Failed to create auth client');
+      }
+
+      client = new SecretManagerServiceClient({ authClient });
       console.log('[SecretManager] WIF client created successfully');
       return client;
     } catch (error) {
@@ -98,7 +111,7 @@ function getClient(): SecretManagerServiceClient {
     }
   }
 
-  throw new Error('No GCP credentials configured. Set either GCP_WIF_CONFIG (for Vercel) or GCP_SERVICE_ACCOUNT_KEY (for local dev)');
+  throw new Error('No GCP credentials configured. Set GCLOUD_* env vars (for Vercel) or GCP_SERVICE_ACCOUNT_KEY (for local dev)');
 }
 
 /**
@@ -140,7 +153,7 @@ function getLatestVersionPath(userId: string): string {
  * Check if a secret exists for a user
  */
 export async function secretExists(userId: string): Promise<boolean> {
-  const secretManager = getClient();
+  const secretManager = await getClient();
   const secretPath = getSecretPath(userId);
 
   try {
@@ -160,7 +173,7 @@ export async function secretExists(userId: string): Promise<boolean> {
  * Create a new secret for a user
  */
 async function createSecret(userId: string): Promise<void> {
-  const secretManager = getClient();
+  const secretManager = await getClient();
   const projectId = getProjectId();
   const secretId = getUserSecretName(userId);
 
@@ -183,7 +196,7 @@ async function createSecret(userId: string): Promise<void> {
  * Add a new version to an existing secret
  */
 async function addSecretVersion(userId: string, data: UserApiKeys): Promise<void> {
-  const secretManager = getClient();
+  const secretManager = await getClient();
   const secretPath = getSecretPath(userId);
 
   // Convert to JSON and encode
@@ -202,7 +215,7 @@ async function addSecretVersion(userId: string, data: UserApiKeys): Promise<void
  * Returns empty keys object if no secret exists
  */
 export async function getUserKeys(userId: string): Promise<UserApiKeys> {
-  const secretManager = getClient();
+  const secretManager = await getClient();
   const versionPath = getLatestVersionPath(userId);
 
   try {
@@ -298,7 +311,7 @@ export async function deleteUserKey(
  * Deletes the entire secret
  */
 export async function deleteAllUserKeys(userId: string): Promise<void> {
-  const secretManager = getClient();
+  const secretManager = await getClient();
   const secretPath = getSecretPath(userId);
 
   try {
