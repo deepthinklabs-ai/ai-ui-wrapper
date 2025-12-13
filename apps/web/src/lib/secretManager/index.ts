@@ -74,7 +74,7 @@ async function getClient(): Promise<SecretManagerServiceClient> {
         token_url: 'https://sts.googleapis.com/v1/token',
         service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccountEmail}:generateAccessToken`,
         credential_source: {
-          url: `https://vercel.com/oidc/token?audience=aud:vercel-gcp`,
+          url: `https://vercel.com/oidc/token?audience=${process.env.VERCEL_OIDC_AUDIENCE || 'aud:vercel-gcp'}`,
           format: {
             type: 'text',
           },
