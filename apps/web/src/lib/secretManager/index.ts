@@ -16,7 +16,11 @@
  */
 
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-import { GoogleAuth, ExternalAccountClient } from 'google-auth-library';
+import { ExternalAccountClient } from 'google-auth-library';
+import { getVercelOidcToken } from '@vercel/functions/oidc';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 // Provider types supported
 export type BYOKProvider = 'openai' | 'claude' | 'grok' | 'gemini';
@@ -37,19 +41,17 @@ const EMPTY_KEYS: UserApiKeys = {
   gemini: null,
 };
 
-// Singleton client instance
-let client: SecretManagerServiceClient | null = null;
+// We can't cache the client with WIF because the token changes per request
+let cachedServiceAccountClient: SecretManagerServiceClient | null = null;
 
 /**
  * Initialize the Secret Manager client
  *
  * Supports two authentication methods:
- * 1. Workload Identity Federation (Vercel production) - uses GCLOUD_* env vars
+ * 1. Workload Identity Federation (Vercel production) - uses GCLOUD_* env vars + Vercel OIDC token
  * 2. Service Account Key (local dev) - uses GCP_SERVICE_ACCOUNT_KEY env var
  */
 async function getClient(): Promise<SecretManagerServiceClient> {
-  if (client) return client;
-
   console.log('[SecretManager] Initializing client...');
 
   // Check for Vercel WIF environment variables
@@ -60,12 +62,25 @@ async function getClient(): Promise<SecretManagerServiceClient> {
 
   console.log('[SecretManager] GCLOUD_PROJECT_NUMBER present:', !!projectNumber);
   console.log('[SecretManager] GCLOUD_WORKLOAD_IDENTITY_POOL_ID present:', !!poolId);
-  console.log('[SecretManager] GCLOUD_SERVICE_ACCOUNT_KEY present:', !!process.env.GCP_SERVICE_ACCOUNT_KEY);
+  console.log('[SecretManager] GCP_SERVICE_ACCOUNT_KEY present:', !!process.env.GCP_SERVICE_ACCOUNT_KEY);
 
   // Method 1: Workload Identity Federation (for Vercel)
   if (projectNumber && poolId && providerId && serviceAccountEmail) {
     try {
       console.log('[SecretManager] Using Vercel WIF authentication');
+
+      // Get OIDC token from Vercel request context
+      const oidcToken = await getVercelOidcToken();
+
+      if (!oidcToken) {
+        throw new Error('OIDC token not available - are you running on Vercel?');
+      }
+
+      console.log('[SecretManager] Got OIDC token, length:', oidcToken.length);
+
+      // Write token to temp file (required by google-auth-library)
+      const tokenPath = path.join(os.tmpdir(), `vercel-oidc-token-${Date.now()}.txt`);
+      fs.writeFileSync(tokenPath, oidcToken, 'utf-8');
 
       const authClient = ExternalAccountClient.fromJSON({
         type: 'external_account',
@@ -74,7 +89,7 @@ async function getClient(): Promise<SecretManagerServiceClient> {
         token_url: 'https://sts.googleapis.com/v1/token',
         service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccountEmail}:generateAccessToken`,
         credential_source: {
-          url: `https://vercel.com/oidc/token?audience=${process.env.VERCEL_OIDC_AUDIENCE || 'aud:vercel-gcp'}`,
+          file: tokenPath,
           format: {
             type: 'text',
           },
@@ -85,27 +100,37 @@ async function getClient(): Promise<SecretManagerServiceClient> {
         throw new Error('Failed to create auth client');
       }
 
-      client = new SecretManagerServiceClient({ authClient });
+      // Don't cache WIF client - token is per-request
+      const client = new SecretManagerServiceClient({ authClient });
       console.log('[SecretManager] WIF client created successfully');
+
+      // Clean up token file after creating client
+      try { fs.unlinkSync(tokenPath); } catch { /* ignore */ }
+
       return client;
     } catch (error) {
       console.error('[SecretManager] Failed to initialize WIF client:', error);
-      throw new Error('Failed to initialize Secret Manager client with WIF');
+      throw new Error(`Failed to initialize Secret Manager client with WIF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   // Method 2: Service Account Key (for local development)
   const serviceAccountKey = process.env.GCP_SERVICE_ACCOUNT_KEY;
   if (serviceAccountKey) {
+    // Can cache this client since credentials don't change
+    if (cachedServiceAccountClient) {
+      return cachedServiceAccountClient;
+    }
+
     try {
       console.log('[SecretManager] Using service account key authentication');
       const credentials = JSON.parse(
         Buffer.from(serviceAccountKey, 'base64').toString('utf-8')
       );
 
-      client = new SecretManagerServiceClient({ credentials });
+      cachedServiceAccountClient = new SecretManagerServiceClient({ credentials });
       console.log('[SecretManager] Service account client created successfully');
-      return client;
+      return cachedServiceAccountClient;
     } catch {
       throw new Error('Failed to initialize Secret Manager client with service account key');
     }
