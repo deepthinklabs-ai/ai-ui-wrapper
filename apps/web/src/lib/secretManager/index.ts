@@ -52,23 +52,31 @@ let client: SecretManagerServiceClient | null = null;
 function getClient(): SecretManagerServiceClient {
   if (client) return client;
 
+  console.log('[SecretManager] Initializing client...');
+  console.log('[SecretManager] GCP_WIF_CONFIG present:', !!process.env.GCP_WIF_CONFIG);
+  console.log('[SecretManager] GCP_SERVICE_ACCOUNT_KEY present:', !!process.env.GCP_SERVICE_ACCOUNT_KEY);
+  console.log('[SecretManager] GCP_PROJECT_ID:', process.env.GCP_PROJECT_ID);
+
   // Method 1: Workload Identity Federation (for Vercel)
   const wifConfig = process.env.GCP_WIF_CONFIG;
   if (wifConfig) {
     try {
+      console.log('[SecretManager] Using WIF authentication');
       // Write WIF config to a temp file (required by Google Auth library)
       const tempDir = os.tmpdir();
       const configPath = path.join(tempDir, 'gcp-wif-config.json');
       fs.writeFileSync(configPath, wifConfig, 'utf-8');
+      console.log('[SecretManager] WIF config written to:', configPath);
 
       // Set the environment variable that Google libraries look for
       process.env.GOOGLE_APPLICATION_CREDENTIALS = configPath;
 
       // Create client - it will automatically use the WIF config
       client = new SecretManagerServiceClient();
+      console.log('[SecretManager] WIF client created successfully');
       return client;
     } catch (error) {
-      console.error('Failed to initialize WIF client:', error);
+      console.error('[SecretManager] Failed to initialize WIF client:', error);
       throw new Error('Failed to initialize Secret Manager client with WIF');
     }
   }
@@ -77,11 +85,13 @@ function getClient(): SecretManagerServiceClient {
   const serviceAccountKey = process.env.GCP_SERVICE_ACCOUNT_KEY;
   if (serviceAccountKey) {
     try {
+      console.log('[SecretManager] Using service account key authentication');
       const credentials = JSON.parse(
         Buffer.from(serviceAccountKey, 'base64').toString('utf-8')
       );
 
       client = new SecretManagerServiceClient({ credentials });
+      console.log('[SecretManager] Service account client created successfully');
       return client;
     } catch {
       throw new Error('Failed to initialize Secret Manager client with service account key');

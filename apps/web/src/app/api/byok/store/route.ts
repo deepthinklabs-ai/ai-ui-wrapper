@@ -96,9 +96,17 @@ export async function POST(request: Request) {
 
     // 8. Store the key in Secret Manager
     try {
+      console.log('[BYOK Store] Attempting to store key for user:', user.id, 'provider:', providerType);
       await updateUserKey(user.id, providerType, trimmedKey);
+      console.log('[BYOK Store] Successfully stored key for user:', user.id);
     } catch (storeError) {
-      console.error('[BYOK Store] Failed to store key:', storeError instanceof Error ? storeError.message : 'Unknown error');
+      // Log full error details for debugging
+      const errorMessage = storeError instanceof Error ? storeError.message : 'Unknown error';
+      const errorStack = storeError instanceof Error ? storeError.stack : '';
+      console.error('[BYOK Store] Failed to store key:', errorMessage);
+      console.error('[BYOK Store] Error stack:', errorStack);
+      console.error('[BYOK Store] Full error:', JSON.stringify(storeError, Object.getOwnPropertyNames(storeError as object), 2));
+
       return NextResponse.json(
         { error: 'Storage failed', message: 'Failed to store API key. Please try again.' },
         { status: 500 }
