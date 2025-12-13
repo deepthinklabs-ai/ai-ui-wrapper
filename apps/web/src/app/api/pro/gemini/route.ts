@@ -21,8 +21,11 @@ import {
 import { getProviderKey } from '@/lib/secretManager/getKey';
 
 // Map our internal model names to Gemini API model names
+// Using stable model names (not experimental -exp versions)
 const GEMINI_MODEL_MAP: Record<string, string> = {
-  'gemini-2.0-flash': 'gemini-2.0-flash-exp',
+  'gemini-2.0-flash': 'gemini-2.0-flash',
+  'gemini-2.5-flash': 'gemini-2.5-flash',
+  'gemini-2.5-pro': 'gemini-2.5-pro',
   'gemini-1.5-pro': 'gemini-1.5-pro',
   'gemini-1.5-flash': 'gemini-1.5-flash',
 };
@@ -161,9 +164,17 @@ export async function POST(req: NextRequest) {
     const startTime = Date.now();
 
     // Start chat with history (excluding the last user message)
+    // systemInstruction must be a Content object, not a plain string
     const chat = geminiModel.startChat({
       history: geminiMessages.slice(0, -1),
-      systemInstruction: finalSystemPrompt || undefined,
+      ...(finalSystemPrompt
+        ? {
+            systemInstruction: {
+              role: 'user',
+              parts: [{ text: finalSystemPrompt }],
+            },
+          }
+        : {}),
     });
 
     // Send the last message
