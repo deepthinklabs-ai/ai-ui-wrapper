@@ -31,7 +31,8 @@ const CLAUDE_API_MODEL_MAP: Record<string, string> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, messages, model = 'claude-sonnet-4-5', systemPrompt, tools, enableWebSearch = true } = body;
+    // Temporarily disable web search by default until we debug the refusal issue
+    const { userId, messages, model = 'claude-sonnet-4-5', systemPrompt, tools, enableWebSearch = false } = body;
 
     // Validate required fields
     if (!userId) {
