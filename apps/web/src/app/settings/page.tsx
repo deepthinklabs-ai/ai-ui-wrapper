@@ -15,6 +15,7 @@ import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
 import MCPServerSettings from "@/components/settings/MCPServerSettings";
 import MCPMigrationBanner from "@/components/settings/MCPMigrationBanner";
 import EncryptionSettings from "@/components/settings/EncryptionSettings";
+import BYOKSettings from "@/components/settings/BYOKSettings";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useUserTier } from "@/hooks/useUserTier";
 
@@ -97,17 +98,20 @@ function SettingsPageContent() {
           {/* MCP Credentials Migration Banner */}
           <MCPMigrationBanner />
 
+          {/* BYOK API Keys Section - Primary for BYOK model */}
+          <BYOKSettings />
+
           {/* Subscription Management Section */}
           <SubscriptionManagement
             priceId={process.env.NEXT_PUBLIC_STRIPE_PRICE_ID}
           />
 
-          {/* API Access Status Section */}
+          {/* Account Status Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <div className="mb-4">
-              <h2 className="text-xl font-semibold text-slate-100">API Access</h2>
+              <h2 className="text-xl font-semibold text-slate-100">Account Status</h2>
               <p className="mt-2 text-sm text-slate-400">
-                All API access is provided through Genesis Chat Bot. No API keys required.
+                Your subscription status and usage tier.
               </p>
             </div>
 
@@ -122,14 +126,14 @@ function SettingsPageContent() {
                     <div className="text-sm font-semibold text-amber-300">7-Day Free Trial</div>
                     <div className="text-xs text-amber-400/80 mt-1">
                       {daysRemaining > 0
-                        ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining in your trial. You have access to all AI models with trial rate limits.`
+                        ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining. Configure your API keys above to start chatting.`
                         : 'Your trial has expired. Subscribe to continue using the service.'
                       }
                     </div>
                   </div>
                 </div>
                 <div className="mt-3 text-xs text-slate-400">
-                  Included: OpenAI (GPT-5, GPT-4), Claude (Sonnet, Opus, Haiku), Grok
+                  Use your own API keys from: OpenAI, Claude, Grok, Gemini
                 </div>
               </div>
             )}
@@ -144,12 +148,12 @@ function SettingsPageContent() {
                   <div className="flex-1">
                     <div className="text-sm font-semibold text-green-300">Pro Subscription Active</div>
                     <div className="text-xs text-green-400/80 mt-1">
-                      You have full access to all AI models with unlimited usage.
+                      You have full access to all features with higher rate limits.
                     </div>
                   </div>
                 </div>
                 <div className="mt-3 text-xs text-slate-400">
-                  Included: OpenAI (GPT-5, GPT-4), Claude (Sonnet, Opus, Haiku), Grok - Full rate limits
+                  Use your own API keys from: OpenAI, Claude, Grok, Gemini
                 </div>
               </div>
             )}
@@ -164,7 +168,7 @@ function SettingsPageContent() {
                   <div className="flex-1">
                     <div className="text-sm font-semibold text-red-300">Trial Expired</div>
                     <div className="text-xs text-red-400/80 mt-1">
-                      Your free trial has ended. Subscribe to Pro to continue using all AI features.
+                      Your free trial has ended. Subscribe to Pro to continue using all features.
                     </div>
                   </div>
                 </div>
@@ -176,7 +180,7 @@ function SettingsPageContent() {
                     }}
                     className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
                   >
-                    Subscribe Now - $50/month
+                    Subscribe Now - $5/month
                   </button>
                 </div>
               </div>
@@ -200,8 +204,8 @@ function SettingsPageContent() {
 
             <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
               <p className="text-xs text-slate-400">
-                <strong className="text-slate-300">Note:</strong> All API usage is included in your subscription.
-                Trial users have reduced rate limits (25% of Pro). Pro users have unlimited access.
+                <strong className="text-slate-300">Note:</strong> You use your own API keys for each provider.
+                Make sure you have the corresponding API key configured above for the model you select.
               </p>
             </div>
           </section>

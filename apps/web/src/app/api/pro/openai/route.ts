@@ -1,14 +1,11 @@
 /**
- * OpenAI API Proxy
+ * OpenAI API Proxy (BYOK)
  *
- * This route allows authenticated users (trial and pro) to use OpenAI models
- * without providing their own API keys.
- * Uses the app's OpenAI API key (stored in env vars) instead.
+ * This route allows authenticated users to use OpenAI models
+ * using their own API keys stored in Google Secret Manager.
  * Includes rate limiting and usage tracking.
  *
- * - Trial users: 25% of pro rate limits
- * - Pro users: Full rate limits
- * - Expired users: Blocked
+ * BYOK: Users must configure their OpenAI API key in Settings.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -21,11 +18,7 @@ import {
   getRateLimitErrorMessage,
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
-
-// Initialize OpenAI client with app's API key
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { getProviderKey } from '@/lib/secretManager/getKey';
 
 // Map models to their search-enabled variants
 const SEARCH_ENABLED_MODELS: Record<string, string> = {
@@ -93,6 +86,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // BYOK: Get user's OpenAI API key from Secret Manager
+    let userApiKey = await getProviderKey(userId, 'openai');
+    if (!userApiKey) {
+      return NextResponse.json(
+        {
+          error: 'API key required',
+          message: 'Please configure your OpenAI API key in Settings to use this model.',
+          code: 'BYOK_KEY_MISSING',
+        },
+        { status: 403 }
+      );
+    }
+
     // Rate limiting check (uses tier-specific limits)
     console.log(`[API] Checking rate limit for user=${userId}, tier=${userTier}, model=${model}`);
     const rateLimitResult = await checkRateLimit(supabase, userId, userTier, model);
@@ -103,6 +109,9 @@ export async function POST(req: NextRequest) {
       const headers = getRateLimitHeaders(rateLimitResult.status);
 
       console.log(`[PRO API] Rate limited: user=${userId}, model=${model}, reason=${rateLimitResult.status.block_reason}`);
+
+      // Security: Clear API key from memory
+      userApiKey = null;
 
       return NextResponse.json(
         {
@@ -137,6 +146,11 @@ export async function POST(req: NextRequest) {
       messages: finalMessages,
     };
 
+    // BYOK: Create OpenAI client with user's API key
+    const openai = new OpenAI({
+      apiKey: userApiKey,
+    });
+
     // Add tools if provided (for Gmail, Sheets, etc.)
     if (tools && Array.isArray(tools) && tools.length > 0) {
       // Convert to OpenAI function format
@@ -168,6 +182,9 @@ export async function POST(req: NextRequest) {
     // Make request to OpenAI
     const startTime = Date.now();
     const completion = await openai.chat.completions.create(completionParams);
+
+    // Security: Clear API key from memory after use
+    userApiKey = null;
 
     // Log metadata only (not content for privacy)
 

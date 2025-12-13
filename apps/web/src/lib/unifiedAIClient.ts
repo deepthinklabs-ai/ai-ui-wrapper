@@ -1,9 +1,9 @@
 /**
  * Unified AI Client
  *
- * Routes requests to the appropriate AI provider (OpenAI, Claude, or Grok)
+ * Routes requests to the appropriate AI provider (OpenAI, Claude, Grok, or Gemini)
  * based on the selected model. All requests go through backend API proxy
- * using corporate API keys.
+ * using BYOK (Bring Your Own Key) model.
  *
  * - Trial users: Use backend API proxy with 25% rate limits
  * - Pro users: Use backend API proxy with full rate limits
@@ -47,12 +47,13 @@ async function sendProChatRequest(
   userId: string,
   messages: UnifiedChatMessage[],
   model: AIModel,
-  provider: 'openai' | 'claude' | 'grok',
+  provider: 'openai' | 'claude' | 'grok' | 'gemini',
   tools?: any
 ): Promise<UnifiedChatResponse> {
   const endpoint =
     provider === 'openai' ? '/api/pro/openai' :
     provider === 'claude' ? '/api/pro/claude' :
+    provider === 'gemini' ? '/api/pro/gemini' :
     '/api/pro/grok';
 
   const requestBody: any = {
