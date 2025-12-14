@@ -53,6 +53,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
   const openaiModels = availableModels.filter((m) => m.provider === "openai");
   const claudeModels = availableModels.filter((m) => m.provider === "claude");
   const grokModels = availableModels.filter((m) => m.provider === "grok");
+  const geminiModels = availableModels.filter((m) => m.provider === "gemini");
 
   if (availableModels.length === 0) {
     return (
@@ -81,9 +82,13 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
           <span className="flex h-4 w-4 items-center justify-center rounded bg-orange-500/20 text-orange-300 text-[10px] font-bold">
             C
           </span>
+        ) : selectedModelInfo?.provider === "gemini" ? (
+          <span className="flex h-4 w-4 items-center justify-center rounded bg-sky-500/20 text-sky-300 text-[10px] font-bold">
+            G
+          </span>
         ) : (
           <span className="flex h-4 w-4 items-center justify-center rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold">
-            G
+            X
           </span>
         )}
 
@@ -189,7 +194,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
 
             {/* Grok Models */}
             {grokModels.length > 0 && (
-              <div>
+              <div className="mb-3">
                 <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                   Grok Models
                 </div>
@@ -208,6 +213,42 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                         <span className="text-xs font-medium text-slate-100">
                           {model.label}
                         </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 leading-tight">
+                        {model.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Gemini Models */}
+            {geminiModels.length > 0 && (
+              <div>
+                <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Gemini Models
+                </div>
+                <div className="space-y-1">
+                  {geminiModels.map((model) => (
+                    <button
+                      key={model.value}
+                      onClick={() => handleModelSelect(model.value)}
+                      className={`w-full rounded-md px-3 py-2 text-left transition-colors ${
+                        selectedModel === model.value
+                          ? "bg-sky-600/20 border border-sky-500/30"
+                          : "hover:bg-slate-800 border border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-slate-100">
+                          {model.label}
+                        </span>
+                        {model.value === "gemini-2.0-flash" && (
+                          <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-300">
+                            Latest
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] text-slate-400 leading-tight">
                         {model.description}

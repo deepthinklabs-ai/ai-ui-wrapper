@@ -1,14 +1,11 @@
 /**
- * Grok (xAI) API Proxy
+ * Grok (xAI) API Proxy (BYOK)
  *
- * This route allows authenticated users (trial and pro) to use Grok models
- * without providing their own API keys.
- * Uses the app's Grok API key (stored in env vars) instead.
+ * This route allows authenticated users to use Grok models
+ * using their own API keys stored in Google Secret Manager.
  * Includes rate limiting and usage tracking.
  *
- * - Trial users: 25% of pro rate limits
- * - Pro users: Full rate limits
- * - Expired users: Blocked
+ * BYOK: Users must configure their Grok API key in Settings.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,6 +17,7 @@ import {
   getRateLimitErrorMessage,
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
+import { getProviderKey } from '@/lib/secretManager/getKey';
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,14 +43,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Missing messages array' },
         { status: 400 }
-      );
-    }
-
-    // Check if Grok API key is configured
-    if (!process.env.GROK_API_KEY) {
-      return NextResponse.json(
-        { error: 'Grok API key not configured on server' },
-        { status: 500 }
       );
     }
 
@@ -94,6 +84,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // BYOK: Get user's Grok API key from Secret Manager
+    let userApiKey = await getProviderKey(userId, 'grok');
+    if (!userApiKey) {
+      return NextResponse.json(
+        {
+          error: 'API key required',
+          message: 'Please configure your Grok API key in Settings to use this model.',
+          code: 'BYOK_KEY_MISSING',
+        },
+        { status: 403 }
+      );
+    }
+
     // Rate limiting check (uses tier-specific limits)
     console.log(`[API Grok] Checking rate limit for user=${userId}, tier=${userTier}, model=${model}`);
     const rateLimitResult = await checkRateLimit(supabase, userId, userTier, model);
@@ -103,6 +106,9 @@ export async function POST(req: NextRequest) {
       const headers = getRateLimitHeaders(rateLimitResult.status);
 
       console.log(`[PRO API Grok] Rate limited: user=${userId}, model=${model}, reason=${rateLimitResult.status.block_reason}`);
+
+      // Security: Clear API key from memory
+      userApiKey = null;
 
       return NextResponse.json(
         {
@@ -172,14 +178,18 @@ export async function POST(req: NextRequest) {
       requestBody.max_tokens = 80;
     }
 
+    // BYOK: Use user's API key
     const response = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROK_API_KEY}`,
+        'Authorization': `Bearer ${userApiKey}`,
       },
       body: JSON.stringify(requestBody),
     });
+
+    // Security: Clear API key from memory after use
+    userApiKey = null;
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

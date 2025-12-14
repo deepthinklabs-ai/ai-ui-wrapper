@@ -13,6 +13,8 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@elevenlabs/elevenlabs-js": "^2.24.1",
+    "@google-cloud/secret-manager": "^6.1.1",
+    "@google/generative-ai": "^0.24.1",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@modelcontextprotocol/server-github": "^2025.4.8",
     "@react-three/drei": "^10.7.7",
@@ -21,6 +23,7 @@
     "@supabase/supabase-js": "^2.79.0",
     "@tanstack/react-query": "^5.90.6",
     "@types/crypto-js": "^4.2.2",
+    "@vercel/functions": "^3.3.4",
     "@xyflow/react": "^12.9.3",
     "crypto-js": "^4.2.0",
     "googleapis": "^166.0.0",
@@ -35,6 +38,11 @@
     "three": "^0.181.1",
     "uuid": "^13.0.0",
     "zustand": "^5.0.8"
+  },
+  "overrides": {
+    "@modelcontextprotocol/server-github": {
+      "@modelcontextprotocol/sdk": "^1.24.0"
+    }
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
