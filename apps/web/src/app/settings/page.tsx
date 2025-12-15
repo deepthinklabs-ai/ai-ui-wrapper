@@ -23,7 +23,7 @@ function SettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthSession();
-  const { tier, daysRemaining, isExpired, canUseServices } = useUserTier(user?.id);
+  const { tier, daysRemaining, isExpired, canUseServices, refreshTier } = useUserTier(user?.id);
   const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5.1");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
@@ -37,15 +37,48 @@ function SettingsPageContent() {
     }
   }, [searchParams, tier]);
 
-  // Check if user came from successful Stripe checkout
+  // Check if user came from successful Stripe checkout and verify subscription
   useEffect(() => {
     const isUpgradeSuccess = searchParams.get('upgrade') === 'success';
-    if (isUpgradeSuccess) {
-      setShowUpgradeSuccess(true);
-      // Clean up URL
-      window.history.replaceState({}, '', '/settings');
-    }
-  }, [searchParams]);
+    if (!isUpgradeSuccess || !user?.id) return;
+
+    setShowUpgradeSuccess(true);
+    // Clean up URL immediately
+    window.history.replaceState({}, '', '/settings');
+
+    // Verify subscription status (webhook might not have processed yet)
+    const verifySubscription = async (retryCount = 0) => {
+      try {
+        const response = await fetch('/api/stripe/verify-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        });
+
+        const data = await response.json();
+        console.log('[Settings] Subscription verification:', data);
+
+        if (data.verified && (data.tier === 'pro' || data.tier === 'trial')) {
+          // Refresh the tier from database
+          await refreshTier();
+          console.log('[Settings] Subscription verified, tier updated');
+        } else if (retryCount < 5) {
+          // Webhook might not have processed yet, retry
+          console.log(`[Settings] Subscription not verified yet, retrying in 2s (attempt ${retryCount + 1}/5)`);
+          setTimeout(() => verifySubscription(retryCount + 1), 2000);
+        } else {
+          console.log('[Settings] Max retries reached, refreshing tier anyway');
+          await refreshTier();
+        }
+      } catch (error) {
+        console.error('[Settings] Error verifying subscription:', error);
+        // Still try to refresh tier on error
+        await refreshTier();
+      }
+    };
+
+    verifySubscription();
+  }, [searchParams, user?.id, refreshTier]);
 
   // Load existing settings on mount
   useEffect(() => {
