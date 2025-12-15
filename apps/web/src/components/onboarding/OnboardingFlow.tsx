@@ -9,11 +9,13 @@
  * 4. Plan Selection (7-day Trial or Pro)
  * 5. If Trial -> Redirect to dashboard (trial includes API access)
  * 6. If Pro -> Redirect to Stripe checkout ($50/month)
+ *
+ * The flow automatically detects completed steps and resumes from the correct point.
  */
 
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import EmailVerification from './EmailVerification';
 import EncryptionWelcome from './EncryptionWelcome';
@@ -21,6 +23,7 @@ import EncryptionSetupOnboarding from './EncryptionSetupOnboarding';
 import PlanSelection from './PlanSelection';
 import { useStripeCheckout } from '@/hooks/useStripeCheckout';
 import { useEncryption } from '@/contexts/EncryptionContext';
+import { supabase } from '@/lib/supabaseClient';
 import type { EncryptionKeyBundle, RecoveryCodeBundle } from '@/lib/encryption';
 
 type OnboardingFlowProps = {
@@ -29,14 +32,14 @@ type OnboardingFlowProps = {
   onComplete: () => Promise<void>;
 };
 
-type OnboardingStep = 'email-verification' | 'encryption-welcome' | 'encryption-setup' | 'plan-selection';
+type OnboardingStep = 'loading' | 'email-verification' | 'encryption-welcome' | 'encryption-setup' | 'plan-selection';
 
 export default function OnboardingFlow({ userId, userEmail, onComplete }: OnboardingFlowProps) {
   const router = useRouter();
-  const [step, setStep] = useState<OnboardingStep>('email-verification');
+  const [step, setStep] = useState<OnboardingStep>('loading');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const { saveEncryptionSetup, setDataKey } = useEncryption();
+  const { saveEncryptionSetup, setDataKey, state: encryptionState } = useEncryption();
 
   // Get Stripe price ID from environment
   const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
@@ -48,6 +51,59 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
     userId,
     priceId,
   });
+
+  // Determine initial step based on what's already completed
+  useEffect(() => {
+    const determineInitialStep = async () => {
+      try {
+        // Check if email 2FA is already enabled
+        const { data: profile, error } = await supabase
+          .from('user_profiles')
+          .select('email_2fa_enabled')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.error('[OnboardingFlow] Error fetching profile:', error);
+          // Default to email verification if we can't determine status
+          setStep('email-verification');
+          return;
+        }
+
+        const email2FAComplete = profile?.email_2fa_enabled === true;
+        const encryptionComplete = encryptionState.hasEncryption;
+
+        console.log('[OnboardingFlow] Determining step:', {
+          email2FAComplete,
+          encryptionComplete,
+          encryptionStateLoading: encryptionState.isLoading,
+        });
+
+        // Wait for encryption state to finish loading before deciding
+        if (encryptionState.isLoading) {
+          return; // Will re-run when isLoading becomes false
+        }
+
+        if (email2FAComplete && encryptionComplete) {
+          // Both complete - go to plan selection
+          setStep('plan-selection');
+        } else if (email2FAComplete) {
+          // Email done, encryption not done - go to encryption welcome
+          setStep('encryption-welcome');
+        } else {
+          // Start from beginning
+          setStep('email-verification');
+        }
+      } catch (err) {
+        console.error('[OnboardingFlow] Error determining initial step:', err);
+        setStep('email-verification');
+      }
+    };
+
+    if (userId) {
+      determineInitialStep();
+    }
+  }, [userId, encryptionState.hasEncryption, encryptionState.isLoading]);
 
   // Step 1: Email verification complete, move to encryption welcome
   const handleEmailVerificationComplete = useCallback(() => {
@@ -115,6 +171,16 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
 
   // Render current step
   switch (step) {
+    case 'loading':
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-slate-950">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
+            <p className="mt-4 text-slate-400">Loading...</p>
+          </div>
+        </div>
+      );
+
     case 'email-verification':
       return (
         <EmailVerification
