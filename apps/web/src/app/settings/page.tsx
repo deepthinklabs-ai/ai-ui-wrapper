@@ -62,10 +62,10 @@ function SettingsPageContent() {
           // Refresh the tier from database
           await refreshTier();
           console.log('[Settings] Subscription verified, tier updated');
-        } else if (retryCount < 5) {
-          // Webhook might not have processed yet, retry
-          console.log(`[Settings] Subscription not verified yet, retrying in 2s (attempt ${retryCount + 1}/5)`);
-          setTimeout(() => verifySubscription(retryCount + 1), 2000);
+        } else if (retryCount < 10) {
+          // Webhook might not have processed yet, retry quickly
+          console.log(`[Settings] Subscription not verified yet, retrying in 500ms (attempt ${retryCount + 1}/10)`);
+          setTimeout(() => verifySubscription(retryCount + 1), 500);
         } else {
           console.log('[Settings] Max retries reached, refreshing tier anyway');
           await refreshTier();

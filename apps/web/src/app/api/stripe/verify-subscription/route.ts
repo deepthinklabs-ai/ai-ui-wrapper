@@ -49,7 +49,10 @@ export async function POST(req: NextRequest) {
 
       await supabase
         .from('user_profiles')
-        .update({ tier: userTier })
+        .update({
+          tier: userTier,
+          onboarding_completed: true,  // Mark onboarding as complete
+        })
         .eq('id', userId);
 
       return NextResponse.json({
@@ -102,12 +105,13 @@ export async function POST(req: NextRequest) {
             })
             .eq('user_id', userId);
 
-          // Update user_profiles tier and trial_ends_at
+          // Update user_profiles tier, trial_ends_at, and mark onboarding complete
           await supabase
             .from('user_profiles')
             .update({
               tier: userTier,
               trial_ends_at: trialEndsAt,
+              onboarding_completed: true,  // Mark onboarding as complete
             })
             .eq('id', userId);
 
