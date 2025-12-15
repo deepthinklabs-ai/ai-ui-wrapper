@@ -57,6 +57,15 @@ export default function DashboardPage() {
   // Verify subscription on upgrade success redirect
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
 
+  // Check if we came from successful Stripe checkout (check on mount)
+  const [isFromSuccessfulCheckout, setIsFromSuccessfulCheckout] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('upgrade') === 'success';
+    }
+    return false;
+  });
+
   // Thread info modal state - stores the thread ID to show info for
   const [threadInfoId, setThreadInfoId] = useState<string | null>(null);
 
@@ -91,6 +100,7 @@ export default function DashboardPage() {
           // Clean up URL
           window.history.replaceState({}, '', '/dashboard');
           setVerifyingSubscription(false);
+          setIsFromSuccessfulCheckout(false);
         } else if (retryCount < 3) {
           // Stripe webhook might not have processed yet, retry after delay
           console.log(`[Dashboard] Subscription not verified yet, retrying in 2s (attempt ${retryCount + 1}/3)`);
@@ -101,10 +111,12 @@ export default function DashboardPage() {
           await refreshTier();
           window.history.replaceState({}, '', '/dashboard');
           setVerifyingSubscription(false);
+          setIsFromSuccessfulCheckout(false);
         }
       } catch (error) {
         console.error('[Dashboard] Error verifying subscription:', error);
         setVerifyingSubscription(false);
+        setIsFromSuccessfulCheckout(false);
       }
     };
 
@@ -582,10 +594,20 @@ export default function DashboardPage() {
     await handleForkFromMessage(messageId);
   }, [isMessageOperationInProgress, handleForkFromMessage]);
 
-  if (loadingUser || onboardingLoading || tierLoading) {
+  if (loadingUser || onboardingLoading || tierLoading || isFromSuccessfulCheckout) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-200">
-        Loading…
+        <div className="text-center">
+          {isFromSuccessfulCheckout ? (
+            <>
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent mb-4"></div>
+              <p className="text-lg font-medium text-slate-100">Activating your subscription...</p>
+              <p className="text-sm text-slate-400 mt-2">Please wait while we confirm your payment.</p>
+            </>
+          ) : (
+            'Loading…'
+          )}
+        </div>
       </div>
     );
   }

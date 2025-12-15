@@ -26,6 +26,6 @@ export const STRIPE_CONFIG = {
   webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
 
   // Success/cancel URLs (will be set dynamically based on request)
-  successUrl: '/dashboard?upgrade=success',
+  successUrl: '/settings?upgrade=success',  // Go to settings to configure API keys
   cancelUrl: '/dashboard',  // Returns to dashboard, which shows plan selection for pending users
 };
