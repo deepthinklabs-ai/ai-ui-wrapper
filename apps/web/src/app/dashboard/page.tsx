@@ -606,7 +606,7 @@ export default function DashboardPage() {
   // Both conditions block access: needsOnboarding (onboarding_completed: false) AND tier === 'pending'
   // This prevents users from bypassing payment by clicking back from Stripe checkout
   if (needsOnboarding || tier === 'pending') {
-    return <OnboardingFlow userId={user.id} userEmail={user.email} onComplete={markOnboardingComplete} />;
+    return <OnboardingFlow userId={user.id} userEmail={user.email} onComplete={markOnboardingComplete} onLogout={signOut} />;
   }
 
   return (

@@ -30,11 +30,12 @@ type OnboardingFlowProps = {
   userId: string;
   userEmail?: string;
   onComplete: () => Promise<void>;
+  onLogout?: () => void;
 };
 
 type OnboardingStep = 'loading' | 'email-verification' | 'encryption-welcome' | 'encryption-setup' | 'plan-selection';
 
-export default function OnboardingFlow({ userId, userEmail, onComplete }: OnboardingFlowProps) {
+export default function OnboardingFlow({ userId, userEmail, onComplete, onLogout }: OnboardingFlowProps) {
   const router = useRouter();
   const [step, setStep] = useState<OnboardingStep>('loading');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -212,6 +213,7 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
         <PlanSelection
           onSelectFreePlan={handleSelectFreePlan}
           onSelectProPlan={handleSelectProPlan}
+          onLogout={onLogout}
           loading={isProcessing || isUpgrading}
         />
       );
