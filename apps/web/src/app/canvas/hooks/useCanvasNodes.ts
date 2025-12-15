@@ -71,6 +71,7 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
         position: { x: node.position_x, y: node.position_y },
         label: node.label,
         config: node.config,
+        is_exposed: node.is_exposed,
         created_at: node.created_at,
         updated_at: node.updated_at,
       }));
@@ -99,15 +100,22 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
       try {
         // Get default node configuration
         const defaultNode = createDefaultNode(type, position);
+        const finalConfig = config || defaultNode.config;
 
-        const newNode = {
+        // Build the new node object
+        const newNode: Record<string, any> = {
           canvas_id: canvasId,
           type,
           position_x: position.x,
           position_y: position.y,
           label: defaultNode.label,
-          config: config || defaultNode.config,
+          config: finalConfig,
         };
+
+        // Set is_exposed column from config for MASTER_TRIGGER nodes
+        if (finalConfig && typeof finalConfig === 'object' && 'is_exposed' in finalConfig) {
+          newNode.is_exposed = finalConfig.is_exposed;
+        }
 
         const { data, error } = await supabase
           .from('canvas_nodes')
@@ -125,6 +133,7 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
           position: { x: data.position_x, y: data.position_y },
           label: data.label,
           config: data.config,
+          is_exposed: data.is_exposed,
           created_at: data.created_at,
           updated_at: data.updated_at,
         };
@@ -159,6 +168,12 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
           dbUpdates.position_x = updates.position.x;
           dbUpdates.position_y = updates.position.y;
           delete dbUpdates.position;
+        }
+
+        // IMPORTANT: Sync is_exposed from config to column for MASTER_TRIGGER nodes
+        // This allows the API to query exposed workflows without decrypting config
+        if (updates.config && typeof updates.config === 'object' && 'is_exposed' in updates.config) {
+          dbUpdates.is_exposed = (updates.config as any).is_exposed;
         }
 
         // Remove fields that shouldn't be updated

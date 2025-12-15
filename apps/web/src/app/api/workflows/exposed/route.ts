@@ -48,10 +48,12 @@ export async function GET(request: Request) {
     const canvasIds = canvases.map((c) => c.id);
 
     // Query all MASTER_TRIGGER nodes that are exposed
+    // Use the is_exposed column (unencrypted) for efficient querying
     const { data: triggerNodes, error: nodeError } = await supabase
       .from('canvas_nodes')
-      .select('id, canvas_id, config')
+      .select('id, canvas_id, config, is_exposed')
       .eq('type', 'MASTER_TRIGGER')
+      .eq('is_exposed', true)
       .in('canvas_id', canvasIds);
 
     if (nodeError) {
@@ -62,31 +64,42 @@ export async function GET(request: Request) {
       );
     }
 
-    // Filter to only exposed triggers and map to ExposedWorkflow format
+    // Map to ExposedWorkflow format
+    // Note: config may be encrypted, so we check both the column and config fallback
     const exposedWorkflows: ExposedWorkflow[] = [];
 
     for (const node of triggerNodes || []) {
-      const config = node.config as {
-        display_name?: string;
-        description?: string;
-        is_exposed?: boolean;
-        last_triggered_at?: string;
-        trigger_count?: number;
-      };
+      const canvas = canvases.find((c) => c.id === node.canvas_id);
 
-      if (config?.is_exposed) {
-        const canvas = canvases.find((c) => c.id === node.canvas_id);
+      // Try to get display info from config (may be encrypted)
+      let displayName = 'Unnamed Workflow';
+      let description: string | undefined;
+      let lastTriggeredAt: string | undefined;
+      let triggerCount: number | undefined;
 
-        exposedWorkflows.push({
-          canvasId: node.canvas_id,
-          canvasName: canvas?.name || 'Unknown Canvas',
-          triggerNodeId: node.id,
-          displayName: config.display_name || 'Unnamed Workflow',
-          description: config.description,
-          lastTriggeredAt: config.last_triggered_at,
-          triggerCount: config.trigger_count,
-        });
+      // If config is an object (not encrypted), read from it
+      if (node.config && typeof node.config === 'object' && !Array.isArray(node.config)) {
+        const config = node.config as {
+          display_name?: string;
+          description?: string;
+          last_triggered_at?: string;
+          trigger_count?: number;
+        };
+        displayName = config.display_name || displayName;
+        description = config.description;
+        lastTriggeredAt = config.last_triggered_at;
+        triggerCount = config.trigger_count;
       }
+
+      exposedWorkflows.push({
+        canvasId: node.canvas_id,
+        canvasName: canvas?.name || 'Unknown Canvas',
+        triggerNodeId: node.id,
+        displayName,
+        description,
+        lastTriggeredAt,
+        triggerCount,
+      });
     }
 
     // Sort by display name
