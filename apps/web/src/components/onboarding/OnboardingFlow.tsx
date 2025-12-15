@@ -85,8 +85,9 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
   const handleSelectFreePlan = async () => {
     setIsProcessing(true);
     try {
-      // Mark onboarding as complete before going to Stripe
-      await onComplete();
+      // DO NOT mark onboarding complete here - wait for Stripe webhook
+      // This prevents users from bypassing payment by clicking back
+      // The webhook will set onboarding_completed: true after successful checkout
 
       // Redirect to Stripe checkout with 7-day trial
       await startCheckout(7);
@@ -100,8 +101,9 @@ export default function OnboardingFlow({ userId, userEmail, onComplete }: Onboar
   const handleSelectProPlan = async () => {
     setIsProcessing(true);
     try {
-      // Mark onboarding as complete before going to Stripe
-      await onComplete();
+      // DO NOT mark onboarding complete here - wait for Stripe webhook
+      // This prevents users from bypassing payment by clicking back
+      // The webhook will set onboarding_completed: true after successful checkout
 
       // Redirect to Stripe checkout (no trial, immediate billing)
       await startCheckout();
