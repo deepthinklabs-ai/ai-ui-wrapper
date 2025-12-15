@@ -49,7 +49,7 @@ export default function DashboardPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // User tier for freemium limits
-  const { tier, refreshTier, isExpired, canUseServices } = useUserTier(user?.id);
+  const { tier, loading: tierLoading, refreshTier, isExpired, canUseServices } = useUserTier(user?.id);
 
   // BYOK status - check if user has configured any API keys
   const { hasAnyKey, loading: byokLoading } = useBYOKStatus();
@@ -113,6 +113,19 @@ export default function DashboardPage() {
 
   // Onboarding status
   const { needsOnboarding, loading: onboardingLoading, markOnboardingComplete } = useOnboardingStatus(user?.id);
+
+  // Force refresh tier when page becomes visible (handles browser back/forward cache)
+  // This ensures we catch users clicking back from Stripe checkout
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user?.id) {
+        refreshTier();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user?.id, refreshTier]);
 
   // Model selection state
   const [selectedModel, setSelectedModelState] = useState<AIModel>(() => getSelectedModel());
@@ -569,7 +582,7 @@ export default function DashboardPage() {
     await handleForkFromMessage(messageId);
   }, [isMessageOperationInProgress, handleForkFromMessage]);
 
-  if (loadingUser || onboardingLoading) {
+  if (loadingUser || onboardingLoading || tierLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-200">
         Loading…
@@ -589,8 +602,10 @@ export default function DashboardPage() {
     return null;
   }
 
-  // Show onboarding for new users
-  if (needsOnboarding) {
+  // Show onboarding for new users OR users with 'pending' tier (haven't completed Stripe checkout)
+  // Both conditions block access: needsOnboarding (onboarding_completed: false) AND tier === 'pending'
+  // This prevents users from bypassing payment by clicking back from Stripe checkout
+  if (needsOnboarding || tier === 'pending') {
     return <OnboardingFlow userId={user.id} userEmail={user.email} onComplete={markOnboardingComplete} />;
   }
 
