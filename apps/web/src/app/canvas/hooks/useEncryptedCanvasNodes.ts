@@ -218,6 +218,10 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
       }
 
       try {
+        // Extract is_exposed before encryption (for MASTER_TRIGGER nodes)
+        const hasIsExposed = config && typeof config === 'object' && 'is_exposed' in config;
+        const isExposedValue = hasIsExposed ? config.is_exposed : undefined;
+
         // Encrypt config before saving
         let encryptedConfig = config;
         if (config) {
@@ -227,10 +231,17 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
         const result = await baseNodes.addNode(type, position, encryptedConfig);
 
         if (result) {
+          // If this node has is_exposed, update the column separately
+          // (because the encrypted config can't be read by useCanvasNodes)
+          if (hasIsExposed && isExposedValue !== undefined) {
+            await baseNodes.updateNode(result.id, { is_exposed: isExposedValue } as any);
+          }
+
           // Return decrypted version for local state
           return {
             ...result,
             config: config, // Use original unencrypted config
+            is_exposed: isExposedValue,
           };
         }
         return null;
@@ -239,7 +250,7 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
         return null;
       }
     },
-    [baseNodes.addNode, isEncryptionReady, encryptionState.isUnlocked, encryptObject]
+    [baseNodes.addNode, baseNodes.updateNode, isEncryptionReady, encryptionState.isUnlocked, encryptObject]
   );
 
   /**
@@ -255,6 +266,12 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
       try {
         // Use 'any' for encrypted updates since encrypted config is a string
         const encryptedUpdates: Record<string, any> = { ...updates };
+
+        // IMPORTANT: Extract is_exposed BEFORE encrypting config
+        // This field needs to stay unencrypted for the API to query exposed workflows
+        if (updates.config !== undefined && typeof updates.config === 'object' && 'is_exposed' in updates.config) {
+          encryptedUpdates.is_exposed = (updates.config as any).is_exposed;
+        }
 
         // Encrypt config if being updated (stored as encrypted string in JSONB)
         if (updates.config !== undefined) {
