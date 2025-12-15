@@ -79,16 +79,19 @@ export async function POST(req: NextRequest) {
           .eq('user_id', userId)
           .eq('stripe_customer_id', customerId);
 
-        // Update user_profiles tier based on subscription status
+        // Update user_profiles tier and mark onboarding as complete
+        // This is the ONLY place onboarding should be marked complete
+        // to prevent users from bypassing payment
         await supabase
           .from('user_profiles')
           .update({
             tier: userTier,
             trial_ends_at: trialEndsAt,
+            onboarding_completed: true,
           })
           .eq('id', userId);
 
-        console.log(`✅ Checkout completed for user ${userId}, set to ${userTier} (status: ${subStatus})`);
+        console.log(`✅ Checkout completed for user ${userId}, set to ${userTier} (status: ${subStatus}), onboarding marked complete`);
         break;
       }
 

@@ -18,7 +18,7 @@ import type { MessageRole } from "@/types/chat";
 export async function generateThreadTitle(
   userMessage: string,
   options?: {
-    userTier?: 'trial' | 'pro' | 'expired';
+    userTier?: 'trial' | 'pro' | 'expired' | 'pending';
     userId?: string;
   }
 ): Promise<string> {

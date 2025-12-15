@@ -19,7 +19,7 @@ type SidebarProps = {
   canCreateThread?: boolean;
   threadLimitReached?: boolean;
   maxThreads?: number;
-  userTier?: "trial" | "pro" | "expired";
+  userTier?: "trial" | "pro" | "expired" | "pending";
   // Folder props
   folderTree?: FolderWithChildren[];
   onCreateFolder?: (name: string, parentId?: string | null) => Promise<any>;

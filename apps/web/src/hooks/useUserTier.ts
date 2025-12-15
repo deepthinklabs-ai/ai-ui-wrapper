@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-export type UserTier = "trial" | "pro" | "expired";
+export type UserTier = "trial" | "pro" | "expired" | "pending";
 
 export const TIER_LIMITS = {
   trial: {
@@ -14,6 +14,9 @@ export const TIER_LIMITS = {
   },
   expired: {
     maxThreads: 0, // Read-only, no new threads
+  },
+  pending: {
+    maxThreads: 0, // No access until payment confirmed
   },
 };
 
@@ -72,25 +75,22 @@ export function useUserTier(userId: string | null | undefined): UseUserTierResul
         .single();
 
       if (fetchError) {
-        // If profile doesn't exist, create it with trial tier
+        // If profile doesn't exist, create it with pending tier
+        // User must complete Stripe checkout to get trial/pro access
         if (fetchError.code === "PGRST116") {
-          const trialEnd = new Date();
-          trialEnd.setDate(trialEnd.getDate() + 7);
-          const trialEndStr = trialEnd.toISOString();
-
           const { error: insertError } = await supabase
             .from("user_profiles")
             .insert({
               id: userId,
-              tier: "trial",
-              trial_ends_at: trialEndStr,
+              tier: "pending",
+              onboarding_completed: false,
             });
 
           if (insertError) {
             console.error("Error creating user profile:", insertError);
           }
-          setTier("trial");
-          setTrialEndsAt(trialEndStr);
+          setTier("pending");
+          setTrialEndsAt(null);
         } else {
           throw fetchError;
         }
@@ -130,7 +130,7 @@ export function useUserTier(userId: string | null | undefined): UseUserTierResul
       console.error("Error fetching user tier:", JSON.stringify(err, null, 2));
       console.error("Error details:", err?.message, err?.code, err?.details);
       setError(err?.message ?? err?.code ?? "Failed to load user tier");
-      setTier("trial"); // Default to trial on error
+      setTier("pending"); // Default to pending on error (no access)
     } finally {
       setLoading(false);
     }
@@ -148,7 +148,8 @@ export function useUserTier(userId: string | null | undefined): UseUserTierResul
 
   const daysRemaining = getDaysRemaining(trialEndsAt);
   const isExpired = tier === "expired";
-  const canUseServices = tier === "trial" || tier === "pro";
+  const isPending = tier === "pending";
+  const canUseServices = tier === "trial" || tier === "pro"; // 'pending' and 'expired' cannot use services
 
   return {
     tier,

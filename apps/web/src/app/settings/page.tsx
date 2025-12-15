@@ -23,10 +23,11 @@ function SettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthSession();
-  const { tier, daysRemaining, isExpired, canUseServices } = useUserTier(user?.id);
+  const { tier, daysRemaining, isExpired, canUseServices, refreshTier } = useUserTier(user?.id);
   const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5.1");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
 
   // Check if user came from onboarding
   useEffect(() => {
@@ -35,6 +36,49 @@ function SettingsPageContent() {
       setShowOnboardingModal(true);
     }
   }, [searchParams, tier]);
+
+  // Check if user came from successful Stripe checkout and verify subscription
+  useEffect(() => {
+    const isUpgradeSuccess = searchParams.get('upgrade') === 'success';
+    if (!isUpgradeSuccess || !user?.id) return;
+
+    setShowUpgradeSuccess(true);
+    // Clean up URL immediately
+    window.history.replaceState({}, '', '/settings');
+
+    // Verify subscription status (webhook might not have processed yet)
+    const verifySubscription = async (retryCount = 0) => {
+      try {
+        const response = await fetch('/api/stripe/verify-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        });
+
+        const data = await response.json();
+        console.log('[Settings] Subscription verification:', data);
+
+        if (data.verified && (data.tier === 'pro' || data.tier === 'trial')) {
+          // Refresh the tier from database
+          await refreshTier();
+          console.log('[Settings] Subscription verified, tier updated');
+        } else if (retryCount < 10) {
+          // Webhook might not have processed yet, retry quickly
+          console.log(`[Settings] Subscription not verified yet, retrying in 500ms (attempt ${retryCount + 1}/10)`);
+          setTimeout(() => verifySubscription(retryCount + 1), 500);
+        } else {
+          console.log('[Settings] Max retries reached, refreshing tier anyway');
+          await refreshTier();
+        }
+      } catch (error) {
+        console.error('[Settings] Error verifying subscription:', error);
+        // Still try to refresh tier on error
+        await refreshTier();
+      }
+    };
+
+    verifySubscription();
+  }, [searchParams, user?.id, refreshTier]);
 
   // Load existing settings on mount
   useEffect(() => {
@@ -94,6 +138,36 @@ function SettingsPageContent() {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto px-6 py-8">
         <div className="mx-auto max-w-4xl space-y-8">
+
+          {/* Upgrade Success Banner */}
+          {showUpgradeSuccess && (
+            <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <svg className="h-8 w-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-green-300">Welcome to AI Chat Platform!</h3>
+                  <p className="mt-2 text-sm text-green-400/90">
+                    Your subscription is now active. To start chatting with AI models, configure at least one API key below.
+                  </p>
+                  <p className="mt-2 text-sm text-slate-400">
+                    You can use your own API keys from OpenAI, Claude (Anthropic), Grok (xAI), or Gemini (Google).
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowUpgradeSuccess(false)}
+                  className="flex-shrink-0 text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* MCP Credentials Migration Banner */}
           <MCPMigrationBanner />
