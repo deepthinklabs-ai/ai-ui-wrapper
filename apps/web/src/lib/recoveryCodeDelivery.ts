@@ -93,7 +93,7 @@ function generateRecoveryCodesHTML(codes: string[], userEmail?: string): string 
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Recovery Codes - Genesis Chat Bot</title>
+  <title>Recovery Codes - Chatbot</title>
   <style>
     @page {
       size: letter;
@@ -249,7 +249,7 @@ function generateRecoveryCodesHTML(codes: string[], userEmail?: string): string 
 </head>
 <body>
   <div class="header">
-    <div class="logo">Genesis Chat Bot</div>
+    <div class="logo">Chatbot</div>
     <h1 class="title">Recovery Codes</h1>
     <p class="subtitle">Keep this document in a safe place</p>
   </div>
@@ -301,7 +301,7 @@ function generateRecoveryCodesHTML(codes: string[], userEmail?: string): string 
  */
 export async function copyRecoveryCodesToClipboard(codes: string[]): Promise<void> {
   const formatted = codes.map((code, i) => `${i + 1}. ${code}`).join('\n');
-  const text = `Genesis Chat Bot - Recovery Codes
+  const text = `Chatbot - Recovery Codes
 Generated: ${new Date().toLocaleDateString()}
 
 ${formatted}
