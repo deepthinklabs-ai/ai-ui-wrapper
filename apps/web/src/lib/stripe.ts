@@ -27,5 +27,5 @@ export const STRIPE_CONFIG = {
 
   // Success/cancel URLs (will be set dynamically based on request)
   successUrl: '/dashboard?upgrade=success',
-  cancelUrl: '/settings?upgrade=canceled',
+  cancelUrl: '/dashboard',  // Returns to dashboard, which shows plan selection for pending users
 };
