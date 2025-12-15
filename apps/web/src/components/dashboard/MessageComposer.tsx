@@ -98,6 +98,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   const fileAttachmentsEnabled = isFeatureEnabled ? isFeatureEnabled('file_attachments') : true;
   // Check if model selection feature is enabled (defaults to true if not provided)
   const modelSelectionEnabled = isFeatureEnabled ? isFeatureEnabled('model_selection') : true;
+  // Check if canvas selector feature is enabled (defaults to true if not provided)
+  const canvasSelectorEnabled = isFeatureEnabled ? isFeatureEnabled('canvas_selector') : true;
   // Check if step-by-step mode feature is enabled (defaults to true if not provided)
   const stepByStepModeEnabled = isFeatureEnabled ? isFeatureEnabled('step_by_step_mode') : true;
   // Check if text conversion features are enabled (defaults to true if not provided)
@@ -362,8 +364,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           />
           {/* Model Dropdown, File Upload, and Microphone Row */}
           <div className="flex items-center gap-2">
-            {/* Workflow Selector - show if workflows are available or loading */}
-            {onWorkflowChange && (workflows.length > 0 || workflowsLoading) && (
+            {/* Canvas Selector - show if canvas selector feature is enabled */}
+            {canvasSelectorEnabled && onWorkflowChange && (
               <WorkflowSelector
                 workflows={workflows}
                 selectedWorkflow={selectedWorkflow}

@@ -347,6 +347,21 @@ export default function Sidebar({
             </svg>
             Canvas
           </button>
+          <button
+            type="button"
+            onClick={() => router.push("/exchange")}
+            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
+            </svg>
+            Exchange
+          </button>
         </div>
       </div>
 
