@@ -18,6 +18,7 @@ import EncryptionSettings from "@/components/settings/EncryptionSettings";
 import BYOKSettings from "@/components/settings/BYOKSettings";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useUserTier } from "@/hooks/useUserTier";
+import { verifySubscriptionWithRetry, RETRY_STRATEGIES } from "@/lib/services/subscriptionService";
 
 function SettingsPageContent() {
   const router = useRouter();
@@ -46,30 +47,20 @@ function SettingsPageContent() {
     // Clean up URL immediately
     window.history.replaceState({}, '', '/settings');
 
-    // Verify subscription status (webhook might not have processed yet)
-    const verifySubscription = async (retryCount = 0) => {
+    // Use centralized subscription verification service
+    const verifySubscription = async () => {
       try {
-        const response = await fetch('/api/stripe/verify-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
-        });
+        const result = await verifySubscriptionWithRetry(
+          user.id,
+          RETRY_STRATEGIES.AGGRESSIVE, // 10 retries, 500ms delay for settings (fast feedback)
+          (attempt, max) => console.log(`[Settings] Verification attempt ${attempt}/${max}`)
+        );
 
-        const data = await response.json();
-        console.log('[Settings] Subscription verification:', data);
+        console.log('[Settings] Subscription verification:', result);
 
-        if (data.verified && (data.tier === 'pro' || data.tier === 'trial')) {
-          // Refresh the tier from database
-          await refreshTier();
-          console.log('[Settings] Subscription verified, tier updated');
-        } else if (retryCount < 10) {
-          // Webhook might not have processed yet, retry quickly
-          console.log(`[Settings] Subscription not verified yet, retrying in 500ms (attempt ${retryCount + 1}/10)`);
-          setTimeout(() => verifySubscription(retryCount + 1), 500);
-        } else {
-          console.log('[Settings] Max retries reached, refreshing tier anyway');
-          await refreshTier();
-        }
+        // Refresh the tier from database
+        await refreshTier();
+        console.log('[Settings] Tier refreshed');
       } catch (error) {
         console.error('[Settings] Error verifying subscription:', error);
         // Still try to refresh tier on error

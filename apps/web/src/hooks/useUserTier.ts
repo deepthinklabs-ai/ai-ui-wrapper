@@ -2,22 +2,17 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { UserTier, TIER_CONFIG, canTierUseServices } from "@/lib/config/tiers";
 
-export type UserTier = "trial" | "pro" | "expired" | "pending";
+// Re-export UserTier for backward compatibility
+export type { UserTier };
 
+// Derive TIER_LIMITS from centralized TIER_CONFIG for backward compatibility
 export const TIER_LIMITS = {
-  trial: {
-    maxThreads: Infinity, // Unlimited threads during trial
-  },
-  pro: {
-    maxThreads: Infinity, // Unlimited
-  },
-  expired: {
-    maxThreads: 0, // Read-only, no new threads
-  },
-  pending: {
-    maxThreads: 0, // No access until payment confirmed
-  },
+  trial: { maxThreads: TIER_CONFIG.trial.maxThreads },
+  pro: { maxThreads: TIER_CONFIG.pro.maxThreads },
+  expired: { maxThreads: TIER_CONFIG.expired.maxThreads },
+  pending: { maxThreads: TIER_CONFIG.pending.maxThreads },
 };
 
 // Helper to check if a trial has expired
@@ -149,7 +144,7 @@ export function useUserTier(userId: string | null | undefined): UseUserTierResul
   const daysRemaining = getDaysRemaining(trialEndsAt);
   const isExpired = tier === "expired";
   const isPending = tier === "pending";
-  const canUseServices = tier === "trial" || tier === "pro"; // 'pending' and 'expired' cannot use services
+  const canUseServices = canTierUseServices(tier); // Uses centralized tier config
 
   return {
     tier,

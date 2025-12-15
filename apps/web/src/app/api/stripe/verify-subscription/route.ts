@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
+import { mapStripeStatusToTier } from '@/lib/config/tiers';
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,8 +45,8 @@ export async function POST(req: NextRequest) {
 
     // If we already have an active or trialing subscription in DB, we're good
     if (subscription.status === 'active' || subscription.status === 'trialing') {
-      // Set tier based on subscription status: trialing = trial, active = pro
-      const userTier = subscription.status === 'trialing' ? 'trial' : 'pro';
+      // Set tier based on subscription status (using centralized mapping)
+      const userTier = mapStripeStatusToTier(subscription.status);
 
       await supabase
         .from('user_profiles')
@@ -83,8 +84,8 @@ export async function POST(req: NextRequest) {
 
         if (stripeSubscriptions.data.length > 0) {
           const sub = stripeSubscriptions.data[0];
-          // Set tier based on subscription status: trialing = trial, active = pro
-          const userTier = sub.status === 'trialing' ? 'trial' : 'pro';
+          // Set tier based on subscription status (using centralized mapping)
+          const userTier = mapStripeStatusToTier(sub.status);
 
           // Get trial end date if trialing
           const trialEndsAt = sub.trial_end

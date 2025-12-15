@@ -29,6 +29,7 @@ import { useThreadExport } from "@/hooks/useThreadExport";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useBYOKStatus } from "@/hooks/useBYOKStatus";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
+import { verifySubscriptionWithRetry, RETRY_STRATEGIES } from "@/lib/services/subscriptionService";
 import { supabase } from "@/lib/supabaseClient";
 import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
@@ -75,7 +76,7 @@ export default function DashboardPage() {
   const encryptForImport = isEncryptionReadyForImport && encryptionState.isUnlocked ? encryptText : undefined;
 
   useEffect(() => {
-    const verifyUpgrade = async (retryCount = 0) => {
+    const verifyUpgrade = async () => {
       if (!user?.id) return;
 
       const urlParams = new URLSearchParams(window.location.search);
@@ -84,37 +85,23 @@ export default function DashboardPage() {
       setVerifyingSubscription(true);
 
       try {
-        // Call verify API to sync subscription status
-        const response = await fetch('/api/stripe/verify-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
-        });
+        // Use centralized subscription verification service
+        const result = await verifySubscriptionWithRetry(
+          user.id,
+          RETRY_STRATEGIES.CONSERVATIVE, // 3 retries, 2s delay for dashboard
+          (attempt, max) => console.log(`[Dashboard] Verification attempt ${attempt}/${max}`)
+        );
 
-        const data = await response.json();
-        console.log('[Dashboard] Subscription verification:', data);
+        console.log('[Dashboard] Subscription verification:', result);
 
-        if (data.verified && (data.tier === 'pro' || data.tier === 'trial')) {
-          // Refresh the tier from database
-          await refreshTier();
-          // Clean up URL
-          window.history.replaceState({}, '', '/dashboard');
-          setVerifyingSubscription(false);
-          setIsFromSuccessfulCheckout(false);
-        } else if (retryCount < 3) {
-          // Stripe webhook might not have processed yet, retry after delay
-          console.log(`[Dashboard] Subscription not verified yet, retrying in 2s (attempt ${retryCount + 1}/3)`);
-          setTimeout(() => verifyUpgrade(retryCount + 1), 2000);
-        } else {
-          console.log('[Dashboard] Max retries reached, cleaning up URL');
-          // Still refresh tier and clean up URL after max retries
-          await refreshTier();
-          window.history.replaceState({}, '', '/dashboard');
-          setVerifyingSubscription(false);
-          setIsFromSuccessfulCheckout(false);
-        }
+        // Refresh the tier from database regardless of result
+        await refreshTier();
+        // Clean up URL
+        window.history.replaceState({}, '', '/dashboard');
       } catch (error) {
         console.error('[Dashboard] Error verifying subscription:', error);
+        await refreshTier(); // Still refresh on error
+      } finally {
         setVerifyingSubscription(false);
         setIsFromSuccessfulCheckout(false);
       }

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
+import { mapStripeStatusToTier } from '@/lib/config/tiers';
 import Stripe from 'stripe';
 
 export async function POST(req: NextRequest) {
@@ -112,20 +113,11 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        // Determine tier based on subscription status
-        let userTier: string | null = null;
-        let trialEndsAt: string | null = null;
-
-        if (subscription.status === 'trialing') {
-          userTier = 'trial';
-          trialEndsAt = subscription.trial_end
-            ? new Date(subscription.trial_end * 1000).toISOString()
-            : null;
-        } else if (subscription.status === 'active') {
-          userTier = 'pro';
-        } else if (['canceled', 'past_due', 'unpaid'].includes(subscription.status)) {
-          userTier = 'expired';
-        }
+        // Determine tier based on subscription status (using centralized mapping)
+        const userTier = mapStripeStatusToTier(subscription.status);
+        const trialEndsAt = subscription.status === 'trialing' && subscription.trial_end
+          ? new Date(subscription.trial_end * 1000).toISOString()
+          : null;
 
         // Update subscription status
         await supabase
