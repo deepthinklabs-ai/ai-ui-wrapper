@@ -49,13 +49,22 @@ export default function DashboardPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // User tier for freemium limits
-  const { tier, refreshTier, isExpired, canUseServices } = useUserTier(user?.id);
+  const { tier, loading: tierLoading, refreshTier, isExpired, canUseServices } = useUserTier(user?.id);
 
   // BYOK status - check if user has configured any API keys
   const { hasAnyKey, loading: byokLoading } = useBYOKStatus();
 
   // Verify subscription on upgrade success redirect
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
+
+  // Check if we came from successful Stripe checkout (check on mount)
+  const [isFromSuccessfulCheckout, setIsFromSuccessfulCheckout] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('upgrade') === 'success';
+    }
+    return false;
+  });
 
   // Thread info modal state - stores the thread ID to show info for
   const [threadInfoId, setThreadInfoId] = useState<string | null>(null);
@@ -91,6 +100,7 @@ export default function DashboardPage() {
           // Clean up URL
           window.history.replaceState({}, '', '/dashboard');
           setVerifyingSubscription(false);
+          setIsFromSuccessfulCheckout(false);
         } else if (retryCount < 3) {
           // Stripe webhook might not have processed yet, retry after delay
           console.log(`[Dashboard] Subscription not verified yet, retrying in 2s (attempt ${retryCount + 1}/3)`);
@@ -101,10 +111,12 @@ export default function DashboardPage() {
           await refreshTier();
           window.history.replaceState({}, '', '/dashboard');
           setVerifyingSubscription(false);
+          setIsFromSuccessfulCheckout(false);
         }
       } catch (error) {
         console.error('[Dashboard] Error verifying subscription:', error);
         setVerifyingSubscription(false);
+        setIsFromSuccessfulCheckout(false);
       }
     };
 
@@ -113,6 +125,19 @@ export default function DashboardPage() {
 
   // Onboarding status
   const { needsOnboarding, loading: onboardingLoading, markOnboardingComplete } = useOnboardingStatus(user?.id);
+
+  // Force refresh tier when page becomes visible (handles browser back/forward cache)
+  // This ensures we catch users clicking back from Stripe checkout
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user?.id) {
+        refreshTier();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user?.id, refreshTier]);
 
   // Model selection state
   const [selectedModel, setSelectedModelState] = useState<AIModel>(() => getSelectedModel());
@@ -569,10 +594,20 @@ export default function DashboardPage() {
     await handleForkFromMessage(messageId);
   }, [isMessageOperationInProgress, handleForkFromMessage]);
 
-  if (loadingUser || onboardingLoading) {
+  if (loadingUser || onboardingLoading || tierLoading || isFromSuccessfulCheckout) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-200">
-        Loading…
+        <div className="text-center">
+          {isFromSuccessfulCheckout ? (
+            <>
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent mb-4"></div>
+              <p className="text-lg font-medium text-slate-100">Activating your subscription...</p>
+              <p className="text-sm text-slate-400 mt-2">Please wait while we confirm your payment.</p>
+            </>
+          ) : (
+            'Loading…'
+          )}
+        </div>
       </div>
     );
   }
@@ -589,9 +624,11 @@ export default function DashboardPage() {
     return null;
   }
 
-  // Show onboarding for new users
-  if (needsOnboarding) {
-    return <OnboardingFlow userId={user.id} userEmail={user.email} onComplete={markOnboardingComplete} />;
+  // Show onboarding for new users OR users with 'pending' tier (haven't completed Stripe checkout)
+  // Both conditions block access: needsOnboarding (onboarding_completed: false) AND tier === 'pending'
+  // This prevents users from bypassing payment by clicking back from Stripe checkout
+  if (needsOnboarding || tier === 'pending') {
+    return <OnboardingFlow userId={user.id} userEmail={user.email} onComplete={markOnboardingComplete} onLogout={signOut} />;
   }
 
   return (

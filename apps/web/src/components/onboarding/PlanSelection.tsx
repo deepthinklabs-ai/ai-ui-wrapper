@@ -12,17 +12,34 @@ import React from 'react';
 type PlanSelectionProps = {
   onSelectFreePlan: () => void;  // Now starts 7-day trial
   onSelectProPlan: () => void;
+  onLogout?: () => void;
   loading?: boolean;
 };
 
 export default function PlanSelection({
   onSelectFreePlan,
   onSelectProPlan,
+  onLogout,
   loading = false,
 }: PlanSelectionProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12">
       <div className="w-full max-w-6xl">
+        {/* Logout button - top right */}
+        {onLogout && (
+          <div className="absolute top-4 right-4">
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign Out
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-slate-100 mb-3">

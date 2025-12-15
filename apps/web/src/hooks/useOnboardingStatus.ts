@@ -66,11 +66,12 @@ export function useOnboardingStatus(userId: string | undefined): OnboardingStatu
     if (!userId) return;
 
     try {
+      // Create profile with 'pending' tier - user must complete Stripe checkout to get access
       const { error } = await supabase
         .from('user_profiles')
         .insert({
           id: userId,
-          tier: 'free',
+          tier: 'pending',
           onboarding_completed: false,
         });
 
