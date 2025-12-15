@@ -66,12 +66,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const userTier = profile.tier as 'trial' | 'pro' | 'expired';
+    const userTier = profile.tier as 'trial' | 'pro' | 'expired' | 'pending';
 
-    // Block expired users
+    // Block expired and pending users
     if (userTier === 'expired') {
       return NextResponse.json(
         { error: 'Your trial has expired. Please subscribe to continue using the service.' },
+        { status: 403 }
+      );
+    }
+
+    if (userTier === 'pending') {
+      return NextResponse.json(
+        { error: 'Please complete your subscription setup to use the service.' },
         { status: 403 }
       );
     }
