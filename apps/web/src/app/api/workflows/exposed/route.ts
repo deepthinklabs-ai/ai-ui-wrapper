@@ -106,6 +106,8 @@ export async function GET(request: Request) {
     exposedWorkflows.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
     console.log(`[GET /api/workflows/exposed] Found ${exposedWorkflows.length} exposed workflows for user ${userId}`);
+    console.log(`[GET /api/workflows/exposed] Canvas IDs searched: ${canvasIds.join(', ')}`);
+    console.log(`[GET /api/workflows/exposed] Trigger nodes found: ${triggerNodes?.length || 0}`);
 
     return NextResponse.json({ workflows: exposedWorkflows });
   } catch (error: any) {

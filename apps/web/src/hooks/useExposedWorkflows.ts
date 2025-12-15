@@ -68,6 +68,9 @@ export function useExposedWorkflows(userId: string | null): UseExposedWorkflowsR
 
       setWorkflows(data.workflows || []);
       console.log(`[useExposedWorkflows] Loaded ${data.workflows?.length || 0} workflows`);
+      if (data.workflows?.length > 0) {
+        console.log('[useExposedWorkflows] Workflows:', JSON.stringify(data.workflows, null, 2));
+      }
     } catch (err: any) {
       console.error('[useExposedWorkflows] Error fetching workflows:', err);
       setError(err.message || 'Failed to fetch workflows');
