@@ -66,6 +66,17 @@ const PROVIDER_LABELS: Record<ChatbotFileProvider, string> = {
   gemini: "Gemini",
 };
 
+// Feature dependencies - child features that require a parent to be enabled
+// Key: child feature, Value: parent feature it depends on
+const FEATURE_DEPENDENCIES: Partial<Record<FeatureId, FeatureId>> = {
+  context_panel: 'text_selection_popup', // Context Panel requires Text Selection Actions
+};
+
+// Features that have children nested under them
+const NESTED_FEATURES: Partial<Record<FeatureId, FeatureId[]>> = {
+  text_selection_popup: ['context_panel'],
+};
+
 // Group features by category
 const getFeaturesByCategory = (): Record<FeatureCategory, FeatureId[]> => {
   const grouped: Record<FeatureCategory, FeatureId[]> = {
@@ -77,6 +88,8 @@ const getFeaturesByCategory = (): Record<FeatureCategory, FeatureId[]> => {
   };
 
   Object.values(FEATURE_DEFINITIONS).forEach((feature) => {
+    // Skip features that are nested under another feature (they'll be rendered there)
+    if (FEATURE_DEPENDENCIES[feature.id]) return;
     grouped[feature.category].push(feature.id);
   });
 
@@ -289,25 +302,68 @@ export function ChatbotSettingsPanel({
                   {features.map((featureId) => {
                     const feature = FEATURE_DEFINITIONS[featureId];
                     const isEnabled = draftConfig.features?.[featureId] ?? feature.defaultEnabled;
+                    const nestedFeatures = NESTED_FEATURES[featureId] || [];
 
                     return (
-                      <label
-                        key={featureId}
-                        className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-slate-800/50 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isEnabled}
-                          onChange={(e) => handleFeatureToggle(featureId, e.target.checked)}
-                          className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm text-slate-200 truncate">
-                            {feature.icon && <span className="mr-1.5">{feature.icon}</span>}
-                            {feature.name}
+                      <div key={featureId}>
+                        <label
+                          className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-slate-800/50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            onChange={(e) => handleFeatureToggle(featureId, e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-slate-200 truncate">
+                              {feature.icon && <span className="mr-1.5">{feature.icon}</span>}
+                              {feature.name}
+                            </div>
                           </div>
-                        </div>
-                      </label>
+                        </label>
+
+                        {/* Render nested/dependent features */}
+                        {nestedFeatures.length > 0 && (
+                          <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-700 pl-3">
+                            {nestedFeatures.map((nestedId) => {
+                              const nestedFeature = FEATURE_DEFINITIONS[nestedId];
+                              const nestedEnabled = draftConfig.features?.[nestedId] ?? nestedFeature.defaultEnabled;
+                              const isParentDisabled = !isEnabled;
+
+                              return (
+                                <label
+                                  key={nestedId}
+                                  className={`flex items-center gap-3 rounded-md px-2 py-1.5 ${
+                                    isParentDisabled
+                                      ? "opacity-50 cursor-not-allowed"
+                                      : "hover:bg-slate-800/50 cursor-pointer"
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={nestedEnabled && !isParentDisabled}
+                                    disabled={isParentDisabled}
+                                    onChange={(e) => handleFeatureToggle(nestedId, e.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className={`text-sm truncate ${isParentDisabled ? "text-slate-500" : "text-slate-200"}`}>
+                                      {nestedFeature.icon && <span className="mr-1.5">{nestedFeature.icon}</span>}
+                                      {nestedFeature.name}
+                                    </div>
+                                    {isParentDisabled && (
+                                      <div className="text-xs text-slate-500 mt-0.5">
+                                        Requires {feature.name}
+                                      </div>
+                                    )}
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
