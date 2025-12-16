@@ -72,6 +72,9 @@ export default function DashboardPage() {
   // Thread info modal state - stores the thread ID to show info for
   const [threadInfoId, setThreadInfoId] = useState<string | null>(null);
 
+  // Chatbot settings panel editing state
+  const [isEditingChatbot, setIsEditingChatbot] = useState(false);
+
   // Get encryption function for importing threads
   const { encryptText, isReady: isEncryptionReadyForImport, state: encryptionState } = useEncryption();
   // Only provide encryption function if encryption is set up and unlocked
@@ -340,6 +343,25 @@ export default function DashboardPage() {
   const handleRenameChatbot = useCallback(async (id: string, newName: string) => {
     await updateChatbot(id, { name: newName });
   }, [updateChatbot]);
+
+  // Handle updating chatbot config (from settings panel)
+  const handleUpdateChatbotConfig = useCallback(async (id: string, config: import("@/types/chatbotFile").ChatbotFileConfig) => {
+    console.log('[Dashboard] Updating chatbot config:', id);
+    console.log('[Dashboard] New config:', config);
+    try {
+      await updateChatbot(id, { config });
+      console.log('[Dashboard] Chatbot config updated successfully');
+    } catch (error) {
+      console.error('[Dashboard] Failed to update chatbot config:', error);
+      throw error;
+    }
+  }, [updateChatbot]);
+
+  // Handle editing state change (from settings panel)
+  const handleEditingStateChange = useCallback((isEditing: boolean) => {
+    console.log('[Dashboard] Chatbot editing state changed:', isEditing);
+    setIsEditingChatbot(isEditing);
+  }, []);
 
   // Handle chatbot selection for thread (from MessageComposer)
   const handleChatbotChange = useCallback(async (chatbot: { id: string } | null) => {
@@ -761,8 +783,10 @@ export default function DashboardPage() {
           onExportChatbot={handleExportChatbot}
           onDeleteChatbot={handleDeleteChatbot}
           onRenameChatbot={handleRenameChatbot}
+          onUpdateChatbotConfig={handleUpdateChatbotConfig}
           chatbotDefaultFolderId={chatbotDefaultFolderId}
           currentChatbotConfig={activeChatbot?.config}
+          onEditingStateChange={handleEditingStateChange}
           // Chatbot folder props
           onCreateChatbotFolder={createChatbotFolder}
           onUpdateChatbotFolder={updateChatbotFolder}
@@ -980,7 +1004,7 @@ export default function DashboardPage() {
                   value={draft}
                   onChange={setDraft}
                   onSend={handleSend}
-                  disabled={sendInFlight || workflowExecuting || !canUseServices || (!byokLoading && !hasAnyKey)}
+                  disabled={sendInFlight || workflowExecuting || !canUseServices || (!byokLoading && !hasAnyKey) || isEditingChatbot}
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
                   onSummarize={handleSummarize}

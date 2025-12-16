@@ -12,3 +12,4 @@ export { ChatbotFolderTree } from "./ChatbotFolderTree";
 export { ChatbotFolderItem } from "./ChatbotFolderItem";
 export { NewChatbotModal } from "./NewChatbotModal";
 export { ChatbotImportButton } from "./ChatbotImportButton";
+export { ChatbotSettingsPanel } from "./ChatbotSettingsPanel";

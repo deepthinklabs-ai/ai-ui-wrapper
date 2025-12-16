@@ -42,6 +42,7 @@ type ChatbotFolderTreeProps = {
   onMoveChatbot: (chatbotId: string, folderId: string | null) => Promise<boolean | void>;
   onToggleFolderCollapse: (folderId: string) => Promise<boolean | void>;
   onStartChatbotThread?: (chatbotId: string, chatbotName: string) => void;
+  onEditChatbot?: (id: string) => void;
   onDuplicateChatbot?: (id: string) => void;
   onExportChatbot?: (id: string) => void;
 };
@@ -72,6 +73,7 @@ export function ChatbotFolderTree({
   onMoveChatbot,
   onToggleFolderCollapse,
   onStartChatbotThread,
+  onEditChatbot,
   onDuplicateChatbot,
   onExportChatbot,
 }: ChatbotFolderTreeProps) {
@@ -391,6 +393,7 @@ export function ChatbotFolderTree({
               onNewFolderBlur={handleSaveNewFolder}
               newFolderInputRef={newFolderInputRef}
               onStartChatbotThread={onStartChatbotThread}
+              onEditChatbot={onEditChatbot}
               onDuplicateChatbot={onDuplicateChatbot}
               onExportChatbot={onExportChatbot}
             />
@@ -404,6 +407,7 @@ export function ChatbotFolderTree({
               isSelected={chatbot.id === selectedChatbotId}
               onClick={() => onSelectChatbot(chatbot.id)}
               onStartThread={onStartChatbotThread ? () => onStartChatbotThread(chatbot.id, chatbot.name) : undefined}
+              onEdit={onEditChatbot ? () => onEditChatbot(chatbot.id) : undefined}
               onDuplicate={onDuplicateChatbot ? () => onDuplicateChatbot(chatbot.id) : undefined}
               onExport={onExportChatbot ? () => onExportChatbot(chatbot.id) : undefined}
               onDelete={() => onDeleteChatbot(chatbot.id)}
