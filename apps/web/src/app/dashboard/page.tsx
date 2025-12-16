@@ -309,6 +309,7 @@ export default function DashboardPage() {
     getSystemPromptAddition,
   } = useStepByStepMode(activeChatbot?.config);
 
+
   // Handle creating a new chatbot
   const handleCreateChatbot = useCallback(async (input: CreateChatbotInput) => {
     const chatbot = await createChatbot(input);
@@ -387,6 +388,7 @@ export default function DashboardPage() {
       setEditingChatbotId(activeChatbot.id);
     }
   }, [activeChatbot]);
+
 
   // Handle chatbot selection for thread (from MessageComposer)
   const handleChatbotChange = useCallback(async (chatbot: { id: string } | null) => {
