@@ -6,9 +6,11 @@ import ModelDropdown from "./ModelDropdown";
 import WorkflowSelector from "./WorkflowSelector";
 import StepByStepToggle from "./StepByStepToggle";
 import MicrophoneButton from "./MicrophoneButton";
+import { ChatbotSelector } from "@/app/chatbots/components";
 import type { AIModel } from "@/lib/apiKeyStorage";
 import type { ExposedWorkflow } from "@/app/canvas/features/master-trigger/types";
 import type { FeatureId } from "@/types/features";
+import type { Chatbot } from "@/types/chatbot";
 import { getFileUploadWarning } from "@/lib/modelCapabilities";
 import { useResizableComposer } from "@/hooks/useResizableComposer";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
@@ -52,6 +54,11 @@ type MessageComposerProps = {
   onWorkflowChange?: (workflow: ExposedWorkflow | null) => void;
   workflowsLoading?: boolean;
   workflowExecuting?: boolean;
+  // Chatbot selection props
+  chatbots?: Chatbot[];
+  selectedChatbot?: Chatbot | null;
+  onChatbotChange?: (chatbot: Chatbot | null) => void;
+  chatbotsLoading?: boolean;
 };
 
 const MessageComposer: React.FC<MessageComposerProps> = ({
@@ -87,6 +94,11 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   onWorkflowChange,
   workflowsLoading = false,
   workflowExecuting = false,
+  // Chatbot selection props
+  chatbots = [],
+  selectedChatbot = null,
+  onChatbotChange,
+  chatbotsLoading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -364,6 +376,18 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           />
           {/* Model Dropdown, File Upload, and Microphone Row */}
           <div className="flex items-center gap-2">
+            {/* Chatbot Selector - show if chatbot change handler is provided */}
+            {onChatbotChange && (
+              <ChatbotSelector
+                chatbots={chatbots}
+                selectedChatbot={selectedChatbot}
+                onSelectChatbot={onChatbotChange}
+                loading={chatbotsLoading}
+                disabled={disabled}
+                compact
+              />
+            )}
+
             {/* Canvas Selector - show if canvas selector feature is enabled */}
             {canvasSelectorEnabled && onWorkflowChange && (
               <WorkflowSelector

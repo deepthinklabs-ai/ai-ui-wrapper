@@ -3,10 +3,11 @@
  *
  * Defines the .chatbot file format for exporting and importing chatbot configurations.
  * This format captures the complete chatbot settings including model, system prompt,
- * canvas connections, and OAuth requirements.
+ * feature toggles, OAuth requirements, voice settings, and more.
  */
 
 import type { AIModel } from '@/lib/apiKeyStorage';
+import type { FeatureId } from '@/types/features';
 
 /**
  * Version of the .chatbot file format
@@ -105,6 +106,8 @@ export type ChatbotFileConfig = {
   model: ChatbotFileModelConfig;
   /** System prompt that defines the chatbot's behavior */
   system_prompt: string;
+  /** Feature toggles - maps FeatureId to enabled/disabled */
+  features?: Partial<Record<FeatureId, boolean>>;
   /** OAuth requirements for canvas workflows */
   oauth_requirements?: ChatbotFileOAuthRequirements;
   /** Allowed MCP tools */

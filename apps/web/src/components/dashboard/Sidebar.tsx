@@ -3,9 +3,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { Thread, FolderWithChildren } from "@/types/chat";
+import type { Chatbot, ChatbotFolderWithChildren } from "@/types/chatbot";
 import { FolderTree } from "./FolderTree";
 import NewThreadModal from "./NewThreadModal";
 import { ThreadImportButton } from "./ThreadImportButton";
+import { ChatbotList, NewChatbotModal, ChatbotImportButton } from "@/app/chatbots/components";
+import type { CreateChatbotInput } from "@/types/chatbot";
 
 type SidebarProps = {
   userEmail: string | null | undefined;
@@ -41,6 +44,19 @@ type SidebarProps = {
   onThreadImported?: () => void;
   // Encryption props
   encryptForStorage?: (plaintext: string) => Promise<string>;
+  // Chatbot props
+  chatbots?: Chatbot[];
+  chatbotFolderTree?: ChatbotFolderWithChildren[];
+  selectedChatbotId?: string | null;
+  onSelectChatbot?: (id: string) => void;
+  onCreateChatbot?: (input: CreateChatbotInput) => Promise<void>;
+  onEditChatbot?: (id: string) => void;
+  onDuplicateChatbot?: (id: string) => Promise<void>;
+  onExportChatbot?: (id: string) => void;
+  onDeleteChatbot?: (id: string) => Promise<void>;
+  onRenameChatbot?: (id: string, newName: string) => Promise<void>;
+  chatbotDefaultFolderId?: string | null;
+  currentChatbotConfig?: any;
 };
 
 export default function Sidebar({
@@ -71,6 +87,19 @@ export default function Sidebar({
   userId,
   onThreadImported,
   encryptForStorage,
+  // Chatbot props
+  chatbots = [],
+  chatbotFolderTree = [],
+  selectedChatbotId,
+  onSelectChatbot,
+  onCreateChatbot,
+  onEditChatbot,
+  onDuplicateChatbot,
+  onExportChatbot,
+  onDeleteChatbot,
+  onRenameChatbot,
+  chatbotDefaultFolderId,
+  currentChatbotConfig,
 }: SidebarProps) {
   // Check if folder features are enabled (all folder props provided)
   const hasFolderFeatures = !!(
@@ -92,6 +121,8 @@ export default function Sidebar({
   const [isNewThreadModalOpen, setIsNewThreadModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const [isNewChatbotModalOpen, setIsNewChatbotModalOpen] = useState(false);
+  const [isChatbotsCollapsed, setIsChatbotsCollapsed] = useState(false);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -480,6 +511,63 @@ export default function Sidebar({
         )}
       </div>
 
+      {/* Chatbots Section */}
+      {onCreateChatbot && (
+        <div className="border-t border-slate-800 px-2 py-3">
+          {/* Section Header */}
+          <div className="flex items-center justify-between mb-2 px-1">
+            <button
+              type="button"
+              onClick={() => setIsChatbotsCollapsed(!isChatbotsCollapsed)}
+              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-400"
+            >
+              <svg
+                className={`h-3 w-3 transition-transform ${isChatbotsCollapsed ? "-rotate-90" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              Chatbots
+            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setIsNewChatbotModalOpen(true)}
+                className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                title="New chatbot"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              <ChatbotImportButton
+                onImport={onCreateChatbot}
+                folderId={chatbotDefaultFolderId}
+                compact
+                className="text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+              />
+            </div>
+          </div>
+
+          {/* Chatbot List */}
+          {!isChatbotsCollapsed && (
+            <ChatbotList
+              chatbots={chatbots}
+              selectedChatbotId={selectedChatbotId ?? null}
+              onSelectChatbot={onSelectChatbot || (() => {})}
+              onEditChatbot={onEditChatbot}
+              onDuplicateChatbot={onDuplicateChatbot ? (id) => onDuplicateChatbot(id) : undefined}
+              onExportChatbot={onExportChatbot}
+              onDeleteChatbot={onDeleteChatbot ? (id) => onDeleteChatbot(id) : undefined}
+              onRenameChatbot={onRenameChatbot ? (id, name) => onRenameChatbot(id, name) : undefined}
+              emptyMessage="No chatbots yet. Create one to save your settings."
+            />
+          )}
+        </div>
+      )}
+
       {/* New Thread Modal */}
       <NewThreadModal
         isOpen={isNewThreadModalOpen}
@@ -488,6 +576,18 @@ export default function Sidebar({
         folderTree={folderTree}
         defaultFolderId={defaultFolderId}
       />
+
+      {/* New Chatbot Modal */}
+      {onCreateChatbot && (
+        <NewChatbotModal
+          isOpen={isNewChatbotModalOpen}
+          onClose={() => setIsNewChatbotModalOpen(false)}
+          onCreate={onCreateChatbot}
+          folderTree={chatbotFolderTree}
+          defaultFolderId={chatbotDefaultFolderId}
+          currentConfig={currentChatbotConfig}
+        />
+      )}
     </div>
   );
 }

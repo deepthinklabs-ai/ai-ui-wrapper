@@ -28,6 +28,8 @@ import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
 import { useThreadExport } from "@/hooks/useThreadExport";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useBYOKStatus } from "@/hooks/useBYOKStatus";
+import { useChatbots, useChatbotFolders, useActiveChatbot, useChatbotExport } from "@/app/chatbots/hooks";
+import type { CreateChatbotInput } from "@/types/chatbot";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
 import { verifySubscriptionWithRetry, RETRY_STRATEGIES } from "@/lib/services/subscriptionService";
 import { supabase } from "@/lib/supabaseClient";
@@ -212,6 +214,32 @@ export default function DashboardPage() {
     isExecuting: workflowExecuting,
   } = useExposedWorkflows(user?.id || null);
 
+  // Chatbot management - basic hooks that don't depend on selectedThreadId
+  const {
+    chatbots,
+    loadingChatbots,
+    selectedChatbotId,
+    selectChatbot,
+    createChatbot,
+    updateChatbot,
+    deleteChatbot,
+    duplicateChatbot,
+    getChatbotById,
+    refreshChatbots,
+  } = useChatbots(user?.id);
+
+  // Chatbot folders
+  const {
+    folders: chatbotFolders,
+    folderTree: chatbotFolderTree,
+    defaultFolderId: chatbotDefaultFolderId,
+  } = useChatbotFolders(user?.id, chatbots, {
+    onChatbotMoved: refreshChatbots,
+  });
+
+  // Chatbot export
+  const { exportChatbot } = useChatbotExport();
+
   // Debug MCP status
   useEffect(() => {
     console.log('[Dashboard MCP Status]', {
@@ -259,6 +287,58 @@ export default function DashboardPage() {
   } = useFolders(user?.id, threads, {
     onThreadMoved: refreshThreads,
   });
+
+  // Active chatbot for current thread - must be after useThreads since it uses selectedThreadId
+  const {
+    activeChatbot,
+    setThreadChatbot,
+    loadingActiveChatbot,
+  } = useActiveChatbot(user?.id, selectedThreadId, chatbots);
+
+  // Handle creating a new chatbot
+  const handleCreateChatbot = useCallback(async (input: CreateChatbotInput) => {
+    const chatbot = await createChatbot(input);
+    if (chatbot) {
+      console.log('[Dashboard] Created chatbot:', chatbot.name);
+    }
+  }, [createChatbot]);
+
+  // Handle editing a chatbot (for now, just select it)
+  const handleEditChatbot = useCallback((id: string) => {
+    selectChatbot(id);
+    // TODO: Open edit modal
+    console.log('[Dashboard] Edit chatbot:', id);
+  }, [selectChatbot]);
+
+  // Handle duplicating a chatbot
+  const handleDuplicateChatbot = useCallback(async (id: string) => {
+    await duplicateChatbot(id);
+  }, [duplicateChatbot]);
+
+  // Handle exporting a chatbot
+  const handleExportChatbot = useCallback((id: string) => {
+    const chatbot = getChatbotById(id);
+    if (chatbot) {
+      exportChatbot(chatbot);
+    }
+  }, [getChatbotById, exportChatbot]);
+
+  // Handle deleting a chatbot
+  const handleDeleteChatbot = useCallback(async (id: string) => {
+    await deleteChatbot(id);
+  }, [deleteChatbot]);
+
+  // Handle renaming a chatbot
+  const handleRenameChatbot = useCallback(async (id: string, newName: string) => {
+    await updateChatbot(id, { name: newName });
+  }, [updateChatbot]);
+
+  // Handle chatbot selection for thread (from MessageComposer)
+  const handleChatbotChange = useCallback(async (chatbot: { id: string } | null) => {
+    if (selectedThreadId) {
+      await setThreadChatbot(selectedThreadId, chatbot?.id || null);
+    }
+  }, [selectedThreadId, setThreadChatbot]);
 
   const {
     messages,
@@ -662,6 +742,19 @@ export default function DashboardPage() {
           }}
           // Encryption props for importing threads
           encryptForStorage={encryptForImport}
+          // Chatbot props
+          chatbots={chatbots}
+          chatbotFolderTree={chatbotFolderTree}
+          selectedChatbotId={selectedChatbotId}
+          onSelectChatbot={selectChatbot}
+          onCreateChatbot={handleCreateChatbot}
+          onEditChatbot={handleEditChatbot}
+          onDuplicateChatbot={handleDuplicateChatbot}
+          onExportChatbot={handleExportChatbot}
+          onDeleteChatbot={handleDeleteChatbot}
+          onRenameChatbot={handleRenameChatbot}
+          chatbotDefaultFolderId={chatbotDefaultFolderId}
+          currentChatbotConfig={activeChatbot?.config}
         />
         {/* Resize handle */}
         <div
@@ -901,6 +994,11 @@ export default function DashboardPage() {
                   onWorkflowChange={selectWorkflow}
                   workflowsLoading={workflowsLoading}
                   workflowExecuting={workflowExecuting}
+                  // Chatbot props
+                  chatbots={chatbots}
+                  selectedChatbot={activeChatbot}
+                  onChatbotChange={handleChatbotChange}
+                  chatbotsLoading={loadingChatbots || loadingActiveChatbot}
                 />
               </div>
             </section>
