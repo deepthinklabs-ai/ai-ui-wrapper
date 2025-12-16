@@ -124,6 +124,12 @@ export default function Sidebar({
   const [isNewChatbotModalOpen, setIsNewChatbotModalOpen] = useState(false);
   const [isChatbotsCollapsed, setIsChatbotsCollapsed] = useState(false);
 
+  // Resizable chatbots section
+  const [chatbotsHeight, setChatbotsHeight] = useState(200);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartY = useRef(0);
+  const resizeStartHeight = useRef(0);
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -145,6 +151,36 @@ export default function Sidebar({
       editInputRef.current.select();
     }
   }, [editingThreadId]);
+
+  // Handle resize drag
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - resizeStartY.current;
+      const newHeight = Math.max(100, Math.min(400, resizeStartHeight.current + deltaY));
+      setChatbotsHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartY.current = e.clientY;
+    resizeStartHeight.current = chatbotsHeight;
+  };
 
   // Find the default folder ID
   const findDefaultFolderId = (folders: FolderWithChildren[]): string | null => {
@@ -396,8 +432,81 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Middle: threads list */}
-      <div className="flex-1 overflow-y-auto px-2 py-3">
+      {/* Chatbots Section - above Directory */}
+      {onCreateChatbot && (
+        <div
+          className="flex flex-col border-b border-slate-800"
+          style={{ height: isChatbotsCollapsed ? 'auto' : chatbotsHeight }}
+        >
+          {/* Section Header */}
+          <div className="flex items-center justify-between px-3 py-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsChatbotsCollapsed(!isChatbotsCollapsed)}
+              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-400"
+            >
+              <svg
+                className={`h-3 w-3 transition-transform ${isChatbotsCollapsed ? "-rotate-90" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              Chatbots
+            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setIsNewChatbotModalOpen(true)}
+                className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                title="New chatbot"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              <ChatbotImportButton
+                onImport={onCreateChatbot}
+                folderId={chatbotDefaultFolderId}
+                compact
+                className="text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+              />
+            </div>
+          </div>
+
+          {/* Chatbot List */}
+          {!isChatbotsCollapsed && (
+            <div className="flex-1 overflow-y-auto px-2 pb-2">
+              <ChatbotList
+                chatbots={chatbots}
+                selectedChatbotId={selectedChatbotId ?? null}
+                onSelectChatbot={onSelectChatbot || (() => {})}
+                onEditChatbot={onEditChatbot}
+                onDuplicateChatbot={onDuplicateChatbot ? (id) => onDuplicateChatbot(id) : undefined}
+                onExportChatbot={onExportChatbot}
+                onDeleteChatbot={onDeleteChatbot ? (id) => onDeleteChatbot(id) : undefined}
+                onRenameChatbot={onRenameChatbot ? (id, name) => onRenameChatbot(id, name) : undefined}
+                emptyMessage="No chatbots yet. Create one to save your settings."
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Resizable Divider */}
+      {onCreateChatbot && !isChatbotsCollapsed && (
+        <div
+          className={`h-1 flex-shrink-0 cursor-ns-resize bg-slate-800 hover:bg-slate-600 transition-colors ${
+            isResizing ? "bg-slate-600" : ""
+          }`}
+          onMouseDown={handleResizeStart}
+          title="Drag to resize"
+        />
+      )}
+
+      {/* Directory: threads list */}
+      <div className="flex-1 overflow-y-auto px-2 py-3 min-h-0">
         <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
           Directory
         </div>
@@ -510,63 +619,6 @@ export default function Sidebar({
           </>
         )}
       </div>
-
-      {/* Chatbots Section */}
-      {onCreateChatbot && (
-        <div className="border-t border-slate-800 px-2 py-3">
-          {/* Section Header */}
-          <div className="flex items-center justify-between mb-2 px-1">
-            <button
-              type="button"
-              onClick={() => setIsChatbotsCollapsed(!isChatbotsCollapsed)}
-              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-400"
-            >
-              <svg
-                className={`h-3 w-3 transition-transform ${isChatbotsCollapsed ? "-rotate-90" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              Chatbots
-            </button>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setIsNewChatbotModalOpen(true)}
-                className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300"
-                title="New chatbot"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-              <ChatbotImportButton
-                onImport={onCreateChatbot}
-                folderId={chatbotDefaultFolderId}
-                compact
-                className="text-slate-500 hover:bg-slate-800 hover:text-slate-300"
-              />
-            </div>
-          </div>
-
-          {/* Chatbot List */}
-          {!isChatbotsCollapsed && (
-            <ChatbotList
-              chatbots={chatbots}
-              selectedChatbotId={selectedChatbotId ?? null}
-              onSelectChatbot={onSelectChatbot || (() => {})}
-              onEditChatbot={onEditChatbot}
-              onDuplicateChatbot={onDuplicateChatbot ? (id) => onDuplicateChatbot(id) : undefined}
-              onExportChatbot={onExportChatbot}
-              onDeleteChatbot={onDeleteChatbot ? (id) => onDeleteChatbot(id) : undefined}
-              onRenameChatbot={onRenameChatbot ? (id, name) => onRenameChatbot(id, name) : undefined}
-              emptyMessage="No chatbots yet. Create one to save your settings."
-            />
-          )}
-        </div>
-      )}
 
       {/* New Thread Modal */}
       <NewThreadModal
