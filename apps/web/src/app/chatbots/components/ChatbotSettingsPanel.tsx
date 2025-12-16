@@ -170,10 +170,25 @@ export function ChatbotSettingsPanel({
         newFeatures['text_selection_popup'] = false;
       }
 
-      return {
+      const newConfig: typeof prev = {
         ...prev,
         features: newFeatures,
       };
+
+      // Handle step_by_step_mode toggle
+      if (featureId === 'step_by_step_mode') {
+        if (enabled) {
+          // Default to "1 Step + Explain" when enabling
+          newConfig.step_by_step_with_explanation = true;
+          newConfig.step_by_step_no_explanation = false;
+        } else {
+          // Clear both options when disabling
+          newConfig.step_by_step_with_explanation = false;
+          newConfig.step_by_step_no_explanation = false;
+        }
+      }
+
+      return newConfig;
     });
   };
 
@@ -184,26 +199,13 @@ export function ChatbotSettingsPanel({
     }));
   };
 
-  const handleStepByStepChange = (field: "step_by_step_with_explanation" | "step_by_step_no_explanation", enabled: boolean) => {
-    setDraftConfig((prev) => {
-      const newConfig = {
-        ...prev,
-        [field]: enabled,
-      };
-
-      // Auto-uncheck step_by_step_mode when both sub-options are unchecked
-      const withExplanation = field === "step_by_step_with_explanation" ? enabled : prev.step_by_step_with_explanation;
-      const noExplanation = field === "step_by_step_no_explanation" ? enabled : prev.step_by_step_no_explanation;
-
-      if (!withExplanation && !noExplanation) {
-        newConfig.features = {
-          ...prev.features,
-          step_by_step_mode: false,
-        };
-      }
-
-      return newConfig;
-    });
+  // Handle step-by-step option change (radio behavior - only one can be selected)
+  const handleStepByStepOptionChange = (option: "with_explanation" | "no_explanation") => {
+    setDraftConfig((prev) => ({
+      ...prev,
+      step_by_step_with_explanation: option === "with_explanation",
+      step_by_step_no_explanation: option === "no_explanation",
+    }));
   };
 
   const handleSave = async () => {
@@ -393,57 +395,39 @@ export function ChatbotSettingsPanel({
                           </div>
                         )}
 
-                        {/* Special handling for step_by_step_mode - render sub-options */}
-                        {featureId === 'step_by_step_mode' && (
+                        {/* Special handling for step_by_step_mode - render radio options */}
+                        {featureId === 'step_by_step_mode' && isEnabled && (
                           <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-700 pl-3">
                             <label
-                              className={`flex items-center gap-3 rounded-md px-2 py-1.5 ${
-                                !isEnabled
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "hover:bg-slate-800/50 cursor-pointer"
-                              }`}
+                              className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-slate-800/50 cursor-pointer"
                             >
                               <input
-                                type="checkbox"
-                                checked={(draftConfig.step_by_step_with_explanation ?? false) && isEnabled}
-                                disabled={!isEnabled}
-                                onChange={(e) => handleStepByStepChange("step_by_step_with_explanation", e.target.checked)}
-                                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                type="radio"
+                                name="step_by_step_option"
+                                checked={draftConfig.step_by_step_with_explanation ?? false}
+                                onChange={() => handleStepByStepOptionChange("with_explanation")}
+                                className="h-4 w-4 border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0"
                               />
                               <div className="flex-1 min-w-0">
-                                <div className={`text-sm truncate ${!isEnabled ? "text-slate-500" : "text-slate-200"}`}>
-                                  With Explanation
+                                <div className="text-sm text-slate-200">
+                                  1 Step + Explain
                                 </div>
-                                {!isEnabled && (
-                                  <div className="text-xs text-slate-500 mt-0.5">
-                                    Requires {feature.name}
-                                  </div>
-                                )}
                               </div>
                             </label>
                             <label
-                              className={`flex items-center gap-3 rounded-md px-2 py-1.5 ${
-                                !isEnabled
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "hover:bg-slate-800/50 cursor-pointer"
-                              }`}
+                              className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-slate-800/50 cursor-pointer"
                             >
                               <input
-                                type="checkbox"
-                                checked={(draftConfig.step_by_step_no_explanation ?? false) && isEnabled}
-                                disabled={!isEnabled}
-                                onChange={(e) => handleStepByStepChange("step_by_step_no_explanation", e.target.checked)}
-                                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                type="radio"
+                                name="step_by_step_option"
+                                checked={draftConfig.step_by_step_no_explanation ?? false}
+                                onChange={() => handleStepByStepOptionChange("no_explanation")}
+                                className="h-4 w-4 border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0"
                               />
                               <div className="flex-1 min-w-0">
-                                <div className={`text-sm truncate ${!isEnabled ? "text-slate-500" : "text-slate-200"}`}>
-                                  Without Explanation
+                                <div className="text-sm text-slate-200">
+                                  1 Step Only
                                 </div>
-                                {!isEnabled && (
-                                  <div className="text-xs text-slate-500 mt-0.5">
-                                    Requires {feature.name}
-                                  </div>
-                                )}
                               </div>
                             </label>
                           </div>
