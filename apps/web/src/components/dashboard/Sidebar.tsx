@@ -7,8 +7,9 @@ import type { Chatbot, ChatbotFolderWithChildren } from "@/types/chatbot";
 import { FolderTree } from "./FolderTree";
 import NewThreadModal from "./NewThreadModal";
 import { ThreadImportButton } from "./ThreadImportButton";
-import { ChatbotFolderTree, NewChatbotModal, ChatbotImportButton } from "@/app/chatbots/components";
+import { ChatbotFolderTree, NewChatbotModal, ChatbotImportButton, ChatbotSettingsPanel } from "@/app/chatbots/components";
 import type { CreateChatbotInput } from "@/types/chatbot";
+import type { ChatbotFileConfig } from "@/types/chatbotFile";
 
 type SidebarProps = {
   userEmail: string | null | undefined;
@@ -55,8 +56,14 @@ type SidebarProps = {
   onExportChatbot?: (id: string) => void;
   onDeleteChatbot?: (id: string) => Promise<void>;
   onRenameChatbot?: (id: string, newName: string) => Promise<void>;
+  onUpdateChatbotConfig?: (id: string, config: ChatbotFileConfig) => Promise<void>;
   chatbotDefaultFolderId?: string | null;
   currentChatbotConfig?: any;
+  // Controlled chatbot editing state from parent
+  editingChatbotId?: string | null;
+  onCloseChatbotSettings?: () => void;
+  /** Called when draft config changes for real-time preview */
+  onDraftConfigChange?: (config: ChatbotFileConfig | null) => void;
   // Chatbot folder props
   onCreateChatbotFolder?: (input: { name: string; parent_id?: string | null }) => Promise<any>;
   onUpdateChatbotFolder?: (id: string, updates: { name?: string; color?: string; is_collapsed?: boolean }) => Promise<boolean>;
@@ -105,8 +112,12 @@ export default function Sidebar({
   onExportChatbot,
   onDeleteChatbot,
   onRenameChatbot,
+  onUpdateChatbotConfig,
   chatbotDefaultFolderId,
   currentChatbotConfig,
+  editingChatbotId,
+  onCloseChatbotSettings,
+  onDraftConfigChange,
   // Chatbot folder props
   onCreateChatbotFolder,
   onUpdateChatbotFolder,
@@ -294,6 +305,43 @@ export default function Sidebar({
     } else if (e.key === "Escape") {
       cancelEditing();
     }
+  };
+
+  // Find the chatbot being edited
+  const editingChatbot = editingChatbotId
+    ? chatbots.find((c) => c.id === editingChatbotId) ?? null
+    : null;
+
+  const handleOpenChatbotSettingsLocal = (id: string) => {
+    const chatbot = chatbots.find((c) => c.id === id);
+    console.log('[Sidebar] Opening chatbot settings panel:', chatbot?.name, id);
+    // Call parent handler to open settings panel (controlled from page.tsx)
+    onEditChatbot?.(id);
+  };
+
+  const handleCloseChatbotSettingsLocal = () => {
+    console.log('[Sidebar] Closing chatbot settings panel');
+    // Clear draft config for real-time preview
+    onDraftConfigChange?.(null);
+    // Call parent handler to close settings panel (controlled from page.tsx)
+    onCloseChatbotSettings?.();
+  };
+
+  const handleSaveChatbotSettings = async (config: ChatbotFileConfig) => {
+    console.log('[Sidebar] Saving chatbot settings:', editingChatbotId);
+    if (editingChatbotId && onUpdateChatbotConfig) {
+      try {
+        await onUpdateChatbotConfig(editingChatbotId, config);
+        console.log('[Sidebar] Chatbot settings saved successfully');
+      } catch (error) {
+        console.error('[Sidebar] Failed to save chatbot settings:', error);
+        throw error; // Re-throw so panel can handle it
+      }
+    }
+    // Clear draft config for real-time preview
+    onDraftConfigChange?.(null);
+    // Close the panel via parent handler (controlled from page.tsx)
+    onCloseChatbotSettings?.();
   };
 
   return (
@@ -540,6 +588,7 @@ export default function Sidebar({
                 onMoveChatbot={onMoveChatbot}
                 onToggleFolderCollapse={onToggleChatbotFolderCollapse}
                 onStartChatbotThread={handleStartChatbotThread}
+                onEditChatbot={handleOpenChatbotSettingsLocal}
                 onDuplicateChatbot={onDuplicateChatbot}
                 onExportChatbot={onExportChatbot}
               />
@@ -695,6 +744,17 @@ export default function Sidebar({
           folderTree={chatbotFolderTree}
           defaultFolderId={chatbotDefaultFolderId}
           currentConfig={currentChatbotConfig}
+        />
+      )}
+
+      {/* Chatbot Settings Panel */}
+      {editingChatbot && (
+        <ChatbotSettingsPanel
+          chatbot={editingChatbot}
+          isOpen={editingChatbotId !== null}
+          onClose={handleCloseChatbotSettingsLocal}
+          onSave={handleSaveChatbotSettings}
+          onDraftChange={onDraftConfigChange}
         />
       )}
     </div>

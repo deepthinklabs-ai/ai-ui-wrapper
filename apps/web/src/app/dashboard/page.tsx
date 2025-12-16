@@ -72,6 +72,13 @@ export default function DashboardPage() {
   // Thread info modal state - stores the thread ID to show info for
   const [threadInfoId, setThreadInfoId] = useState<string | null>(null);
 
+  // Chatbot settings panel editing state - tracks which chatbot ID is being edited
+  const [editingChatbotId, setEditingChatbotId] = useState<string | null>(null);
+  const isEditingChatbot = editingChatbotId !== null;
+
+  // Draft config for real-time preview while editing chatbot settings
+  const [previewConfig, setPreviewConfig] = useState<import("@/types/chatbotFile").ChatbotFileConfig | null>(null);
+
   // Get encryption function for importing threads
   const { encryptText, isReady: isEncryptionReadyForImport, state: encryptionState } = useEncryption();
   // Only provide encryption function if encryption is set up and unlocked
@@ -136,14 +143,6 @@ export default function DashboardPage() {
     setSelectedModel(model); // Persist to localStorage
   }, []);
 
-  // Step-by-step mode
-  const {
-    isStepByStepWithExplanation,
-    isStepByStepNoExplanation,
-    toggleStepByStepWithExplanation,
-    toggleStepByStepNoExplanation,
-    getSystemPromptAddition,
-  } = useStepByStepMode();
 
   // Web search toggle
   const [enableWebSearch, setEnableWebSearch] = useState(true);
@@ -154,8 +153,8 @@ export default function DashboardPage() {
   // Auto-clear API key on logout for security
   useApiKeyCleanup();
 
-  // Load feature toggles
-  const { isFeatureEnabled } = useFeatureToggles(user?.id);
+  // Load user-level feature toggles (fallback when no chatbot config)
+  const { isFeatureEnabled: userIsFeatureEnabled } = useFeatureToggles(user?.id);
 
   // Split view feature
   const {
@@ -301,6 +300,16 @@ export default function DashboardPage() {
     loadingActiveChatbot,
   } = useActiveChatbot(user?.id, selectedThreadId, chatbots);
 
+  // Step-by-step mode - initialized from chatbot config
+  const {
+    isStepByStepWithExplanation,
+    isStepByStepNoExplanation,
+    toggleStepByStepWithExplanation,
+    toggleStepByStepNoExplanation,
+    getSystemPromptAddition,
+  } = useStepByStepMode(activeChatbot?.config);
+
+
   // Handle creating a new chatbot
   const handleCreateChatbot = useCallback(async (input: CreateChatbotInput) => {
     const chatbot = await createChatbot(input);
@@ -311,12 +320,11 @@ export default function DashboardPage() {
     console.log('[Dashboard] Created chatbot:', chatbot.name);
   }, [createChatbot]);
 
-  // Handle editing a chatbot (for now, just select it)
+  // Handle editing a chatbot - opens the settings panel
   const handleEditChatbot = useCallback((id: string) => {
-    selectChatbot(id);
-    // TODO: Open edit modal
     console.log('[Dashboard] Edit chatbot:', id);
-  }, [selectChatbot]);
+    setEditingChatbotId(id);
+  }, []);
 
   // Handle duplicating a chatbot
   const handleDuplicateChatbot = useCallback(async (id: string) => {
@@ -340,6 +348,47 @@ export default function DashboardPage() {
   const handleRenameChatbot = useCallback(async (id: string, newName: string) => {
     await updateChatbot(id, { name: newName });
   }, [updateChatbot]);
+
+  // Handle updating chatbot config (from settings panel)
+  const handleUpdateChatbotConfig = useCallback(async (id: string, config: import("@/types/chatbotFile").ChatbotFileConfig) => {
+    console.log('[Dashboard] Updating chatbot config:', id);
+    console.log('[Dashboard] New config:', config);
+    try {
+      await updateChatbot(id, { config });
+      console.log('[Dashboard] Chatbot config updated successfully');
+    } catch (error) {
+      console.error('[Dashboard] Failed to update chatbot config:', error);
+      throw error;
+    }
+  }, [updateChatbot]);
+
+  // Handle opening chatbot settings panel (from sidebar or header)
+  const handleOpenChatbotSettings = useCallback((chatbotId: string) => {
+    console.log('[Dashboard] Opening chatbot settings panel:', chatbotId);
+    setEditingChatbotId(chatbotId);
+  }, []);
+
+  // Handle closing chatbot settings panel
+  const handleCloseChatbotSettings = useCallback(() => {
+    console.log('[Dashboard] Closing chatbot settings panel');
+    setEditingChatbotId(null);
+    setPreviewConfig(null);
+  }, []);
+
+  // Handle draft config changes for real-time preview
+  const handleDraftConfigChange = useCallback((config: import("@/types/chatbotFile").ChatbotFileConfig | null) => {
+    console.log('[Dashboard] Draft config changed for preview:', config?.model?.model_name);
+    setPreviewConfig(config);
+  }, []);
+
+  // Handle opening settings for the active chatbot (from header)
+  const handleEditActiveChatbot = useCallback(() => {
+    if (activeChatbot) {
+      console.log('[Dashboard] Opening settings for active chatbot:', activeChatbot.name);
+      setEditingChatbotId(activeChatbot.id);
+    }
+  }, [activeChatbot]);
+
 
   // Handle chatbot selection for thread (from MessageComposer)
   const handleChatbotChange = useCallback(async (chatbot: { id: string } | null) => {
@@ -370,6 +419,40 @@ export default function DashboardPage() {
 
   const currentThread =
     threads.find((t) => t.id === selectedThreadId) ?? null;
+
+  // Create a preview-aware chatbot for real-time editing preview
+  // When editing, use the preview config; otherwise use the saved chatbot
+  const previewChatbot = React.useMemo(() => {
+    if (!activeChatbot) return null;
+    if (!previewConfig || !isEditingChatbot) return activeChatbot;
+    // Overlay preview config on the active chatbot for display
+    return {
+      ...activeChatbot,
+      config: previewConfig,
+    };
+  }, [activeChatbot, previewConfig, isEditingChatbot]);
+
+  // Merged isFeatureEnabled that uses chatbot config first, then falls back to user preferences
+  // This allows chatbot-specific feature overrides while maintaining user defaults
+  const isFeatureEnabled = useCallback(
+    (featureId: import("@/types/features").FeatureId): boolean => {
+      // First check the preview/active chatbot's config
+      const chatbotConfig = previewChatbot?.config;
+      if (chatbotConfig?.features && featureId in chatbotConfig.features) {
+        const enabled = chatbotConfig.features[featureId];
+        // Only use chatbot config if explicitly set (not undefined)
+        if (enabled !== undefined) {
+          console.log(`[Dashboard] Feature '${featureId}' from chatbot config:`, enabled);
+          return enabled;
+        }
+      }
+      // Fall back to user-level preferences
+      const userEnabled = userIsFeatureEnabled(featureId);
+      console.log(`[Dashboard] Feature '${featureId}' from user prefs:`, userEnabled);
+      return userEnabled;
+    },
+    [previewChatbot, userIsFeatureEnabled]
+  );
 
   // Text selection detection
   const { selection, clearSelection } = useTextSelection(messagesContainerRef as RefObject<HTMLElement>);
@@ -761,8 +844,12 @@ export default function DashboardPage() {
           onExportChatbot={handleExportChatbot}
           onDeleteChatbot={handleDeleteChatbot}
           onRenameChatbot={handleRenameChatbot}
+          onUpdateChatbotConfig={handleUpdateChatbotConfig}
           chatbotDefaultFolderId={chatbotDefaultFolderId}
           currentChatbotConfig={activeChatbot?.config}
+          editingChatbotId={editingChatbotId}
+          onCloseChatbotSettings={handleCloseChatbotSettings}
+          onDraftConfigChange={handleDraftConfigChange}
           // Chatbot folder props
           onCreateChatbotFolder={createChatbotFolder}
           onUpdateChatbotFolder={updateChatbotFolder}
@@ -823,6 +910,9 @@ export default function DashboardPage() {
                       currentThreadTitle={currentThread?.title ?? null}
                       hasThread={!!selectedThreadId}
                       onShowInfo={() => selectedThreadId && setThreadInfoId(selectedThreadId)}
+                      activeChatbot={previewChatbot}
+                      onEditChatbot={handleEditActiveChatbot}
+                      isEditingChatbot={isEditingChatbot}
                     />
                     <MCPServerIndicator
                       connections={connections}
@@ -980,7 +1070,7 @@ export default function DashboardPage() {
                   value={draft}
                   onChange={setDraft}
                   onSend={handleSend}
-                  disabled={sendInFlight || workflowExecuting || !canUseServices || (!byokLoading && !hasAnyKey)}
+                  disabled={sendInFlight || workflowExecuting || !canUseServices || (!byokLoading && !hasAnyKey) || isEditingChatbot}
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
                   onSummarize={handleSummarize}

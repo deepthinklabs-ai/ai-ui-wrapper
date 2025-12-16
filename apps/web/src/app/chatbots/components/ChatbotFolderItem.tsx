@@ -32,6 +32,7 @@ type ChatbotFolderItemProps = {
   onNewFolderBlur?: () => void;
   newFolderInputRef?: React.RefObject<HTMLInputElement | null>;
   onStartChatbotThread?: (chatbotId: string, chatbotName: string) => void;
+  onEditChatbot?: (id: string) => void;
   onDuplicateChatbot?: (id: string) => void;
   onExportChatbot?: (id: string) => void;
 };
@@ -55,6 +56,7 @@ export function ChatbotFolderItem({
   onNewFolderBlur,
   newFolderInputRef,
   onStartChatbotThread,
+  onEditChatbot,
   onDuplicateChatbot,
   onExportChatbot,
 }: ChatbotFolderItemProps) {
@@ -388,6 +390,7 @@ export function ChatbotFolderItem({
               onNewFolderBlur={onNewFolderBlur}
               newFolderInputRef={newFolderInputRef}
               onStartChatbotThread={onStartChatbotThread}
+              onEditChatbot={onEditChatbot}
               onDuplicateChatbot={onDuplicateChatbot}
               onExportChatbot={onExportChatbot}
             />
@@ -401,6 +404,7 @@ export function ChatbotFolderItem({
               isSelected={chatbot.id === selectedChatbotId}
               onClick={() => onSelectChatbot(chatbot.id)}
               onStartThread={onStartChatbotThread ? () => onStartChatbotThread(chatbot.id, chatbot.name) : undefined}
+              onEdit={onEditChatbot ? () => onEditChatbot(chatbot.id) : undefined}
               onDuplicate={onDuplicateChatbot ? () => onDuplicateChatbot(chatbot.id) : undefined}
               onExport={onExportChatbot ? () => onExportChatbot(chatbot.id) : undefined}
               onDelete={() => onDeleteChatbot(chatbot.id)}
