@@ -72,10 +72,14 @@ const FEATURE_DEPENDENCIES: Partial<Record<FeatureId, FeatureId>> = {
   context_panel: 'text_selection_popup', // Context Panel requires Text Selection Actions
 };
 
-// Features that have children nested under them
+// Features that have children nested under them (other FeatureIds)
 const NESTED_FEATURES: Partial<Record<FeatureId, FeatureId[]>> = {
   text_selection_popup: ['context_panel'],
 };
+
+// Features that have custom sub-options (not regular features, but config fields)
+// step_by_step_mode has two sub-options stored as separate config fields
+const FEATURES_WITH_CUSTOM_CHILDREN: FeatureId[] = ['step_by_step_mode'];
 
 // Group features by category
 const getFeaturesByCategory = (): Record<FeatureCategory, FeatureId[]> => {
@@ -363,6 +367,62 @@ export function ChatbotSettingsPanel({
                             })}
                           </div>
                         )}
+
+                        {/* Special handling for step_by_step_mode - render sub-options */}
+                        {featureId === 'step_by_step_mode' && (
+                          <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-700 pl-3">
+                            <label
+                              className={`flex items-center gap-3 rounded-md px-2 py-1.5 ${
+                                !isEnabled
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "hover:bg-slate-800/50 cursor-pointer"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={(draftConfig.step_by_step_with_explanation ?? false) && isEnabled}
+                                disabled={!isEnabled}
+                                onChange={(e) => handleStepByStepChange("step_by_step_with_explanation", e.target.checked)}
+                                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-sm truncate ${!isEnabled ? "text-slate-500" : "text-slate-200"}`}>
+                                  With Explanation
+                                </div>
+                                {!isEnabled && (
+                                  <div className="text-xs text-slate-500 mt-0.5">
+                                    Requires {feature.name}
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                            <label
+                              className={`flex items-center gap-3 rounded-md px-2 py-1.5 ${
+                                !isEnabled
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "hover:bg-slate-800/50 cursor-pointer"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={(draftConfig.step_by_step_no_explanation ?? false) && isEnabled}
+                                disabled={!isEnabled}
+                                onChange={(e) => handleStepByStepChange("step_by_step_no_explanation", e.target.checked)}
+                                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-sm truncate ${!isEnabled ? "text-slate-500" : "text-slate-200"}`}>
+                                  Without Explanation
+                                </div>
+                                {!isEnabled && (
+                                  <div className="text-xs text-slate-500 mt-0.5">
+                                    Requires {feature.name}
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -387,30 +447,6 @@ export function ChatbotSettingsPanel({
           </div>
         </div>
 
-        {/* Step-by-Step Section */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Step-by-Step Mode</h3>
-          <div className="space-y-1">
-            <label className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-slate-800/50 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={draftConfig.step_by_step_with_explanation ?? false}
-                onChange={(e) => handleStepByStepChange("step_by_step_with_explanation", e.target.checked)}
-                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0"
-              />
-              <div className="text-sm text-slate-200">With explanation</div>
-            </label>
-            <label className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-slate-800/50 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={draftConfig.step_by_step_no_explanation ?? false}
-                onChange={(e) => handleStepByStepChange("step_by_step_no_explanation", e.target.checked)}
-                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0"
-              />
-              <div className="text-sm text-slate-200">Without explanation</div>
-            </label>
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
