@@ -233,6 +233,12 @@ export default function DashboardPage() {
     folders: chatbotFolders,
     folderTree: chatbotFolderTree,
     defaultFolderId: chatbotDefaultFolderId,
+    createFolder: createChatbotFolder,
+    updateFolder: updateChatbotFolder,
+    deleteFolder: deleteChatbotFolder,
+    moveFolder: moveChatbotFolder,
+    moveChatbot,
+    toggleFolderCollapse: toggleChatbotFolderCollapse,
   } = useChatbotFolders(user?.id, chatbots, {
     onChatbotMoved: refreshChatbots,
   });
@@ -757,6 +763,13 @@ export default function DashboardPage() {
           onRenameChatbot={handleRenameChatbot}
           chatbotDefaultFolderId={chatbotDefaultFolderId}
           currentChatbotConfig={activeChatbot?.config}
+          // Chatbot folder props
+          onCreateChatbotFolder={createChatbotFolder}
+          onUpdateChatbotFolder={updateChatbotFolder}
+          onDeleteChatbotFolder={deleteChatbotFolder}
+          onMoveChatbotFolder={moveChatbotFolder}
+          onMoveChatbot={moveChatbot}
+          onToggleChatbotFolderCollapse={toggleChatbotFolderCollapse}
         />
         {/* Resize handle */}
         <div

@@ -4,10 +4,13 @@
  * ChatbotItem Component
  *
  * Individual chatbot item for the sidebar list.
- * Shows chatbot name, model provider indicator, and action buttons.
+ * Shows chatbot name with .chatbot extension, model provider indicator, and action buttons.
+ * Supports drag-and-drop for organization.
  */
 
 import React, { useState, useRef, useEffect } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Chatbot } from "@/types/chatbot";
 
 type ChatbotItemProps = {
@@ -27,6 +30,10 @@ type ChatbotItemProps = {
   onDelete?: () => void;
   /** Called when the name is updated inline */
   onRename?: (newName: string) => void;
+  /** Indentation depth */
+  depth?: number;
+  /** Whether this item is draggable */
+  isDraggable?: boolean;
   /** Additional class names */
   className?: string;
 };
@@ -40,6 +47,8 @@ export function ChatbotItem({
   onExport,
   onDelete,
   onRename,
+  depth = 0,
+  isDraggable = false,
   className = "",
 }: ChatbotItemProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -47,6 +56,31 @@ export function ChatbotItem({
   const [showMenu, setShowMenu] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Sortable hook for drag-and-drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: chatbot.id,
+    data: {
+      type: "chatbot",
+      chatbot,
+    },
+    disabled: !isDraggable,
+  });
+
+  const style = isDraggable
+    ? {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }
+    : undefined;
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -91,7 +125,7 @@ export function ChatbotItem({
 
   const handleDelete = () => {
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${chatbot.name}"?\n\nThis will remove the chatbot configuration. Threads using this chatbot will switch to default settings.`
+      `Are you sure you want to delete "${chatbot.name}.chatbot"?\n\nThis will remove the chatbot configuration. Threads using this chatbot will switch to default settings.`
     );
     if (confirmed && onDelete) {
       onDelete();
@@ -100,7 +134,7 @@ export function ChatbotItem({
   };
 
   // Model provider colors
-  const provider = chatbot.config.model?.provider || "ai";
+  const provider = chatbot.config?.model?.provider || "ai";
   const providerColors: Record<string, string> = {
     openai: "bg-green-500",
     claude: "bg-orange-500",
@@ -109,10 +143,12 @@ export function ChatbotItem({
   };
   const dotColor = providerColors[provider] || "bg-slate-500";
 
+  const paddingLeft = depth * 12 + 24; // Extra indent for chatbots within folders
+
   return (
-    <div className={`group relative ${className}`}>
+    <div ref={setNodeRef} style={style} className={className}>
       {isEditing ? (
-        <div className="flex items-center gap-1 px-2 py-1.5">
+        <div className="flex items-center gap-1 px-2 py-1.5" style={{ paddingLeft }}>
           <input
             ref={inputRef}
             type="text"
@@ -122,25 +158,28 @@ export function ChatbotItem({
             onBlur={handleSaveName}
             className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
           />
+          <span className="text-xs text-slate-500">.chatbot</span>
         </div>
       ) : (
-        <>
-          <button
-            type="button"
-            onClick={onClick}
-            className={`w-full rounded-md px-2 py-1.5 pr-8 text-left text-sm transition-colors ${
-              isSelected
-                ? "bg-slate-800 text-slate-50"
-                : "text-slate-200 hover:bg-slate-900"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {/* Model provider indicator */}
-              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${dotColor}`} />
-              {/* Name */}
-              <span className="truncate">{chatbot.name}</span>
-            </div>
-          </button>
+        <div
+          {...(isDraggable ? { ...attributes, ...listeners } : {})}
+          onClick={onClick}
+          className={`group relative flex items-center rounded-md px-2 py-1.5 transition-colors ${
+            isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+          } ${
+            isSelected
+              ? "bg-slate-800 text-slate-50"
+              : "text-slate-200 hover:bg-slate-800/50"
+          }`}
+          style={{ paddingLeft }}
+        >
+          {/* Model provider indicator */}
+          <span className={`h-2 w-2 rounded-full flex-shrink-0 mr-2 ${dotColor}`} />
+
+          {/* Name with .chatbot extension */}
+          <span className="flex-1 truncate text-sm">
+            {chatbot.name}<span className="text-slate-500">.chatbot</span>
+          </span>
 
           {/* Action buttons (visible on hover) */}
           <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -248,7 +287,7 @@ export function ChatbotItem({
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

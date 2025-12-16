@@ -7,7 +7,7 @@ import type { Chatbot, ChatbotFolderWithChildren } from "@/types/chatbot";
 import { FolderTree } from "./FolderTree";
 import NewThreadModal from "./NewThreadModal";
 import { ThreadImportButton } from "./ThreadImportButton";
-import { ChatbotList, NewChatbotModal, ChatbotImportButton } from "@/app/chatbots/components";
+import { ChatbotFolderTree, NewChatbotModal, ChatbotImportButton } from "@/app/chatbots/components";
 import type { CreateChatbotInput } from "@/types/chatbot";
 
 type SidebarProps = {
@@ -57,6 +57,13 @@ type SidebarProps = {
   onRenameChatbot?: (id: string, newName: string) => Promise<void>;
   chatbotDefaultFolderId?: string | null;
   currentChatbotConfig?: any;
+  // Chatbot folder props
+  onCreateChatbotFolder?: (input: { name: string; parent_id?: string | null }) => Promise<any>;
+  onUpdateChatbotFolder?: (id: string, updates: { name?: string; color?: string; is_collapsed?: boolean }) => Promise<boolean>;
+  onDeleteChatbotFolder?: (id: string) => Promise<boolean>;
+  onMoveChatbotFolder?: (folderId: string, newParentId: string | null) => Promise<boolean>;
+  onMoveChatbot?: (chatbotId: string, folderId: string | null) => Promise<boolean>;
+  onToggleChatbotFolderCollapse?: (folderId: string) => Promise<boolean>;
 };
 
 export default function Sidebar({
@@ -100,6 +107,13 @@ export default function Sidebar({
   onRenameChatbot,
   chatbotDefaultFolderId,
   currentChatbotConfig,
+  // Chatbot folder props
+  onCreateChatbotFolder,
+  onUpdateChatbotFolder,
+  onDeleteChatbotFolder,
+  onMoveChatbotFolder,
+  onMoveChatbot,
+  onToggleChatbotFolderCollapse,
 }: SidebarProps) {
   // Check if folder features are enabled (all folder props provided)
   const hasFolderFeatures = !!(
@@ -112,8 +126,21 @@ export default function Sidebar({
     onToggleFolderCollapse
   );
 
+  // Check if chatbot folder features are enabled
+  const hasChatbotFolderFeatures = !!(
+    onCreateChatbotFolder &&
+    onUpdateChatbotFolder &&
+    onDeleteChatbotFolder &&
+    onMoveChatbotFolder &&
+    onMoveChatbot &&
+    onToggleChatbotFolderCollapse
+  );
+
   // Get root-level threads (threads without a folder)
   const rootThreads = threads.filter(t => !t.folder_id);
+
+  // Get root-level chatbots (chatbots without a folder)
+  const rootChatbots = chatbots.filter(c => !c.folder_id);
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
@@ -475,19 +502,25 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* Chatbot List */}
-          {!isChatbotsCollapsed && (
+          {/* Chatbot Folder Tree */}
+          {!isChatbotsCollapsed && hasChatbotFolderFeatures && (
             <div className="flex-1 overflow-y-auto px-2 pb-2">
-              <ChatbotList
-                chatbots={chatbots}
+              <ChatbotFolderTree
+                folders={chatbotFolderTree}
+                chatbots={rootChatbots}
                 selectedChatbotId={selectedChatbotId ?? null}
                 onSelectChatbot={onSelectChatbot || (() => {})}
+                onDeleteChatbot={onDeleteChatbot ? (id) => onDeleteChatbot(id) : Promise.resolve}
+                onRenameChatbot={onRenameChatbot ? (id, name) => onRenameChatbot(id, name) : async () => {}}
+                onCreateFolder={onCreateChatbotFolder}
+                onUpdateFolder={onUpdateChatbotFolder}
+                onDeleteFolder={onDeleteChatbotFolder}
+                onMoveFolder={onMoveChatbotFolder}
+                onMoveChatbot={onMoveChatbot}
+                onToggleFolderCollapse={onToggleChatbotFolderCollapse}
                 onEditChatbot={onEditChatbot}
-                onDuplicateChatbot={onDuplicateChatbot ? (id) => onDuplicateChatbot(id) : undefined}
+                onDuplicateChatbot={onDuplicateChatbot}
                 onExportChatbot={onExportChatbot}
-                onDeleteChatbot={onDeleteChatbot ? (id) => onDeleteChatbot(id) : undefined}
-                onRenameChatbot={onRenameChatbot ? (id, name) => onRenameChatbot(id, name) : undefined}
-                emptyMessage="No chatbots yet. Create one to save your settings."
               />
             </div>
           )}
