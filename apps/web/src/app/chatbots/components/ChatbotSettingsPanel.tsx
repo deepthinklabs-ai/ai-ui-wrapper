@@ -158,13 +158,23 @@ export function ChatbotSettingsPanel({
   };
 
   const handleFeatureToggle = (featureId: FeatureId, enabled: boolean) => {
-    setDraftConfig((prev) => ({
-      ...prev,
-      features: {
+    setDraftConfig((prev) => {
+      const newFeatures = {
         ...prev.features,
         [featureId]: enabled,
-      },
-    }));
+      };
+
+      // Auto-uncheck parent when child is unchecked (if child is the only one)
+      // When context_panel is unchecked, also uncheck text_selection_popup
+      if (featureId === 'context_panel' && !enabled) {
+        newFeatures['text_selection_popup'] = false;
+      }
+
+      return {
+        ...prev,
+        features: newFeatures,
+      };
+    });
   };
 
   const handleVoiceIdChange = (voiceId: string) => {
@@ -175,10 +185,25 @@ export function ChatbotSettingsPanel({
   };
 
   const handleStepByStepChange = (field: "step_by_step_with_explanation" | "step_by_step_no_explanation", enabled: boolean) => {
-    setDraftConfig((prev) => ({
-      ...prev,
-      [field]: enabled,
-    }));
+    setDraftConfig((prev) => {
+      const newConfig = {
+        ...prev,
+        [field]: enabled,
+      };
+
+      // Auto-uncheck step_by_step_mode when both sub-options are unchecked
+      const withExplanation = field === "step_by_step_with_explanation" ? enabled : prev.step_by_step_with_explanation;
+      const noExplanation = field === "step_by_step_no_explanation" ? enabled : prev.step_by_step_no_explanation;
+
+      if (!withExplanation && !noExplanation) {
+        newConfig.features = {
+          ...prev.features,
+          step_by_step_mode: false,
+        };
+      }
+
+      return newConfig;
+    });
   };
 
   const handleSave = async () => {

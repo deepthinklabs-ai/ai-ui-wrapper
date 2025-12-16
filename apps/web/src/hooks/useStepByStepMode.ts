@@ -3,13 +3,19 @@
  *
  * Manages the state for step-by-step response mode.
  * When enabled, instructs the AI to provide one step at a time with detailed explanations.
+ * Can be initialized from chatbot config for per-chatbot settings.
  */
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export type StepByStepMode = "off" | "with-explanation" | "no-explanation";
+
+type StepByStepConfig = {
+  step_by_step_with_explanation?: boolean;
+  step_by_step_no_explanation?: boolean;
+};
 
 type UseStepByStepModeResult = {
   stepByStepMode: StepByStepMode;
@@ -21,10 +27,27 @@ type UseStepByStepModeResult = {
 };
 
 /**
- * Hook to manage step-by-step response mode
+ * Convert chatbot config to step-by-step mode
  */
-export function useStepByStepMode(): UseStepByStepModeResult {
-  const [stepByStepMode, setStepByStepMode] = useState<StepByStepMode>("off");
+function configToMode(config?: StepByStepConfig | null): StepByStepMode {
+  if (config?.step_by_step_with_explanation) return "with-explanation";
+  if (config?.step_by_step_no_explanation) return "no-explanation";
+  return "off";
+}
+
+/**
+ * Hook to manage step-by-step response mode
+ * @param chatbotConfig - Optional chatbot config to initialize from
+ */
+export function useStepByStepMode(chatbotConfig?: StepByStepConfig | null): UseStepByStepModeResult {
+  const [stepByStepMode, setStepByStepMode] = useState<StepByStepMode>(() => configToMode(chatbotConfig));
+
+  // Sync with chatbot config when it changes
+  useEffect(() => {
+    const newMode = configToMode(chatbotConfig);
+    console.log('[useStepByStepMode] Syncing with chatbot config:', chatbotConfig, '-> mode:', newMode);
+    setStepByStepMode(newMode);
+  }, [chatbotConfig?.step_by_step_with_explanation, chatbotConfig?.step_by_step_no_explanation]);
 
   const toggleStepByStepWithExplanation = useCallback(() => {
     setStepByStepMode((current) => {

@@ -143,14 +143,6 @@ export default function DashboardPage() {
     setSelectedModel(model); // Persist to localStorage
   }, []);
 
-  // Step-by-step mode
-  const {
-    isStepByStepWithExplanation,
-    isStepByStepNoExplanation,
-    toggleStepByStepWithExplanation,
-    toggleStepByStepNoExplanation,
-    getSystemPromptAddition,
-  } = useStepByStepMode();
 
   // Web search toggle
   const [enableWebSearch, setEnableWebSearch] = useState(true);
@@ -307,6 +299,15 @@ export default function DashboardPage() {
     setThreadChatbot,
     loadingActiveChatbot,
   } = useActiveChatbot(user?.id, selectedThreadId, chatbots);
+
+  // Step-by-step mode - initialized from chatbot config
+  const {
+    isStepByStepWithExplanation,
+    isStepByStepNoExplanation,
+    toggleStepByStepWithExplanation,
+    toggleStepByStepNoExplanation,
+    getSystemPromptAddition,
+  } = useStepByStepMode(activeChatbot?.config);
 
   // Handle creating a new chatbot
   const handleCreateChatbot = useCallback(async (input: CreateChatbotInput) => {
