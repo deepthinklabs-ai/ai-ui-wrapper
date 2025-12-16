@@ -298,9 +298,11 @@ export default function DashboardPage() {
   // Handle creating a new chatbot
   const handleCreateChatbot = useCallback(async (input: CreateChatbotInput) => {
     const chatbot = await createChatbot(input);
-    if (chatbot) {
-      console.log('[Dashboard] Created chatbot:', chatbot.name);
+    if (!chatbot) {
+      // Throw error so the modal can display it
+      throw new Error("Failed to create chatbot. Please check if the database is set up correctly.");
     }
+    console.log('[Dashboard] Created chatbot:', chatbot.name);
   }, [createChatbot]);
 
   // Handle editing a chatbot (for now, just select it)
