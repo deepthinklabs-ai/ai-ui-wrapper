@@ -23,6 +23,8 @@ type ChatbotSettingsPanelProps = {
   onClose: () => void;
   /** Called when saving changes */
   onSave: (config: ChatbotFileConfig) => Promise<void>;
+  /** Called when draft config changes (for real-time preview) */
+  onDraftChange?: (config: ChatbotFileConfig) => void;
 };
 
 // Model options by provider
@@ -86,6 +88,7 @@ export function ChatbotSettingsPanel({
   isOpen,
   onClose,
   onSave,
+  onDraftChange,
 }: ChatbotSettingsPanelProps) {
   // Draft state for editing
   const [draftConfig, setDraftConfig] = useState<ChatbotFileConfig>(chatbot.config);
@@ -99,6 +102,13 @@ export function ChatbotSettingsPanel({
       setDraftConfig(chatbot.config);
     }
   }, [isOpen, chatbot.config, chatbot.name, chatbot.id]);
+
+  // Notify parent of draft changes for real-time preview
+  useEffect(() => {
+    if (isOpen && onDraftChange) {
+      onDraftChange(draftConfig);
+    }
+  }, [draftConfig, isOpen, onDraftChange]);
 
   const handleProviderChange = (provider: ChatbotFileProvider) => {
     const models = MODEL_OPTIONS[provider];

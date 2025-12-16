@@ -2,15 +2,8 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  getSelectedModel,
-  setSelectedModel,
-  type AIModel,
-} from "@/lib/apiKeyStorage";
-import ModelSelector from "@/components/settings/ModelSelector";
 import SubscriptionManagement from "@/components/settings/SubscriptionManagement";
 import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal";
-import FeatureToggles from "@/components/settings/FeatureToggles";
 import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
 import MCPServerSettings from "@/components/settings/MCPServerSettings";
 import MCPMigrationBanner from "@/components/settings/MCPMigrationBanner";
@@ -25,8 +18,6 @@ function SettingsPageContent() {
   const searchParams = useSearchParams();
   const { user } = useAuthSession();
   const { tier, daysRemaining, isExpired, canUseServices, refreshTier } = useUserTier(user?.id);
-  const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5.1");
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
 
@@ -71,23 +62,6 @@ function SettingsPageContent() {
     verifySubscription();
   }, [searchParams, user?.id, refreshTier]);
 
-  // Load existing settings on mount
-  useEffect(() => {
-    const existingModel = getSelectedModel();
-    setSelectedModelState(existingModel);
-  }, []);
-
-  const handleModelChange = (model: AIModel) => {
-    setSelectedModelState(model);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleSave = () => {
-    setSelectedModel(selectedModel);
-    setHasUnsavedChanges(false);
-    router.push("/dashboard");
-  };
-
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-50 overflow-hidden">
       {/* Onboarding Welcome Modal */}
@@ -98,7 +72,7 @@ function SettingsPageContent() {
 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 px-6 py-4">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
+        <div className="mx-auto flex max-w-4xl items-center">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
@@ -109,19 +83,7 @@ function SettingsPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-2xl font-semibold">Settings</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            {hasUnsavedChanges && (
-              <span className="text-sm text-amber-400">Unsaved changes</span>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={!hasUnsavedChanges}
-              className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Save Settings
-            </button>
+            <h1 className="text-2xl font-semibold">Account Settings</h1>
           </div>
         </div>
       </header>
@@ -255,26 +217,6 @@ function SettingsPageContent() {
           {/* Encryption Settings Section */}
           <EncryptionSettings userEmail={user?.email} />
 
-          {/* Model Selection Section */}
-          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-100">Default Model</h2>
-              <p className="mt-2 text-sm text-slate-400">
-                Choose which AI model to use by default for your conversations. You can also switch models
-                on any message.
-              </p>
-            </div>
-
-            <ModelSelector value={selectedModel} onChange={handleModelChange} />
-
-            <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-              <p className="text-xs text-slate-400">
-                <strong className="text-slate-300">Note:</strong> You use your own API keys for each provider.
-                Make sure you have the corresponding API key configured above for the model you select.
-              </p>
-            </div>
-          </section>
-
           {/* Push-to-Talk Settings Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <PushToTalkSettings />
@@ -283,11 +225,6 @@ function SettingsPageContent() {
           {/* MCP Servers Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <MCPServerSettings />
-          </section>
-
-          {/* Feature Toggles Section */}
-          <section>
-            <FeatureToggles userId={user?.id} />
           </section>
 
         </div>

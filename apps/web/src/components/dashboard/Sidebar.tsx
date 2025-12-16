@@ -59,8 +59,11 @@ type SidebarProps = {
   onUpdateChatbotConfig?: (id: string, config: ChatbotFileConfig) => Promise<void>;
   chatbotDefaultFolderId?: string | null;
   currentChatbotConfig?: any;
-  // Callback to notify parent when editing state changes (for disabling message composer)
-  onEditingStateChange?: (isEditing: boolean) => void;
+  // Controlled chatbot editing state from parent
+  editingChatbotId?: string | null;
+  onCloseChatbotSettings?: () => void;
+  /** Called when draft config changes for real-time preview */
+  onDraftConfigChange?: (config: ChatbotFileConfig | null) => void;
   // Chatbot folder props
   onCreateChatbotFolder?: (input: { name: string; parent_id?: string | null }) => Promise<any>;
   onUpdateChatbotFolder?: (id: string, updates: { name?: string; color?: string; is_collapsed?: boolean }) => Promise<boolean>;
@@ -112,7 +115,9 @@ export default function Sidebar({
   onUpdateChatbotConfig,
   chatbotDefaultFolderId,
   currentChatbotConfig,
-  onEditingStateChange,
+  editingChatbotId,
+  onCloseChatbotSettings,
+  onDraftConfigChange,
   // Chatbot folder props
   onCreateChatbotFolder,
   onUpdateChatbotFolder,
@@ -159,8 +164,6 @@ export default function Sidebar({
   // Pending chatbot for new thread creation
   const [pendingChatbotId, setPendingChatbotId] = useState<string | null>(null);
   const [pendingChatbotName, setPendingChatbotName] = useState<string | null>(null);
-  // Chatbot settings panel state
-  const [editingChatbotId, setEditingChatbotId] = useState<string | null>(null);
 
   // Resizable chatbots section
   const [chatbotsHeight, setChatbotsHeight] = useState(200);
@@ -304,25 +307,24 @@ export default function Sidebar({
     }
   };
 
-  // Notify parent of editing state changes
-  useEffect(() => {
-    onEditingStateChange?.(editingChatbotId !== null);
-  }, [editingChatbotId, onEditingStateChange]);
-
   // Find the chatbot being edited
   const editingChatbot = editingChatbotId
     ? chatbots.find((c) => c.id === editingChatbotId) ?? null
     : null;
 
-  const handleOpenChatbotSettings = (id: string) => {
+  const handleOpenChatbotSettingsLocal = (id: string) => {
     const chatbot = chatbots.find((c) => c.id === id);
     console.log('[Sidebar] Opening chatbot settings panel:', chatbot?.name, id);
-    setEditingChatbotId(id);
+    // Call parent handler to open settings panel (controlled from page.tsx)
+    onEditChatbot?.(id);
   };
 
-  const handleCloseChatbotSettings = () => {
+  const handleCloseChatbotSettingsLocal = () => {
     console.log('[Sidebar] Closing chatbot settings panel');
-    setEditingChatbotId(null);
+    // Clear draft config for real-time preview
+    onDraftConfigChange?.(null);
+    // Call parent handler to close settings panel (controlled from page.tsx)
+    onCloseChatbotSettings?.();
   };
 
   const handleSaveChatbotSettings = async (config: ChatbotFileConfig) => {
@@ -336,7 +338,10 @@ export default function Sidebar({
         throw error; // Re-throw so panel can handle it
       }
     }
-    setEditingChatbotId(null);
+    // Clear draft config for real-time preview
+    onDraftConfigChange?.(null);
+    // Close the panel via parent handler (controlled from page.tsx)
+    onCloseChatbotSettings?.();
   };
 
   return (
@@ -583,7 +588,7 @@ export default function Sidebar({
                 onMoveChatbot={onMoveChatbot}
                 onToggleFolderCollapse={onToggleChatbotFolderCollapse}
                 onStartChatbotThread={handleStartChatbotThread}
-                onEditChatbot={handleOpenChatbotSettings}
+                onEditChatbot={handleOpenChatbotSettingsLocal}
                 onDuplicateChatbot={onDuplicateChatbot}
                 onExportChatbot={onExportChatbot}
               />
@@ -747,8 +752,9 @@ export default function Sidebar({
         <ChatbotSettingsPanel
           chatbot={editingChatbot}
           isOpen={editingChatbotId !== null}
-          onClose={handleCloseChatbotSettings}
+          onClose={handleCloseChatbotSettingsLocal}
           onSave={handleSaveChatbotSettings}
+          onDraftChange={onDraftConfigChange}
         />
       )}
     </div>

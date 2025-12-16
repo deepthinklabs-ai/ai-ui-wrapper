@@ -72,8 +72,12 @@ export default function DashboardPage() {
   // Thread info modal state - stores the thread ID to show info for
   const [threadInfoId, setThreadInfoId] = useState<string | null>(null);
 
-  // Chatbot settings panel editing state
-  const [isEditingChatbot, setIsEditingChatbot] = useState(false);
+  // Chatbot settings panel editing state - tracks which chatbot ID is being edited
+  const [editingChatbotId, setEditingChatbotId] = useState<string | null>(null);
+  const isEditingChatbot = editingChatbotId !== null;
+
+  // Draft config for real-time preview while editing chatbot settings
+  const [previewConfig, setPreviewConfig] = useState<import("@/types/chatbotFile").ChatbotFileConfig | null>(null);
 
   // Get encryption function for importing threads
   const { encryptText, isReady: isEncryptionReadyForImport, state: encryptionState } = useEncryption();
@@ -314,12 +318,11 @@ export default function DashboardPage() {
     console.log('[Dashboard] Created chatbot:', chatbot.name);
   }, [createChatbot]);
 
-  // Handle editing a chatbot (for now, just select it)
+  // Handle editing a chatbot - opens the settings panel
   const handleEditChatbot = useCallback((id: string) => {
-    selectChatbot(id);
-    // TODO: Open edit modal
     console.log('[Dashboard] Edit chatbot:', id);
-  }, [selectChatbot]);
+    setEditingChatbotId(id);
+  }, []);
 
   // Handle duplicating a chatbot
   const handleDuplicateChatbot = useCallback(async (id: string) => {
@@ -357,11 +360,32 @@ export default function DashboardPage() {
     }
   }, [updateChatbot]);
 
-  // Handle editing state change (from settings panel)
-  const handleEditingStateChange = useCallback((isEditing: boolean) => {
-    console.log('[Dashboard] Chatbot editing state changed:', isEditing);
-    setIsEditingChatbot(isEditing);
+  // Handle opening chatbot settings panel (from sidebar or header)
+  const handleOpenChatbotSettings = useCallback((chatbotId: string) => {
+    console.log('[Dashboard] Opening chatbot settings panel:', chatbotId);
+    setEditingChatbotId(chatbotId);
   }, []);
+
+  // Handle closing chatbot settings panel
+  const handleCloseChatbotSettings = useCallback(() => {
+    console.log('[Dashboard] Closing chatbot settings panel');
+    setEditingChatbotId(null);
+    setPreviewConfig(null);
+  }, []);
+
+  // Handle draft config changes for real-time preview
+  const handleDraftConfigChange = useCallback((config: import("@/types/chatbotFile").ChatbotFileConfig | null) => {
+    console.log('[Dashboard] Draft config changed for preview:', config?.model?.model_name);
+    setPreviewConfig(config);
+  }, []);
+
+  // Handle opening settings for the active chatbot (from header)
+  const handleEditActiveChatbot = useCallback(() => {
+    if (activeChatbot) {
+      console.log('[Dashboard] Opening settings for active chatbot:', activeChatbot.name);
+      setEditingChatbotId(activeChatbot.id);
+    }
+  }, [activeChatbot]);
 
   // Handle chatbot selection for thread (from MessageComposer)
   const handleChatbotChange = useCallback(async (chatbot: { id: string } | null) => {
@@ -392,6 +416,18 @@ export default function DashboardPage() {
 
   const currentThread =
     threads.find((t) => t.id === selectedThreadId) ?? null;
+
+  // Create a preview-aware chatbot for real-time editing preview
+  // When editing, use the preview config; otherwise use the saved chatbot
+  const previewChatbot = React.useMemo(() => {
+    if (!activeChatbot) return null;
+    if (!previewConfig || !isEditingChatbot) return activeChatbot;
+    // Overlay preview config on the active chatbot for display
+    return {
+      ...activeChatbot,
+      config: previewConfig,
+    };
+  }, [activeChatbot, previewConfig, isEditingChatbot]);
 
   // Text selection detection
   const { selection, clearSelection } = useTextSelection(messagesContainerRef as RefObject<HTMLElement>);
@@ -786,7 +822,9 @@ export default function DashboardPage() {
           onUpdateChatbotConfig={handleUpdateChatbotConfig}
           chatbotDefaultFolderId={chatbotDefaultFolderId}
           currentChatbotConfig={activeChatbot?.config}
-          onEditingStateChange={handleEditingStateChange}
+          editingChatbotId={editingChatbotId}
+          onCloseChatbotSettings={handleCloseChatbotSettings}
+          onDraftConfigChange={handleDraftConfigChange}
           // Chatbot folder props
           onCreateChatbotFolder={createChatbotFolder}
           onUpdateChatbotFolder={updateChatbotFolder}
@@ -847,6 +885,9 @@ export default function DashboardPage() {
                       currentThreadTitle={currentThread?.title ?? null}
                       hasThread={!!selectedThreadId}
                       onShowInfo={() => selectedThreadId && setThreadInfoId(selectedThreadId)}
+                      activeChatbot={previewChatbot}
+                      onEditChatbot={handleEditActiveChatbot}
+                      isEditingChatbot={isEditingChatbot}
                     />
                     <MCPServerIndicator
                       connections={connections}
