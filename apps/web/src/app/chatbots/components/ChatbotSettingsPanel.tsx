@@ -164,10 +164,12 @@ export function ChatbotSettingsPanel({
         [featureId]: enabled,
       };
 
-      // Auto-uncheck parent when child is unchecked (if child is the only one)
-      // When context_panel is unchecked, also uncheck text_selection_popup
-      if (featureId === 'context_panel' && !enabled) {
-        newFeatures['text_selection_popup'] = false;
+      // Keep text_selection_popup and context_panel in sync (both checked or both unchecked)
+      if (featureId === 'text_selection_popup') {
+        newFeatures['context_panel'] = enabled;
+      }
+      if (featureId === 'context_panel') {
+        newFeatures['text_selection_popup'] = enabled;
       }
 
       const newConfig: typeof prev = {
