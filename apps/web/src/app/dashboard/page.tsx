@@ -161,8 +161,8 @@ export default function DashboardPage() {
   // Auto-clear API key on logout for security
   useApiKeyCleanup();
 
-  // Load feature toggles
-  const { isFeatureEnabled } = useFeatureToggles(user?.id);
+  // Load user-level feature toggles (fallback when no chatbot config)
+  const { isFeatureEnabled: userIsFeatureEnabled } = useFeatureToggles(user?.id);
 
   // Split view feature
   const {
@@ -428,6 +428,28 @@ export default function DashboardPage() {
       config: previewConfig,
     };
   }, [activeChatbot, previewConfig, isEditingChatbot]);
+
+  // Merged isFeatureEnabled that uses chatbot config first, then falls back to user preferences
+  // This allows chatbot-specific feature overrides while maintaining user defaults
+  const isFeatureEnabled = useCallback(
+    (featureId: import("@/types/features").FeatureId): boolean => {
+      // First check the preview/active chatbot's config
+      const chatbotConfig = previewChatbot?.config;
+      if (chatbotConfig?.features && featureId in chatbotConfig.features) {
+        const enabled = chatbotConfig.features[featureId];
+        // Only use chatbot config if explicitly set (not undefined)
+        if (enabled !== undefined) {
+          console.log(`[Dashboard] Feature '${featureId}' from chatbot config:`, enabled);
+          return enabled;
+        }
+      }
+      // Fall back to user-level preferences
+      const userEnabled = userIsFeatureEnabled(featureId);
+      console.log(`[Dashboard] Feature '${featureId}' from user prefs:`, userEnabled);
+      return userEnabled;
+    },
+    [previewChatbot, userIsFeatureEnabled]
+  );
 
   // Text selection detection
   const { selection, clearSelection } = useTextSelection(messagesContainerRef as RefObject<HTMLElement>);
