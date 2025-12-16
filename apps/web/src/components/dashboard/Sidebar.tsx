@@ -681,6 +681,7 @@ export default function Sidebar({
         onCreateThread={handleCreateThread}
         folderTree={folderTree}
         defaultFolderId={defaultFolderId}
+        chatbots={chatbots}
         chatbotId={pendingChatbotId}
         chatbotName={pendingChatbotName}
       />
