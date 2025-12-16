@@ -480,7 +480,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Chatbots Section - above Directory */}
+      {/* Chatbots Section - above Threads */}
       {onCreateChatbot && (
         <div
           className="flex flex-col border-b border-slate-800"
@@ -559,10 +559,10 @@ export default function Sidebar({
         />
       )}
 
-      {/* Directory: threads list */}
+      {/* Threads section */}
       <div className="flex-1 overflow-y-auto px-2 py-3 min-h-0">
         <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Directory
+          Threads
         </div>
 
         {/* Use FolderTree when folder features are enabled */}
