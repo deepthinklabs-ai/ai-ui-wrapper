@@ -11,7 +11,7 @@ type UseThreadsResult = {
   threadsError: string | null;
   selectedThreadId: string | null;
   selectThread: (id: string) => void;
-  createThread: (name?: string, folderId?: string | null) => Promise<string | null>;
+  createThread: (name?: string, folderId?: string | null, chatbotId?: string | null) => Promise<string | null>;
   createThreadWithContext: (contextMessage: string, title?: string) => Promise<string | null>;
   forkThread: (threadId: string, messages: { role: string; content: string; model: string | null }[]) => Promise<string | null>;
   deleteThread: (id: string) => Promise<void>;
@@ -123,7 +123,7 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
     setSelectedThreadId(id);
   };
 
-  const createThread = async (name?: string, folderId?: string | null): Promise<string | null> => {
+  const createThread = async (name?: string, folderId?: string | null, chatbotId?: string | null): Promise<string | null> => {
     if (!userId) return null;
 
     // Check thread limit
@@ -144,6 +144,7 @@ export function useThreads(userId: string | null | undefined): UseThreadsResult 
           user_id: userId,
           title: name || "Untitled",
           folder_id: targetFolderId,
+          chatbot_id: chatbotId ?? null,
         })
         .select()
         .single();

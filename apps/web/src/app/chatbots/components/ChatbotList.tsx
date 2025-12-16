@@ -18,8 +18,8 @@ type ChatbotListProps = {
   selectedChatbotId: string | null;
   /** Called when a chatbot is selected */
   onSelectChatbot: (id: string) => void;
-  /** Called when edit action is triggered */
-  onEditChatbot?: (id: string) => void;
+  /** Called when starting a new thread with a chatbot */
+  onStartChatbotThread?: (chatbotId: string, chatbotName: string) => void;
   /** Called when duplicate action is triggered */
   onDuplicateChatbot?: (id: string) => void;
   /** Called when export action is triggered */
@@ -38,7 +38,7 @@ export function ChatbotList({
   chatbots,
   selectedChatbotId,
   onSelectChatbot,
-  onEditChatbot,
+  onStartChatbotThread,
   onDuplicateChatbot,
   onExportChatbot,
   onDeleteChatbot,
@@ -62,7 +62,7 @@ export function ChatbotList({
             chatbot={chatbot}
             isSelected={chatbot.id === selectedChatbotId}
             onClick={() => onSelectChatbot(chatbot.id)}
-            onEdit={onEditChatbot ? () => onEditChatbot(chatbot.id) : undefined}
+            onStartThread={onStartChatbotThread ? () => onStartChatbotThread(chatbot.id, chatbot.name) : undefined}
             onDuplicate={onDuplicateChatbot ? () => onDuplicateChatbot(chatbot.id) : undefined}
             onExport={onExportChatbot ? () => onExportChatbot(chatbot.id) : undefined}
             onDelete={onDeleteChatbot ? () => onDeleteChatbot(chatbot.id) : undefined}

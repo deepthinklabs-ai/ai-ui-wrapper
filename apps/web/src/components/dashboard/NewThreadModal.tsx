@@ -7,9 +7,13 @@ import type { FolderWithChildren } from "@/types/chat";
 type NewThreadModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onCreateThread: (name: string, folderId: string | null) => void;
+  onCreateThread: (name: string, folderId: string | null, chatbotId?: string | null) => void;
   folderTree: FolderWithChildren[];
   defaultFolderId?: string | null;
+  /** Optional chatbot to associate with the new thread */
+  chatbotId?: string | null;
+  /** Display name of the chatbot (shown in modal header) */
+  chatbotName?: string | null;
 };
 
 type FolderItemProps = {
@@ -93,6 +97,8 @@ export default function NewThreadModal({
   onCreateThread,
   folderTree,
   defaultFolderId,
+  chatbotId,
+  chatbotName,
 }: NewThreadModalProps) {
   const [threadName, setThreadName] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(defaultFolderId || null);
@@ -126,7 +132,7 @@ export default function NewThreadModal({
     e.preventDefault();
     const trimmedName = threadName.trim();
     if (trimmedName) {
-      onCreateThread(trimmedName, selectedFolderId);
+      onCreateThread(trimmedName, selectedFolderId, chatbotId);
       onClose();
     }
   };
@@ -167,7 +173,14 @@ export default function NewThreadModal({
       <div className="relative bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-md mx-4 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-          <h2 className="text-lg font-medium text-slate-100">New Thread</h2>
+          <div>
+            <h2 className="text-lg font-medium text-slate-100">New Thread</h2>
+            {chatbotName && (
+              <p className="text-sm text-slate-400">
+                Using <span className="text-cyan-400">{chatbotName}.chatbot</span>
+              </p>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}

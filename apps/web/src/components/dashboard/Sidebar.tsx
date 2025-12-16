@@ -15,7 +15,7 @@ type SidebarProps = {
   threads: Thread[];
   selectedThreadId: string | null;
   onSelectThread: (id: string) => void;
-  onNewThread: (name: string, folderId: string | null) => void;
+  onNewThread: (name: string, folderId: string | null, chatbotId?: string | null) => void;
   onDeleteThread: (id: string) => Promise<void>;
   onUpdateThreadTitle: (id: string, newTitle: string) => Promise<void>;
   onSignOut: () => void;
@@ -150,6 +150,9 @@ export default function Sidebar({
   const editInputRef = useRef<HTMLInputElement>(null);
   const [isNewChatbotModalOpen, setIsNewChatbotModalOpen] = useState(false);
   const [isChatbotsCollapsed, setIsChatbotsCollapsed] = useState(false);
+  // Pending chatbot for new thread creation
+  const [pendingChatbotId, setPendingChatbotId] = useState<string | null>(null);
+  const [pendingChatbotName, setPendingChatbotName] = useState<string | null>(null);
 
   // Resizable chatbots section
   const [chatbotsHeight, setChatbotsHeight] = useState(200);
@@ -225,11 +228,29 @@ export default function Sidebar({
 
   const handleOpenNewThreadModal = () => {
     if (!canCreateThread) return;
+    // Clear any pending chatbot when opening from the + button
+    setPendingChatbotId(null);
+    setPendingChatbotName(null);
     setIsNewThreadModalOpen(true);
   };
 
-  const handleCreateThread = (name: string, folderId: string | null) => {
-    onNewThread(name, folderId);
+  const handleStartChatbotThread = (chatbotId: string, chatbotName: string) => {
+    if (!canCreateThread) return;
+    // Set the pending chatbot before opening the modal
+    setPendingChatbotId(chatbotId);
+    setPendingChatbotName(chatbotName);
+    setIsNewThreadModalOpen(true);
+  };
+
+  const handleCloseNewThreadModal = () => {
+    setIsNewThreadModalOpen(false);
+    // Clear pending chatbot when modal closes
+    setPendingChatbotId(null);
+    setPendingChatbotName(null);
+  };
+
+  const handleCreateThread = (name: string, folderId: string | null, chatbotId?: string | null) => {
+    onNewThread(name, folderId, chatbotId);
   };
 
   const handleDelete = (e: React.MouseEvent, threadId: string, threadTitle: string) => {
@@ -518,7 +539,7 @@ export default function Sidebar({
                 onMoveFolder={onMoveChatbotFolder}
                 onMoveChatbot={onMoveChatbot}
                 onToggleFolderCollapse={onToggleChatbotFolderCollapse}
-                onEditChatbot={onEditChatbot}
+                onStartChatbotThread={handleStartChatbotThread}
                 onDuplicateChatbot={onDuplicateChatbot}
                 onExportChatbot={onExportChatbot}
               />
@@ -656,10 +677,12 @@ export default function Sidebar({
       {/* New Thread Modal */}
       <NewThreadModal
         isOpen={isNewThreadModalOpen}
-        onClose={() => setIsNewThreadModalOpen(false)}
+        onClose={handleCloseNewThreadModal}
         onCreateThread={handleCreateThread}
         folderTree={folderTree}
         defaultFolderId={defaultFolderId}
+        chatbotId={pendingChatbotId}
+        chatbotName={pendingChatbotName}
       />
 
       {/* New Chatbot Modal */}
