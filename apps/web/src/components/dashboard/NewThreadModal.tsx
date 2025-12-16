@@ -3,13 +3,20 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { FolderWithChildren } from "@/types/chat";
+import type { Chatbot } from "@/types/chatbot";
 
 type NewThreadModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onCreateThread: (name: string, folderId: string | null) => void;
+  onCreateThread: (name: string, folderId: string | null, chatbotId?: string | null) => void;
   folderTree: FolderWithChildren[];
   defaultFolderId?: string | null;
+  /** List of available chatbots to choose from */
+  chatbots?: Chatbot[];
+  /** Pre-selected chatbot ID (when starting from a chatbot's + button) */
+  chatbotId?: string | null;
+  /** Display name of the pre-selected chatbot */
+  chatbotName?: string | null;
 };
 
 type FolderItemProps = {
@@ -93,9 +100,13 @@ export default function NewThreadModal({
   onCreateThread,
   folderTree,
   defaultFolderId,
+  chatbots = [],
+  chatbotId,
+  chatbotName,
 }: NewThreadModalProps) {
   const [threadName, setThreadName] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(defaultFolderId || null);
+  const [selectedChatbotId, setSelectedChatbotId] = useState<string | null>(chatbotId || null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when modal opens
@@ -105,8 +116,10 @@ export default function NewThreadModal({
       setThreadName("");
       // Reset to default folder when opening
       setSelectedFolderId(defaultFolderId || null);
+      // Set chatbot selection from prop (pre-populated when clicking from chatbot)
+      setSelectedChatbotId(chatbotId || null);
     }
-  }, [isOpen, defaultFolderId]);
+  }, [isOpen, defaultFolderId, chatbotId]);
 
   // Handle escape key to close
   useEffect(() => {
@@ -126,10 +139,13 @@ export default function NewThreadModal({
     e.preventDefault();
     const trimmedName = threadName.trim();
     if (trimmedName) {
-      onCreateThread(trimmedName, selectedFolderId);
+      onCreateThread(trimmedName, selectedFolderId, selectedChatbotId);
       onClose();
     }
   };
+
+  // Get the selected chatbot name for display
+  const selectedChatbot = chatbots.find(c => c.id === selectedChatbotId);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -208,6 +224,32 @@ export default function NewThreadModal({
             </p>
           )}
         </div>
+
+        {/* Chatbot selector */}
+        {chatbots.length > 0 && (
+          <div className="px-4 py-3 border-b border-slate-700">
+            <label className="block text-sm font-medium text-slate-400 mb-2">
+              Chatbot Configuration
+            </label>
+            <select
+              value={selectedChatbotId || ""}
+              onChange={(e) => setSelectedChatbotId(e.target.value || null)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Default (no chatbot)</option>
+              {chatbots.map((chatbot) => (
+                <option key={chatbot.id} value={chatbot.id}>
+                  {chatbot.name}.chatbot
+                </option>
+              ))}
+            </select>
+            {selectedChatbot && (
+              <p className="text-xs text-slate-500 mt-1">
+                Thread will use settings from {selectedChatbot.name}.chatbot
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Thread name input */}
         <form onSubmit={handleSubmit} className="px-4 py-4">

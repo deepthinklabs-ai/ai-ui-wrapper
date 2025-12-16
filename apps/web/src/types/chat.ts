@@ -7,6 +7,8 @@ export type Thread = {
   title: string | null;
   folder_id: string | null;
   position: number;
+  /** Associated chatbot configuration (switchable) */
+  chatbot_id: string | null;
   created_at: string;
   updated_at: string | null;
 };

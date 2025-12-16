@@ -58,6 +58,8 @@ export interface CanvasNode<TConfig = Record<string, any>> {
   position: { x: number; y: number };
   label: string;
   config: TConfig;
+  // For MASTER_TRIGGER nodes: stored as unencrypted column for API querying
+  is_exposed?: boolean;
   // UI state (not persisted to DB)
   selected?: boolean;
   dragging?: boolean;

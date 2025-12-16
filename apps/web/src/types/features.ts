@@ -38,7 +38,10 @@ export type FeatureId =
   | 'model_selection'
 
   // Context Window Indicator
-  | 'context_window_indicator';
+  | 'context_window_indicator'
+
+  // Canvas Selector
+  | 'canvas_selector';
 
 export type FeatureCategory =
   | 'message_actions'
@@ -205,6 +208,16 @@ export const FEATURE_DEFINITIONS: Record<FeatureId, FeatureDefinition> = {
     category: 'ai_controls',
     defaultEnabled: true,
     icon: '📊',
+  },
+
+  // Canvas Selector
+  canvas_selector: {
+    id: 'canvas_selector',
+    name: 'Canvas Selector',
+    description: 'Show the canvas dropdown to route messages through canvas workflows',
+    category: 'ai_controls',
+    defaultEnabled: true,
+    icon: '🎨',
   },
 };
 
