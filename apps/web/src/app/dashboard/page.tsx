@@ -580,7 +580,6 @@ export default function DashboardPage() {
   } = useTextConversion({
     onTextConverted: (convertedText) => setDraft(convertedText),
     userTier: tier,
-    userId: user?.id,
   });
 
   const handleConvertToMarkdown = useCallback(() => convertToMarkdown(draft), [draft, convertToMarkdown]);
@@ -618,7 +617,6 @@ export default function DashboardPage() {
     clearSelection,
     threadMessages: messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
     userTier: tier,
-    userId: user?.id,
   });
 
   // Combine text selection context with thread context

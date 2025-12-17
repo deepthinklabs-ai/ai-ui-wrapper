@@ -26,7 +26,6 @@ import crypto from "crypto";
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16; // 128 bits
 const AUTH_TAG_LENGTH = 16; // 128 bits
-const SALT_LENGTH = 32; // 256 bits
 
 /**
  * Get encryption key from environment
@@ -97,7 +96,8 @@ export function encrypt(plaintext: any): {
       authTag: authTag.toString("hex"),
     };
   } catch (error) {
-    console.error("[Encryption] Error encrypting data:", error);
+    // SECURITY: Only log error type/message, not full object which may contain sensitive data
+    console.error("[Encryption] Encryption failed:", error instanceof Error ? error.message : "Unknown error");
     throw new Error("Failed to encrypt credentials");
   }
 }
@@ -139,7 +139,8 @@ export function decrypt(
       return decrypted;
     }
   } catch (error) {
-    console.error("[Encryption] Error decrypting data:", error);
+    // SECURITY: Only log error type/message, not full object which may contain sensitive data
+    console.error("[Encryption] Decryption failed:", error instanceof Error ? error.message : "Unknown error");
     throw new Error("Failed to decrypt credentials");
   }
 }
@@ -236,14 +237,21 @@ export function validateEncryptionKey(): {
 }
 
 /**
- * Securely wipe sensitive data from memory
+ * Attempt to wipe sensitive data from memory
  * Use this after decryption to minimize exposure
+ *
+ * SECURITY LIMITATION: JavaScript strings are immutable. This function
+ * creates new strings rather than overwriting the original data in memory.
+ * The original sensitive strings remain in memory until garbage collected.
+ * This is a defense-in-depth measure, not a guarantee of secure wiping.
+ * For true memory security, consider using Node.js Buffer objects which
+ * support .fill(0) for actual memory overwriting.
  */
 export function wipeSensitiveData(data: any): void {
   if (typeof data === "object" && data !== null) {
     for (const key in data) {
       if (typeof data[key] === "string") {
-        // Overwrite string data
+        // Overwrite string data (note: creates new string, see limitation above)
         data[key] = "0".repeat(data[key].length);
         delete data[key];
       } else if (typeof data[key] === "object") {

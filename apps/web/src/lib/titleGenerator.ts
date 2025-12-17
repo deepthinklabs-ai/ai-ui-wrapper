@@ -11,15 +11,17 @@ import type { MessageRole } from "@/types/chat";
 /**
  * Generates a short, descriptive title from a user's message
  *
+ * SECURITY: Requires accessToken for authenticated API calls
+ *
  * @param userMessage - The first message from the user
- * @param options - Optional user tier and userId for API routing
+ * @param options - Optional user tier and accessToken for API routing
  * @returns A concise title (max ~60 characters)
  */
 export async function generateThreadTitle(
   userMessage: string,
   options?: {
     userTier?: 'trial' | 'pro' | 'expired' | 'pending';
-    userId?: string;
+    accessToken?: string;
   }
 ): Promise<string> {
   try {
@@ -52,11 +54,17 @@ Response: All About Dogs`;
       { role: "user", content: userMessage },
     ];
 
-    console.log("[Title Generator] Calling AI with userTier:", options?.userTier, "userId:", options?.userId);
+    console.log("[Title Generator] Calling AI with userTier:", options?.userTier);
+
+    // SECURITY: accessToken is required for authenticated API calls
+    if (!options?.accessToken) {
+      console.warn("[Title Generator] No access token provided, using default title");
+      return "New Thread";
+    }
 
     const response = await sendUnifiedChatRequest(messages, {
       userTier: options?.userTier,
-      userId: options?.userId,
+      accessToken: options?.accessToken,
     });
 
     // Clean up the response

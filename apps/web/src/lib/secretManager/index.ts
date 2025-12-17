@@ -31,6 +31,7 @@ import { getVercelOidcToken } from '@vercel/functions/oidc';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
 // Provider types supported
 export type BYOKProvider = 'openai' | 'claude' | 'grok' | 'gemini';
@@ -86,11 +87,13 @@ async function getClient(): Promise<SecretManagerServiceClient> {
         throw new Error('OIDC token not available - are you running on Vercel?');
       }
 
-      console.log('[SecretManager] Got OIDC token, length:', oidcToken.length);
+      // SECURITY: Don't log token length - could aid attackers
+      console.log('[SecretManager] Got OIDC token');
 
       // Write token to temp file (required by google-auth-library)
-      const tokenPath = path.join(os.tmpdir(), `vercel-oidc-token-${Date.now()}.txt`);
-      fs.writeFileSync(tokenPath, oidcToken, 'utf-8');
+      // SECURITY: Use crypto.randomUUID() for unpredictable filename and restrictive permissions
+      const tokenPath = path.join(os.tmpdir(), `vercel-oidc-token-${crypto.randomUUID()}.txt`);
+      fs.writeFileSync(tokenPath, oidcToken, { encoding: 'utf-8', mode: 0o600 });
 
       const authClient = ExternalAccountClient.fromJSON({
         type: 'external_account',

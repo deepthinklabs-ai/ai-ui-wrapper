@@ -1,8 +1,8 @@
 /**
  * @security-audit-requested
  * AUDIT FOCUS: Claude API proxy security
- * - Is userId properly authenticated (not just passed in body)?
- * - Can an attacker use another user's API key?
+ * - Is userId properly authenticated (not just passed in body)? ✅ FIXED
+ * - Can an attacker use another user's API key? ✅ FIXED - uses authenticated userId
  * - Is the API key cleared from memory after use?
  * - Are there injection attacks possible via messages/tools?
  * - Can rate limiting be bypassed?
@@ -28,6 +28,7 @@ import {
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+import { getAuthenticatedUser } from '@/lib/serverAuth';
 
 // Map our internal model names to Claude API model names
 const CLAUDE_API_MODEL_MAP: Record<string, string> = {
@@ -40,18 +41,21 @@ const CLAUDE_API_MODEL_MAP: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    // Temporarily disable web search by default until we debug the refusal issue
-    const { userId, messages, model = 'claude-sonnet-4-5', systemPrompt, tools, enableWebSearch = false } = body;
-
-    // Validate required fields
-    if (!userId) {
+    // SECURITY: Authenticate user from session token, not from request body
+    const { user, error: authError } = await getAuthenticatedUser(req);
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'Missing userId' },
-        { status: 400 }
+        { error: 'Unauthorized', message: authError || 'Authentication required' },
+        { status: 401 }
       );
     }
+    const userId = user.id; // Use authenticated user ID, never trust client
 
+    const body = await req.json();
+    // Temporarily disable web search by default until we debug the refusal issue
+    const { messages, model = 'claude-sonnet-4-5', systemPrompt, tools, enableWebSearch = false } = body;
+
+    // Validate required fields
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
         { error: 'Missing messages array' },
