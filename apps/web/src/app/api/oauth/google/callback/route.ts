@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Google OAuth callback security
+ * - Is CSRF protection (state parameter) properly implemented?
+ * - Is the state token cryptographically random?
+ * - Can an attacker steal tokens via open redirect in error handling?
+ * - Are tokens stored securely after exchange?
+ * - Is the state deletion atomic (race condition risk)?
+ * - Can error messages leak sensitive information?
+ */
+
+/**
  * Google OAuth Callback Endpoint
  * Handles the redirect from Google after user authorization
  */

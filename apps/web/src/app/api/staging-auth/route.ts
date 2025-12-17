@@ -1,3 +1,13 @@
+/**
+ * @security-audit-requested
+ * AUDIT FOCUS: Staging environment authentication
+ * - Is the password comparison timing-safe?
+ * - Can the static cookie value 'authenticated' be forged?
+ * - Is there rate limiting to prevent brute force?
+ * - Should the cookie use a cryptographic signature/HMAC?
+ * - Is the password stored securely in environment variables?
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 
 const STAGING_COOKIE_NAME = 'staging_auth';

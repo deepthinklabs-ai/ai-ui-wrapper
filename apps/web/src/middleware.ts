@@ -1,3 +1,13 @@
+/**
+ * @security-audit-requested
+ * AUDIT FOCUS: Middleware authentication bypass
+ * - Can the staging cookie be forged (static value 'authenticated')?
+ * - Can path traversal bypass the checks (e.g., /staging-login/../admin)?
+ * - Are API routes properly excluded or should they be protected?
+ * - Can the redirect parameter be used for open redirect attacks?
+ * - Is the cookie secure (HttpOnly, Secure, SameSite)?
+ */
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 

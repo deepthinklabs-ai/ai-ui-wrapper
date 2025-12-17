@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Server-side authentication
+ * - Is the JWT token properly validated?
+ * - Can tokens be forged or tampered with?
+ * - Are expired tokens properly rejected?
+ * - Is the token extraction secure (no injection)?
+ * - Is the Supabase client correctly configured for auth verification?
+ */
+
+/**
  * Server-side Authentication Helper
  *
  * Utilities for verifying Supabase authentication on API routes.

@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: 2FA code verification
+ * - Is userId authenticated or just passed from client (IDOR risk)?
+ * - Is brute force protection effective (5 attempts limit)?
+ * - Is the code comparison timing-safe?
+ * - Can an attacker verify codes for other users?
+ * - Is the attempt counter increment atomic/race-condition free?
+ * - Can expired codes be reused?
+ */
+
+/**
  * Verify Email Code API
  *
  * Validates the 6-digit code entered by the user.

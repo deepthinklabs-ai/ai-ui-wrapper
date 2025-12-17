@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: OAuth token encryption and storage
+ * - Is CryptoJS.AES sufficient for token encryption (vs native crypto)?
+ * - Is the ENCRYPTION_KEY properly derived (should use PBKDF2)?
+ * - Are decrypted tokens cleared from memory after use?
+ * - Can timing attacks reveal token validity?
+ * - Is the upsert operation vulnerable to race conditions?
+ * - Are revoked tokens properly invalidated everywhere?
+ */
+
+/**
  * Google OAuth Token Storage
  * Handles secure encryption, storage, and retrieval of OAuth tokens
  */

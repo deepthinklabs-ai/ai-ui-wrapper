@@ -1,6 +1,17 @@
 "use client";
 
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Auth callback token handling
+ * - Are tokens in URL hash fragments safe from logging/referrer leaks?
+ * - Is setSession() secure (can malicious tokens be injected)?
+ * - Can the 'type' parameter be manipulated for privilege escalation?
+ * - Is the PKCE code exchange properly validated?
+ * - Are error messages safe from XSS?
+ * - Is there proper cleanup of tokens from URL after processing?
+ */
+
+/**
  * Supabase Auth Callback Page
  *
  * Handles authentication callbacks from Supabase, including:

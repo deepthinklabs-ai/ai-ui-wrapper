@@ -1,4 +1,13 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: 2FA status check
+ * - Does the response leak whether a user exists (user enumeration)?
+ * - Is the listUsers() call a performance/DoS risk?
+ * - Should this endpoint require authentication?
+ * - Can response timing differences reveal user existence?
+ */
+
+/**
  * Check 2FA Status API
  *
  * Checks if a user has 2FA enabled.

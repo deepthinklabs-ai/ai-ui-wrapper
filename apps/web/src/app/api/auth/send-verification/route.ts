@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: 2FA code generation and delivery
+ * - Is the verification code cryptographically random (not Math.random)?
+ * - Can the rate limiting be bypassed?
+ * - Is userId authenticated or just passed from client (IDOR risk)?
+ * - Can an attacker enumerate valid emails?
+ * - Is the code leaked in logs or responses?
+ * - Is the email content safe from injection?
+ */
+
+/**
  * Send Email Verification Code API
  *
  * Generates a 6-digit code and sends it to the user's email.
