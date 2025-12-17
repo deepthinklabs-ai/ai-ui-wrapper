@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: API key storage endpoint security
+ * - Is authentication properly enforced?
+ * - Can rate limiting be bypassed?
+ * - Is the userId properly validated (IDOR prevention)?
+ * - Are keys ever logged or leaked in error responses?
+ * - Is input validation sufficient?
+ */
+
+/**
  * BYOK Store API Route
  *
  * POST /api/byok/store

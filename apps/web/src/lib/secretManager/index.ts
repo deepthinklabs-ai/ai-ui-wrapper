@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Server-side API key storage in Google Secret Manager
+ * - Is the authentication flow secure (WIF + Service Account)?
+ * - Can unauthorized users access other users' keys?
+ * - Are keys properly isolated per user?
+ * - Is memory handling secure (key nullification)?
+ * - Are there any IDOR vulnerabilities in getUserSecretName?
+ */
+
+/**
  * Google Secret Manager Client for BYOK
  *
  * Manages user API keys securely in Google Cloud Secret Manager.

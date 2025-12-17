@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: OpenAI API proxy security
+ * - Is userId properly authenticated (not just passed in body)?
+ * - Can an attacker use another user's API key?
+ * - Is the API key cleared from memory after use?
+ * - Are there injection attacks possible via messages/tools?
+ * - Can rate limiting be bypassed?
+ */
+
+/**
  * OpenAI API Proxy (BYOK)
  *
  * This route allows authenticated users to use OpenAI models

@@ -1,4 +1,12 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Client-side API key storage security
+ * - Can keys be extracted by XSS attacks?
+ * - Is localStorage appropriate for sensitive credentials?
+ * - Are there any key leakage vectors?
+ */
+
+/**
  * API Key Storage Utility
  *
  * Manages OpenAI API key storage in browser localStorage.

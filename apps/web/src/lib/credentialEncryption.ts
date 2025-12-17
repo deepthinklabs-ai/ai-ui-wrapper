@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Credential encryption implementation
+ * - Is AES-256-GCM implementation correct?
+ * - Is the encryption key properly protected?
+ * - Are IVs generated securely and never reused?
+ * - Is the auth tag properly validated on decryption?
+ * - Are there any timing attacks possible?
+ */
+
+/**
  * Credential Encryption Utilities
  *
  * SECURITY: Phase 1 - Encrypt MCP credentials using AES-256-GCM

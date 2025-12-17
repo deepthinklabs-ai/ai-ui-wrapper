@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Client-side encryption implementation
+ * - Is PBKDF2 iteration count sufficient (100000)?
+ * - Is key derivation secure?
+ * - Are wrapped keys properly protected?
+ * - Is the recovery code system secure?
+ * - Can an attacker brute-force recovery codes?
+ * - Are there any key extraction vulnerabilities?
+ */
+
+/**
  * Client-Side Encryption Utility
  *
  * Provides AES-GCM encryption for conversation history.
