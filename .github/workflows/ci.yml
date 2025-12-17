@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  build:
-    name: Build
+  typecheck:
+    name: Type Check
     runs-on: ubuntu-latest
 
     steps:
@@ -29,7 +29,5 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
         working-directory: apps/web
-
-      - name: Build
-        run: npm run build
-        working-directory: apps/web
+      # Note: Build step removed - Vercel handles production builds with proper env vars
+      # The type check above validates code correctness
