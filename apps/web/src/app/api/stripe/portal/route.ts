@@ -1,4 +1,13 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Stripe Portal Security
+ * - Is userId validated against the authenticated user (IDOR)?
+ * - Can an attacker access another user's billing portal?
+ * - Is the origin header trusted for return URL (open redirect)?
+ * - Is there rate limiting to prevent abuse?
+ */
+
+/**
  * Stripe Customer Portal API Route
  *
  * Creates a Stripe Customer Portal session for users to manage their subscription

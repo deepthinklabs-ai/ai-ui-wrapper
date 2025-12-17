@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Subscription Verification Security
+ * - Is userId validated against the authenticated user (IDOR)?
+ * - Can an attacker verify/activate subscriptions for other users?
+ * - Can this endpoint bypass webhook-based subscription flow?
+ * - Is onboarding_completed being set without proper verification?
+ * - Can subscription status be manipulated via timing attacks?
+ */
+
+/**
  * Verify Subscription API
  *
  * Fallback endpoint to verify and activate subscriptions

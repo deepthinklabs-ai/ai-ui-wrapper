@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Stripe Checkout Security
+ * - Is userId validated against the authenticated user (IDOR)?
+ * - Can an attacker create checkout sessions for other users?
+ * - Is priceId validated against allowed prices?
+ * - Can trialDays be manipulated for extended trials?
+ * - Is the origin header trusted for redirect URLs (open redirect)?
+ * - Are duplicate subscription checks sufficient?
+ */
+
+/**
  * Stripe Checkout Session API Route
  *
  * Creates a Stripe Checkout session for users to subscribe to Pro plan

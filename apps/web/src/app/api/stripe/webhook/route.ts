@@ -1,4 +1,16 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Stripe Webhook Security (CRITICAL - payment/subscription control)
+ * - Is the webhook signature verification secure and complete?
+ * - Can replay attacks bypass the signature check?
+ * - Is user_id from metadata trusted without validation?
+ * - Can a malicious webhook forge subscription status changes?
+ * - Is there proper error handling that doesn't leak info?
+ * - Are database updates atomic (race conditions)?
+ * - Can webhook events be processed out of order causing issues?
+ */
+
+/**
  * Stripe Webhook Handler
  *
  * Listens to Stripe events and updates subscription status in database
