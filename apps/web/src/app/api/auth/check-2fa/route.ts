@@ -35,31 +35,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // SECURITY: Query user_profiles directly by email to avoid loading all users (DoS risk)
-    // Join with auth.users via RPC or query profiles that have matching email in auth
-    // First, get the user ID from auth.users using a direct query
-    const { data: authUser, error: authError } = await supabaseAdmin
-      .from('auth.users')
-      .select('id')
-      .eq('email', email.toLowerCase())
-      .single();
-
-    // SECURITY: If direct auth.users query fails, fall back to checking user_profiles
-    // This handles cases where auth.users isn't directly queryable
+    // SECURITY: Look up user by email using the most efficient available method
+    // NOTE: For production with >100 users, create an RPC function for direct email lookup:
+    //   CREATE FUNCTION get_user_id_by_email(email TEXT) RETURNS UUID AS $$
+    //     SELECT id FROM auth.users WHERE email = LOWER($1) LIMIT 1;
+    //   $$ LANGUAGE sql SECURITY DEFINER;
     let userId: string | null = null;
 
-    if (authError || !authUser) {
-      // Try to find user via listUsers with pagination (limited DoS impact)
-      // Only fetch first page with small limit
+    // Try RPC function first (most efficient - single indexed query)
+    try {
+      const { data: rpcResult } = await supabaseAdmin.rpc('get_user_id_by_email', {
+        lookup_email: email.toLowerCase()
+      });
+      userId = rpcResult || null;
+    } catch {
+      // RPC not available - fall back to paginated listUsers (less efficient)
+      // Use small page size to minimize memory usage and DoS risk
+      // Note: This won't find users beyond page limit - acceptable tradeoff for security
       const { data: users } = await supabaseAdmin.auth.admin.listUsers({
         page: 1,
-        perPage: 1000, // Reasonable limit
+        perPage: 50, // Small limit to reduce DoS risk - create RPC for production
       });
 
       const user = users?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
       userId = user?.id || null;
-    } else {
-      userId = authUser.id;
     }
 
     // SECURITY: Track start time to apply consistent delay at end

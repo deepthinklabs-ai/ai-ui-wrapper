@@ -95,12 +95,26 @@ export async function POST(req: NextRequest) {
 
     if (!verificationRecord) {
       // Increment attempts for all unverified codes for this user
-      // SECURITY: Use raw increment to avoid race conditions
-      for (const record of verificationRecords) {
-        await supabaseAdmin
-          .from('email_verification_codes')
-          .update({ attempts: (record.attempts || 0) + 1 })
-          .eq('id', record.id);
+      // SECURITY: Use database-level atomic increment to prevent TOCTOU race conditions
+      // This uses PostgreSQL's native increment which is atomic
+      const ids = verificationRecords.map(r => r.id);
+      if (ids.length > 0) {
+        // Use Supabase's RPC to call a function that does atomic increment
+        // If RPC not available, fall back to individual updates (less secure but functional)
+        try {
+          await supabaseAdmin.rpc('increment_verification_attempts', { record_ids: ids });
+        } catch {
+          // Fallback: individual updates if RPC not available
+          // Note: This has a small race condition window - consider adding the RPC function
+          await Promise.all(
+            verificationRecords.map(record =>
+              supabaseAdmin
+                .from('email_verification_codes')
+                .update({ attempts: (record.attempts || 0) + 1 })
+                .eq('id', record.id)
+            )
+          );
+        }
       }
 
       return NextResponse.json(
