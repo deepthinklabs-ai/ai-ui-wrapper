@@ -1,9 +1,9 @@
 /**
  * @security-audit-requested
  * AUDIT FOCUS: Subscription Verification Security
- * - Is userId validated against the authenticated user (IDOR)?
- * - Can an attacker verify/activate subscriptions for other users?
- * - Can this endpoint bypass webhook-based subscription flow?
+ * - Is userId validated against the authenticated user (IDOR)? ✅ FIXED
+ * - Can an attacker verify/activate subscriptions for other users? ✅ FIXED
+ * - Can this endpoint bypass webhook-based subscription flow? ✅ FIXED (production restricted)
  * - Is onboarding_completed being set without proper verification?
  * - Can subscription status be manipulated via timing attacks?
  */
@@ -13,15 +13,36 @@
  *
  * Fallback endpoint to verify and activate subscriptions
  * Used when webhooks don't reach the server (e.g., localhost development)
+ *
+ * SECURITY: This endpoint is restricted in production unless explicitly enabled
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
 import { mapStripeStatusToTier } from '@/lib/config/tiers';
+import { getAuthenticatedUser } from '@/lib/serverAuth';
 
 export async function POST(req: NextRequest) {
   try {
+    // SECURITY: Restrict this endpoint in production (only allow with explicit flag)
+    // This endpoint is a fallback for development when webhooks don't work
+    if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_SUBSCRIPTION_VERIFICATION_FALLBACK) {
+      return NextResponse.json(
+        { error: 'This endpoint is not available in production. Use webhooks instead.' },
+        { status: 403 }
+      );
+    }
+
+    // SECURITY: Require authentication
+    const authResult = await getAuthenticatedUser(req);
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { userId } = body;
 
@@ -29,6 +50,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Missing userId' },
         { status: 400 }
+      );
+    }
+
+    // SECURITY: Verify the authenticated user matches the requested userId (prevent IDOR)
+    if (authResult.user.id !== userId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Cannot verify subscription for another user' },
+        { status: 403 }
       );
     }
 

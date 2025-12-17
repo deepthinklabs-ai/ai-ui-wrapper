@@ -1,13 +1,13 @@
 /**
  * @security-audit-requested
  * AUDIT FOCUS: Stripe Webhook Security (CRITICAL - payment/subscription control)
- * - Is the webhook signature verification secure and complete?
- * - Can replay attacks bypass the signature check?
- * - Is user_id from metadata trusted without validation?
- * - Can a malicious webhook forge subscription status changes?
- * - Is there proper error handling that doesn't leak info?
- * - Are database updates atomic (race conditions)?
- * - Can webhook events be processed out of order causing issues?
+ * - Is the webhook signature verification secure and complete? ✅ Yes (Stripe SDK)
+ * - Can replay attacks bypass the signature check? ✅ No (Stripe includes timestamp)
+ * - Is user_id from metadata trusted without validation? ✅ FIXED (validate relationship)
+ * - Can a malicious webhook forge subscription status changes? ✅ No (signature verified)
+ * - Is there proper error handling that doesn't leak info? ✅ FIXED
+ * - Are database updates atomic (race conditions)? ⚠️ Partial (added error handling)
+ * - Can webhook events be processed out of order causing issues? ⚠️ Known limitation
  */
 
 /**
@@ -67,7 +67,21 @@ export async function POST(req: NextRequest) {
         const subscriptionId = session.subscription as string;
 
         if (!userId) {
-          console.error('Missing user_id in session metadata');
+          console.error('[Webhook] Missing user_id in session metadata');
+          break;
+        }
+
+        // SECURITY: Validate that userId and customerId relationship exists
+        // This prevents processing webhooks with tampered metadata
+        const { data: existingRecord, error: recordError } = await supabase
+          .from('subscriptions')
+          .select('user_id')
+          .eq('user_id', userId)
+          .eq('stripe_customer_id', customerId)
+          .single();
+
+        if (recordError || !existingRecord) {
+          console.error('[Webhook] User ID and customer ID mismatch or record not found');
           break;
         }
 
@@ -80,7 +94,7 @@ export async function POST(req: NextRequest) {
           : null;
 
         // Update subscription record with subscription ID and actual status
-        await supabase
+        const { error: subUpdateError } = await supabase
           .from('subscriptions')
           .update({
             stripe_subscription_id: subscriptionId,
@@ -92,10 +106,15 @@ export async function POST(req: NextRequest) {
           .eq('user_id', userId)
           .eq('stripe_customer_id', customerId);
 
+        if (subUpdateError) {
+          console.error('[Webhook] Failed to update subscription:', subUpdateError.message);
+          break;
+        }
+
         // Update user_profiles tier and mark onboarding as complete
         // This is the ONLY place onboarding should be marked complete
         // to prevent users from bypassing payment
-        await supabase
+        const { error: profileUpdateError } = await supabase
           .from('user_profiles')
           .update({
             tier: userTier,
@@ -104,7 +123,12 @@ export async function POST(req: NextRequest) {
           })
           .eq('id', userId);
 
-        console.log(`✅ Checkout completed for user ${userId}, set to ${userTier} (status: ${subStatus}), onboarding marked complete`);
+        if (profileUpdateError) {
+          console.error('[Webhook] Failed to update user profile:', profileUpdateError.message);
+          // Note: Subscription was updated but profile failed - may need manual intervention
+        }
+
+        console.log(`[Webhook] ✅ Checkout completed for user ${userId}, set to ${userTier} (status: ${subStatus}), onboarding marked complete`);
         break;
       }
 
@@ -114,14 +138,14 @@ export async function POST(req: NextRequest) {
         const customerId = subscription.customer as string;
 
         // Get user_id from customer
-        const { data: existingRecord } = await supabase
+        const { data: subExistingRecord, error: subRecordError } = await supabase
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single();
 
-        if (!existingRecord) {
-          console.error('No subscription record found for customer:', customerId);
+        if (subRecordError || !subExistingRecord) {
+          console.error('[Webhook] No subscription record found for customer:', customerId);
           break;
         }
 
@@ -132,7 +156,7 @@ export async function POST(req: NextRequest) {
           : null;
 
         // Update subscription status
-        await supabase
+        const { error: subStatusUpdateError } = await supabase
           .from('subscriptions')
           .update({
             stripe_subscription_id: subscription.id,
@@ -147,21 +171,30 @@ export async function POST(req: NextRequest) {
             cancel_at_period_end: subscription.cancel_at_period_end,
             updated_at: new Date().toISOString(),
           })
-          .eq('user_id', existingRecord.user_id)
+          .eq('user_id', subExistingRecord.user_id)
           .eq('stripe_customer_id', customerId);
+
+        if (subStatusUpdateError) {
+          console.error('[Webhook] Failed to update subscription status:', subStatusUpdateError.message);
+          break;
+        }
 
         // Update user_profiles tier if we determined one
         if (userTier) {
-          await supabase
+          const { error: tierUpdateError } = await supabase
             .from('user_profiles')
             .update({
               tier: userTier,
               ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
             })
-            .eq('id', existingRecord.user_id);
+            .eq('id', subExistingRecord.user_id);
+
+          if (tierUpdateError) {
+            console.error('[Webhook] Failed to update user tier:', tierUpdateError.message);
+          }
         }
 
-        console.log(`✅ Subscription ${event.type} for customer ${customerId}: ${subscription.status} -> tier: ${userTier}`);
+        console.log(`[Webhook] ✅ Subscription ${event.type} for customer ${customerId}: ${subscription.status} -> tier: ${userTier}`);
         break;
       }
 
@@ -170,19 +203,19 @@ export async function POST(req: NextRequest) {
         const customerId = subscription.customer as string;
 
         // Get user_id from customer
-        const { data: existingRecord } = await supabase
+        const { data: existingRecord, error: recordError } = await supabase
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single();
 
-        if (!existingRecord) {
-          console.error('No subscription record found for customer:', customerId);
+        if (recordError || !existingRecord) {
+          console.error('[Webhook] No subscription record found for customer:', customerId);
           break;
         }
 
         // Mark subscription as canceled
-        await supabase
+        const { error: cancelError } = await supabase
           .from('subscriptions')
           .update({
             status: 'canceled',
@@ -191,7 +224,12 @@ export async function POST(req: NextRequest) {
           .eq('user_id', existingRecord.user_id)
           .eq('stripe_customer_id', customerId);
 
-        console.log(`✅ Subscription deleted for customer ${customerId}`);
+        if (cancelError) {
+          console.error('[Webhook] Failed to mark subscription as canceled:', cancelError.message);
+          break;
+        }
+
+        console.log(`[Webhook] ✅ Subscription deleted for customer ${customerId}`);
         break;
       }
 
@@ -200,19 +238,19 @@ export async function POST(req: NextRequest) {
         const customerId = invoice.customer as string;
 
         // Get user_id from customer
-        const { data: existingRecord } = await supabase
+        const { data: existingRecord, error: recordError } = await supabase
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single();
 
-        if (!existingRecord) {
-          console.error('No subscription record found for customer:', customerId);
+        if (recordError || !existingRecord) {
+          console.error('[Webhook] No subscription record found for customer:', customerId);
           break;
         }
 
         // Mark subscription as past_due
-        await supabase
+        const { error: pastDueError } = await supabase
           .from('subscriptions')
           .update({
             status: 'past_due',
@@ -221,7 +259,12 @@ export async function POST(req: NextRequest) {
           .eq('user_id', existingRecord.user_id)
           .eq('stripe_customer_id', customerId);
 
-        console.log(`⚠️ Payment failed for customer ${customerId}`);
+        if (pastDueError) {
+          console.error('[Webhook] Failed to mark subscription as past_due:', pastDueError.message);
+          break;
+        }
+
+        console.log(`[Webhook] ⚠️ Payment failed for customer ${customerId}`);
         break;
       }
 

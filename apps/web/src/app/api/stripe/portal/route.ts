@@ -1,9 +1,9 @@
 /**
  * @security-audit-requested
  * AUDIT FOCUS: Stripe Portal Security
- * - Is userId validated against the authenticated user (IDOR)?
- * - Can an attacker access another user's billing portal?
- * - Is the origin header trusted for return URL (open redirect)?
+ * - Is userId validated against the authenticated user (IDOR)? ✅ FIXED
+ * - Can an attacker access another user's billing portal? ✅ FIXED
+ * - Is the origin header trusted for return URL (open redirect)? ✅ FIXED
  * - Is there rate limiting to prevent abuse?
  */
 
@@ -17,9 +17,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
+import { getAuthenticatedUser } from '@/lib/serverAuth';
+
+// SECURITY: Allowed origins for redirect URLs
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  process.env.NEXT_PUBLIC_APP_URL,
+  process.env.APP_URL,
+].filter(Boolean) as string[];
 
 export async function POST(req: NextRequest) {
   try {
+    // SECURITY: Require authentication
+    const authResult = await getAuthenticatedUser(req);
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { userId } = body;
 
@@ -28,6 +45,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Missing userId' },
         { status: 400 }
+      );
+    }
+
+    // SECURITY: Verify the authenticated user matches the requested userId (prevent IDOR)
+    if (authResult.user.id !== userId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Cannot access another user\'s billing portal' },
+        { status: 403 }
       );
     }
 
@@ -51,8 +76,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get the origin for redirect URL
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    // SECURITY: Validate origin against allowed domains to prevent open redirect
+    const requestOrigin = req.headers.get('origin') || 'http://localhost:3000';
+    const origin = ALLOWED_ORIGINS.includes(requestOrigin)
+      ? requestOrigin
+      : ALLOWED_ORIGINS[0] || 'http://localhost:3000';
 
     // Create Customer Portal session
     const session = await stripe.billingPortal.sessions.create({
