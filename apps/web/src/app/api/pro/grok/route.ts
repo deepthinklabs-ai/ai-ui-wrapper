@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Grok API proxy security
+ * - Is userId properly authenticated (not just passed in body)? ✅ FIXED
+ * - Can an attacker use another user's API key? ✅ FIXED - uses authenticated userId
+ * - Is the API key cleared from memory after use?
+ * - Are there injection attacks possible via messages/tools?
+ * - Can rate limiting be bypassed?
+ */
+
+/**
  * Grok (xAI) API Proxy (BYOK)
  *
  * This route allows authenticated users to use Grok models
@@ -18,11 +28,22 @@ import {
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+import { getAuthenticatedUser } from '@/lib/serverAuth';
 
 export async function POST(req: NextRequest) {
   try {
+    // SECURITY: Authenticate user from session token, not from request body
+    const { user, error: authError } = await getAuthenticatedUser(req);
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: authError || 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    const userId = user.id; // Use authenticated user ID, never trust client
+
     const body = await req.json();
-    const { userId, messages, model = 'grok-beta', unhinged = false, enableWebSearch = true } = body;
+    const { messages, model = 'grok-beta', unhinged = false, enableWebSearch = true } = body;
 
     // Debug logging
     console.log('[GROK API] Unhinged mode:', unhinged);
@@ -32,13 +53,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate required fields
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Missing userId' },
-        { status: 400 }
-      );
-    }
-
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
         { error: 'Missing messages array' },

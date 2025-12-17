@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: API key storage endpoint security
+ * - Is authentication properly enforced?
+ * - Can rate limiting be bypassed?
+ * - Is the userId properly validated (IDOR prevention)?
+ * - Are keys ever logged or leaked in error responses?
+ * - Is input validation sufficient?
+ */
+
+/**
  * BYOK Store API Route
  *
  * POST /api/byok/store
@@ -100,12 +110,12 @@ export async function POST(request: Request) {
       await updateUserKey(user.id, providerType, trimmedKey);
       console.log('[BYOK Store] Successfully stored key for user:', user.id);
     } catch (storeError) {
-      // Log full error details for debugging
+      // Log error details for debugging
+      // SECURITY: Only log message and stack, NOT full error object which may contain API keys
       const errorMessage = storeError instanceof Error ? storeError.message : 'Unknown error';
       const errorStack = storeError instanceof Error ? storeError.stack : '';
       console.error('[BYOK Store] Failed to store key:', errorMessage);
       console.error('[BYOK Store] Error stack:', errorStack);
-      console.error('[BYOK Store] Full error:', JSON.stringify(storeError, Object.getOwnPropertyNames(storeError as object), 2));
 
       return NextResponse.json(
         { error: 'Storage failed', message: 'Failed to store API key. Please try again.' },

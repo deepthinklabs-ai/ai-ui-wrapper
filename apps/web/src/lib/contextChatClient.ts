@@ -14,12 +14,14 @@ import { processFiles, formatFilesForMessage } from "./fileProcessor";
 /**
  * Sends a question about specific context to the LLM
  *
+ * SECURITY: Requires accessToken for authenticated API calls
+ *
  * @param question - The user's question
  * @param contextSections - The highlighted/selected text sections to provide context
  * @param threadMessages - Optional array of previous messages from the thread for additional context
  * @param files - Optional files to include with the question
  * @param userTier - The user's tier (free or pro)
- * @param userId - The user's ID (required for pro users)
+ * @param accessToken - The user's session access token (required)
  * @returns The LLM's response
  */
 export async function askContextQuestion(
@@ -28,7 +30,7 @@ export async function askContextQuestion(
   threadMessages?: { role: MessageRole; content: string }[],
   files?: File[],
   userTier?: UserTier,
-  userId?: string
+  accessToken?: string
 ): Promise<string> {
   // Process files if provided
   const processedFiles = files && files.length > 0 ? await processFiles(files) : [];
@@ -96,7 +98,7 @@ IMPORTANT: Provide your answer directly without showing your reasoning process, 
 
   const response = await sendUnifiedChatRequest(messages, {
     userTier,
-    userId,
+    accessToken,
   });
   return response.content;
 }

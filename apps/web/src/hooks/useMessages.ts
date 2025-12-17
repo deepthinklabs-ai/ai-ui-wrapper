@@ -25,7 +25,6 @@ type UseMessagesOptions = {
   onThreadTitleUpdated?: () => void;
   systemPromptAddition?: string;
   userTier?: 'trial' | 'pro' | 'expired' | 'pending';
-  userId?: string;
   enableWebSearch?: boolean;
   disableMCPTools?: boolean;
   gmailTools?: GmailToolConfig; // Gmail integration for Genesis Bots
@@ -319,10 +318,17 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
       // Log message counts only (not content for privacy)
       console.log('[Chat Request]', payloadMessages.length, 'messages');
 
+      // SECURITY: Get fresh access token from session for authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Authentication required. Please sign in.');
+      }
+
       // 5) Call unified AI client (routes to OpenAI or Claude based on selected model and user tier)
       const response = await sendUnifiedChatRequest(payloadMessages, {
         userTier: options?.userTier,
-        userId: options?.userId,
+        accessToken,
         tools: claudeTools,
         enableWebSearch: options?.enableWebSearch ?? true,
       });
@@ -387,7 +393,7 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
             ],
             {
               userTier: options?.userTier,
-              userId: options?.userId,
+              accessToken, // Reuse the access token from above
               tools: claudeTools,
               enableWebSearch: options?.enableWebSearch ?? true,
             }
@@ -514,7 +520,7 @@ DO NOT skip get_user - ALWAYS call it first when working with GitHub.`,
             // Generate a title based on the user's first message (use the original content without file additions)
             const newTitle = await generateThreadTitle(content, {
               userTier: options?.userTier,
-              userId: options?.userId,
+              accessToken, // Reuse access token from earlier in function
             });
 
             console.log("[Title Generation] Generated title:", newTitle);
@@ -580,9 +586,16 @@ Be thorough and ensure you capture information from the BEGINNING, MIDDLE, and E
       { role: "user", content: summaryPrompt },
     ];
 
+    // SECURITY: Get fresh access token from session for authentication
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      throw new Error('Authentication required. Please sign in.');
+    }
+
     const response = await sendUnifiedChatRequest(payloadMessages, {
       userTier: options?.userTier,
-      userId: options?.userId,
+      accessToken,
       enableWebSearch: options?.enableWebSearch ?? true,
     });
     return response.content;

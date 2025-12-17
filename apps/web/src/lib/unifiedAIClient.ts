@@ -42,12 +42,13 @@ export type UnifiedChatResponse = {
 
 /**
  * Send chat request via Pro API proxy (for Pro users)
+ * SECURITY: Uses Authorization header for authentication instead of userId in body
  */
 async function sendProChatRequest(
-  userId: string,
   messages: UnifiedChatMessage[],
   model: AIModel,
   provider: 'openai' | 'claude' | 'grok' | 'gemini',
+  accessToken: string,
   tools?: any
 ): Promise<UnifiedChatResponse> {
   const endpoint =
@@ -57,7 +58,6 @@ async function sendProChatRequest(
     '/api/pro/grok';
 
   const requestBody: any = {
-    userId,
     messages,
     model,
   };
@@ -67,9 +67,13 @@ async function sendProChatRequest(
     requestBody.tools = tools;
   }
 
+  // SECURITY: Send access token in Authorization header for server-side authentication
   const response = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
     body: JSON.stringify(requestBody),
   });
 
@@ -97,8 +101,11 @@ async function sendProChatRequest(
  * Send a chat request to the appropriate AI provider
  * All requests are routed through backend API proxy using corporate API keys.
  *
+ * SECURITY: Requires accessToken for server-side authentication.
+ * The server extracts the userId from the validated token, preventing IDOR attacks.
+ *
  * @param messages - Array of chat messages
- * @param options - Configuration options
+ * @param options - Configuration options (accessToken required)
  * @returns The AI's response text and token usage
  */
 export async function sendUnifiedChatRequest(
@@ -106,12 +113,12 @@ export async function sendUnifiedChatRequest(
   options?: {
     model?: AIModel;
     userTier?: UserTier;
-    userId?: string;
+    accessToken?: string;
     tools?: any;
     enableWebSearch?: boolean;
   }
 ): Promise<UnifiedChatResponse> {
-  const { model, userTier = 'trial', userId, tools } = options || {};
+  const { model, userTier = 'trial', accessToken, tools } = options || {};
   const selectedModel = model || getSelectedModel();
   const provider = getModelProvider(selectedModel);
 
@@ -120,11 +127,11 @@ export async function sendUnifiedChatRequest(
     throw new Error('Your trial has expired. Please subscribe to continue using the service.');
   }
 
-  // userId is required for all users
-  if (!userId) {
-    throw new Error('userId is required');
+  // SECURITY: accessToken is required for authenticated API calls
+  if (!accessToken) {
+    throw new Error('Authentication required. Please sign in.');
   }
 
   // All users (trial and pro) route through backend API proxy
-  return sendProChatRequest(userId, messages, selectedModel, provider, tools);
+  return sendProChatRequest(messages, selectedModel, provider, accessToken, tools);
 }

@@ -9,6 +9,7 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import { sendUnifiedChatRequest } from "@/lib/unifiedAIClient";
 import type { UserTier } from "./useUserTier";
 
@@ -17,7 +18,6 @@ type ConversionFormat = "markdown" | "json";
 type UseTextConversionOptions = {
   onTextConverted: (convertedText: string) => void;
   userTier?: UserTier;
-  userId?: string;
 };
 
 type UseTextConversionResult = {
@@ -30,7 +30,7 @@ type UseTextConversionResult = {
 export function useTextConversion(
   options: UseTextConversionOptions
 ): UseTextConversionResult {
-  const { onTextConverted, userTier, userId } = options;
+  const { onTextConverted, userTier } = options;
 
   const [convertingToMarkdown, setConvertingToMarkdown] = useState(false);
   const [convertingToJson, setConvertingToJson] = useState(false);
@@ -97,9 +97,16 @@ Now do the same for the user's text - parse it and output structured JSON.`;
     ];
 
     try {
+      // SECURITY: Get fresh access token from session for authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Authentication required. Please sign in.');
+      }
+
       const response = await sendUnifiedChatRequest(messages, {
         userTier,
-        userId,
+        accessToken,
       });
       onTextConverted(response.content);
     } catch (error) {

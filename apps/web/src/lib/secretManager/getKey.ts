@@ -1,4 +1,13 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: API key retrieval security
+ * - Is userId properly validated before key retrieval?
+ * - Can an attacker retrieve keys for other users?
+ * - Is this module properly restricted to server-side only?
+ * - Are there timing attacks possible?
+ */
+
+/**
  * Internal Key Retrieval for API Proxy Routes
  *
  * This module provides a secure way to retrieve API keys for use in

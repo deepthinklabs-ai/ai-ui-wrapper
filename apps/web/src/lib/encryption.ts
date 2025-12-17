@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Client-side encryption implementation
+ * - Is PBKDF2 iteration count sufficient (600000)? ✅ FIXED - Updated to OWASP recommendation
+ * - Is key derivation secure?
+ * - Are wrapped keys properly protected?
+ * - Is the recovery code system secure?
+ * - Can an attacker brute-force recovery codes?
+ * - Are there any key extraction vulnerabilities?
+ */
+
+/**
  * Client-Side Encryption Utility
  *
  * Provides AES-GCM encryption for conversation history.
@@ -9,7 +20,8 @@
 // Constants for encryption
 const ALGORITHM = 'AES-GCM';
 const KEY_LENGTH = 256;
-const PBKDF2_ITERATIONS = 100000;
+// SECURITY: OWASP recommends 600,000+ iterations for PBKDF2-HMAC-SHA256
+const PBKDF2_ITERATIONS = 600000;
 const SALT_LENGTH = 16;
 const IV_LENGTH = 12;
 

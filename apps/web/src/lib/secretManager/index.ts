@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Server-side API key storage in Google Secret Manager
+ * - Is the authentication flow secure (WIF + Service Account)?
+ * - Can unauthorized users access other users' keys?
+ * - Are keys properly isolated per user?
+ * - Is memory handling secure (key nullification)?
+ * - Are there any IDOR vulnerabilities in getUserSecretName?
+ */
+
+/**
  * Google Secret Manager Client for BYOK
  *
  * Manages user API keys securely in Google Cloud Secret Manager.
@@ -21,6 +31,7 @@ import { getVercelOidcToken } from '@vercel/functions/oidc';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
 // Provider types supported
 export type BYOKProvider = 'openai' | 'claude' | 'grok' | 'gemini';
@@ -76,11 +87,13 @@ async function getClient(): Promise<SecretManagerServiceClient> {
         throw new Error('OIDC token not available - are you running on Vercel?');
       }
 
-      console.log('[SecretManager] Got OIDC token, length:', oidcToken.length);
+      // SECURITY: Don't log token length - could aid attackers
+      console.log('[SecretManager] Got OIDC token');
 
       // Write token to temp file (required by google-auth-library)
-      const tokenPath = path.join(os.tmpdir(), `vercel-oidc-token-${Date.now()}.txt`);
-      fs.writeFileSync(tokenPath, oidcToken, 'utf-8');
+      // SECURITY: Use crypto.randomUUID() for unpredictable filename and restrictive permissions
+      const tokenPath = path.join(os.tmpdir(), `vercel-oidc-token-${crypto.randomUUID()}.txt`);
+      fs.writeFileSync(tokenPath, oidcToken, { encoding: 'utf-8', mode: 0o600 });
 
       const authClient = ExternalAccountClient.fromJSON({
         type: 'external_account',
