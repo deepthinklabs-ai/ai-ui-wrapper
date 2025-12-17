@@ -42,6 +42,9 @@ const GEMINI_MODEL_MAP: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  // Declare outside try so it can be cleared in catch/finally
+  let userApiKey: string | null = null;
+
   try {
     // SECURITY: Authenticate user from session token, not from request body
     const { user, error: authError } = await getAuthenticatedUser(req);
@@ -110,7 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     // BYOK: Get user's Gemini API key from Secret Manager
-    let userApiKey = await getProviderKey(userId, 'gemini');
+    userApiKey = await getProviderKey(userId, 'gemini');
     if (!userApiKey) {
       return NextResponse.json(
         {
@@ -246,6 +249,9 @@ export async function POST(req: NextRequest) {
       { headers: rateLimitHeaders }
     );
   } catch (error: any) {
+    // Security: Ensure API key is cleared even on error
+    userApiKey = null;
+
     console.error('Error in /api/pro/gemini:', error);
 
     // Handle Gemini API errors

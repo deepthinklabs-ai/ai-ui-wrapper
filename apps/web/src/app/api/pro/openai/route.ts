@@ -40,6 +40,9 @@ const SEARCH_ENABLED_MODELS: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  // Declare outside try so it can be cleared in catch/finally
+  let userApiKey: string | null = null;
+
   try {
     // SECURITY: Authenticate user from session token, not from request body
     const { user, error: authError } = await getAuthenticatedUser(req);
@@ -108,7 +111,7 @@ export async function POST(req: NextRequest) {
     }
 
     // BYOK: Get user's OpenAI API key from Secret Manager
-    let userApiKey = await getProviderKey(userId, 'openai');
+    userApiKey = await getProviderKey(userId, 'openai');
     if (!userApiKey) {
       return NextResponse.json(
         {
@@ -340,6 +343,9 @@ export async function POST(req: NextRequest) {
       { headers: rateLimitHeaders }
     );
   } catch (error: any) {
+    // Security: Ensure API key is cleared even on error
+    userApiKey = null;
+
     console.error('Error in /api/pro/openai:', error);
 
     // Handle OpenAI API errors
