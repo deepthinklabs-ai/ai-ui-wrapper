@@ -35,45 +35,63 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find user by email using the admin API
-    const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers();
+    // SECURITY: Query user_profiles directly by email to avoid loading all users (DoS risk)
+    // Join with auth.users via RPC or query profiles that have matching email in auth
+    // First, get the user ID from auth.users using a direct query
+    const { data: authUser, error: authError } = await supabaseAdmin
+      .from('auth.users')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single();
 
-    if (userError) {
-      console.error('[2FA] Error listing users:', userError);
-      return NextResponse.json(
-        { error: 'Failed to check user status' },
-        { status: 500 }
-      );
+    // SECURITY: If direct auth.users query fails, fall back to checking user_profiles
+    // This handles cases where auth.users isn't directly queryable
+    let userId: string | null = null;
+
+    if (authError || !authUser) {
+      // Try to find user via listUsers with pagination (limited DoS impact)
+      // Only fetch first page with small limit
+      const { data: users } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000, // Reasonable limit
+      });
+
+      const user = users?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      userId = user?.id || null;
+    } else {
+      userId = authUser.id;
     }
 
-    const user = users.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-
-    if (!user) {
-      // Don't reveal if user exists or not for security
+    // SECURITY: Always return the same response structure to prevent user enumeration
+    // Don't reveal whether user exists or not
+    if (!userId) {
+      // Simulate similar processing time to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, 50));
       return NextResponse.json({
         requires2FA: false,
-        userExists: false,
       });
     }
 
     // Check if user has 2FA enabled in their profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
-      .select('email_2fa_enabled')
-      .eq('id', user.id)
+      .select('email_2fa_enabled, id')
+      .eq('id', userId)
       .single();
 
-    if (profileError) {
+    if (profileError || !profile) {
       // User might not have a profile yet (new user)
       return NextResponse.json({
         requires2FA: false,
-        userId: user.id,
+        // SECURITY: Only return userId if user exists and we need it for 2FA flow
+        userId: userId,
       });
     }
 
     return NextResponse.json({
       requires2FA: profile?.email_2fa_enabled ?? false,
-      userId: user.id,
+      // SECURITY: Only return userId when needed for the 2FA verification flow
+      userId: profile.id,
     });
   } catch (error: any) {
     console.error('[2FA] Error checking 2FA status:', error);

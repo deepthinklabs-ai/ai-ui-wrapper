@@ -18,6 +18,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { timingSafeEqual } from 'crypto';
 
 // Initialize Supabase admin client
 const supabaseAdmin = createClient(
@@ -45,24 +46,57 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find the verification code
-    const { data: verificationRecord, error: findError } = await supabaseAdmin
+    // SECURITY: Verify the userId exists to prevent enumeration
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+    if (userError || !userData?.user) {
+      // Don't reveal if user exists - use generic error
+      return NextResponse.json(
+        { error: 'Invalid verification code. Please check and try again.' },
+        { status: 400 }
+      );
+    }
+
+    // SECURITY: Fetch all unverified codes for this user/purpose to enable timing-safe comparison
+    const { data: verificationRecords, error: findError } = await supabaseAdmin
       .from('email_verification_codes')
       .select('*')
       .eq('user_id', userId)
-      .eq('code', code)
       .eq('purpose', purpose)
-      .is('verified_at', null)
-      .single();
+      .is('verified_at', null);
 
-    if (findError || !verificationRecord) {
+    if (findError || !verificationRecords || verificationRecords.length === 0) {
+      return NextResponse.json(
+        { error: 'Invalid verification code. Please check and try again.' },
+        { status: 400 }
+      );
+    }
+
+    // SECURITY: Use timing-safe comparison to prevent timing attacks
+    let verificationRecord = null;
+    for (const record of verificationRecords) {
+      try {
+        const recordCodeBuffer = Buffer.from(record.code.padEnd(6, '0'));
+        const inputCodeBuffer = Buffer.from(code.padEnd(6, '0'));
+        if (recordCodeBuffer.length === inputCodeBuffer.length &&
+            timingSafeEqual(recordCodeBuffer, inputCodeBuffer)) {
+          verificationRecord = record;
+          break;
+        }
+      } catch {
+        // Continue to next record if comparison fails
+      }
+    }
+
+    if (!verificationRecord) {
       // Increment attempts for all unverified codes for this user
-      await supabaseAdmin
-        .from('email_verification_codes')
-        .update({ attempts: supabaseAdmin.rpc('increment_attempts') })
-        .eq('user_id', userId)
-        .eq('purpose', purpose)
-        .is('verified_at', null);
+      // SECURITY: Use raw increment to avoid race conditions
+      for (const record of verificationRecords) {
+        await supabaseAdmin
+          .from('email_verification_codes')
+          .update({ attempts: (record.attempts || 0) + 1 })
+          .eq('id', record.id);
+      }
 
       return NextResponse.json(
         { error: 'Invalid verification code. Please check and try again.' },

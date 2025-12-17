@@ -56,16 +56,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify state parameter (CSRF protection)
-    console.log('[OAuth Callback] Verifying state:', state);
+    // SECURITY: Atomically claim and delete state to prevent TOCTOU race conditions
+    // This ensures each state can only be consumed once
+    console.log('[OAuth Callback] Verifying and claiming state:', state);
     const { data: stateData, error: stateError } = await supabase
       .from('oauth_states')
-      .select('*')
+      .delete()
       .eq('state', state)
+      .select('*')
       .single();
 
     if (stateError || !stateData) {
-      console.error('[OAuth Callback] State verification failed:', stateError?.message || 'State not found');
+      console.error('[OAuth Callback] State verification failed:', stateError?.message || 'State not found or already used');
       return NextResponse.redirect(
         `${getAppUrl()}/canvas?oauth_error=invalid_state`
       );
@@ -75,16 +77,13 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(stateData.expires_at);
     if (expiresAt < new Date()) {
       console.error('[OAuth Callback] State expired');
-      await supabase.from('oauth_states').delete().eq('state', state);
+      // State already deleted above, no need to delete again
       return NextResponse.redirect(
         `${getAppUrl()}/canvas?oauth_error=expired_state`
       );
     }
 
     const userId = stateData.user_id;
-
-    // Delete used state
-    await supabase.from('oauth_states').delete().eq('state', state);
 
     // Exchange authorization code for tokens
     const tokens = await exchangeCodeForTokens(code);

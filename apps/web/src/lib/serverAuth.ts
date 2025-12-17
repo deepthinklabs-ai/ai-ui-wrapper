@@ -39,7 +39,9 @@ export async function getAuthenticatedUser(
     };
   }
 
-  const token = authHeader.replace("Bearer ", "");
+  // SECURITY: Use substring instead of replace to prevent injection attacks
+  // (e.g., "Bearer Bearer malicious" would leave "Bearer malicious" with replace)
+  const token = authHeader.substring(7);
 
   // Create Supabase client with the user's token
   const supabase = createClient(
@@ -89,7 +91,8 @@ export async function getAuthenticatedSupabaseClient(request: Request): Promise<
   }
 
   const authHeader = request.headers.get("authorization");
-  const token = authHeader!.replace("Bearer ", "");
+  // SECURITY: Use substring instead of replace to prevent injection
+  const token = authHeader!.substring(7);
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -5,15 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { revokeGoogleToken } from '@/lib/googleOAuth';
-import { getOAuthConnection, deleteOAuthConnection } from '@/lib/googleTokenStorage';
-import CryptoJS from 'crypto-js';
-
-const ENCRYPTION_KEY = process.env.OAUTH_ENCRYPTION_KEY!;
-
-function decryptToken(encryptedToken: string): string {
-  const bytes = CryptoJS.AES.decrypt(encryptedToken, ENCRYPTION_KEY);
-  return bytes.toString(CryptoJS.enc.Utf8);
-}
+import { getOAuthConnection, deleteOAuthConnection, decryptToken } from '@/lib/googleTokenStorage';
 
 export async function POST(request: NextRequest) {
   try {

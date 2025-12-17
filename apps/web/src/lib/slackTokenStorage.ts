@@ -3,8 +3,8 @@
  * Handles secure encryption, storage, and retrieval of Slack bot tokens
  */
 
-import CryptoJS from 'crypto-js';
 import { createClient } from '@supabase/supabase-js';
+import { randomBytes, pbkdf2Sync, createCipheriv, createDecipheriv } from 'crypto';
 
 // Server-side Supabase client
 const getSupabaseAdmin = () => {
@@ -20,19 +20,68 @@ if (!ENCRYPTION_KEY) {
   throw new Error('OAUTH_ENCRYPTION_KEY environment variable is required');
 }
 
+// SECURITY: Constants for AES-256-GCM encryption
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 12; // 96 bits for GCM
+const SALT_LENGTH = 32;
+const KEY_LENGTH = 32; // 256 bits
+const AUTH_TAG_LENGTH = 16;
+const PBKDF2_ITERATIONS = 100000;
+
 /**
- * Encrypt a token using AES-256
+ * Derive encryption key using PBKDF2
+ * SECURITY: Proper key derivation prevents weak key attacks
  */
-function encryptToken(token: string): string {
-  return CryptoJS.AES.encrypt(token, ENCRYPTION_KEY).toString();
+function deriveKey(salt: Buffer): Buffer {
+  return pbkdf2Sync(ENCRYPTION_KEY, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
 }
 
 /**
- * Decrypt a token
+ * Encrypt a token using AES-256-GCM with proper key derivation
+ * SECURITY: Uses authenticated encryption to prevent tampering
+ * Format: base64(salt + iv + authTag + ciphertext)
+ */
+function encryptToken(token: string): string {
+  const salt = randomBytes(SALT_LENGTH);
+  const iv = randomBytes(IV_LENGTH);
+  const key = deriveKey(salt);
+
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(token, 'utf8'),
+    cipher.final()
+  ]);
+  const authTag = cipher.getAuthTag();
+
+  // Combine salt + iv + authTag + ciphertext
+  const combined = Buffer.concat([salt, iv, authTag, encrypted]);
+  return combined.toString('base64');
+}
+
+/**
+ * Decrypt a token using AES-256-GCM
+ * SECURITY: Verifies authenticity before decryption
  */
 function decryptToken(encryptedToken: string): string {
-  const bytes = CryptoJS.AES.decrypt(encryptedToken, ENCRYPTION_KEY);
-  return bytes.toString(CryptoJS.enc.Utf8);
+  const combined = Buffer.from(encryptedToken, 'base64');
+
+  // Extract components
+  const salt = combined.subarray(0, SALT_LENGTH);
+  const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+  const authTag = combined.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
+  const ciphertext = combined.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
+
+  const key = deriveKey(salt);
+
+  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(authTag);
+
+  const decrypted = Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final()
+  ]);
+
+  return decrypted.toString('utf8');
 }
 
 export type SlackOAuthConnection = {
