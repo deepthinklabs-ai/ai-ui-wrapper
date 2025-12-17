@@ -63,7 +63,9 @@ export async function POST(req: NextRequest) {
 
     // SECURITY: Track start time to apply consistent delay at end
     const startTime = Date.now();
-    const MIN_RESPONSE_TIME = 150; // Minimum response time in ms to mask timing differences
+    // Use 300ms target to account for database query variability
+    // This ensures timing is consistent even when profile queries take 100-200ms
+    const TARGET_RESPONSE_TIME = 300;
 
     // SECURITY: Always return the same response structure to prevent user enumeration
     // Don't reveal whether user exists or not
@@ -80,11 +82,14 @@ export async function POST(req: NextRequest) {
       requires2FA = profile?.email_2fa_enabled ?? false;
     }
 
-    // SECURITY: Apply consistent timing delay to all responses to prevent timing attacks
-    // This masks the difference between "user exists" and "user doesn't exist" paths
+    // SECURITY: Ensure all responses take at least TARGET_RESPONSE_TIME
+    // This masks timing differences between fast (user not found) and slow (user found) paths
     const elapsed = Date.now() - startTime;
-    if (elapsed < MIN_RESPONSE_TIME) {
-      await new Promise(resolve => setTimeout(resolve, MIN_RESPONSE_TIME - elapsed));
+    if (elapsed < TARGET_RESPONSE_TIME) {
+      await new Promise(resolve => setTimeout(resolve, TARGET_RESPONSE_TIME - elapsed));
+    } else {
+      // Query took longer than target - log for monitoring but don't reveal timing
+      console.warn(`[2FA] Query exceeded target time: ${elapsed}ms`);
     }
 
     return NextResponse.json({
