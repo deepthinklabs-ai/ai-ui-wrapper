@@ -1,4 +1,17 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: MCP Stdio Proxy Security (CRITICAL - executes shell commands)
+ * - Can command injection bypass the whitelist validation?
+ * - Are environment variables properly sanitized (env poisoning)?
+ * - Can users access other users' connections (cross-user access)?
+ * - Is the in-memory connection store vulnerable to DoS?
+ * - Are there any TOCTOU issues between validation and execution?
+ * - Can malicious tool arguments cause harm (path traversal, SSRF)?
+ * - Is rate limiting sufficient for expensive operations?
+ * - Are error messages leaking sensitive information?
+ */
+
+/**
  * MCP Stdio Proxy API Route
  *
  * Provides a backend proxy for stdio-based MCP servers.

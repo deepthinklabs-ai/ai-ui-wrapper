@@ -1,4 +1,16 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: MCP Command Validation (CRITICAL - shell execution gateway)
+ * - Can the whitelist be bypassed via argument manipulation?
+ * - Is the shell metacharacter filtering complete (all shells)?
+ * - Can path traversal bypass the path checks (encoding, symlinks)?
+ * - Are there Unicode/encoding bypasses for validation?
+ * - Is the package whitelist sufficient (no dangerous packages)?
+ * - Can env var sanitization be bypassed (null bytes, special chars)?
+ * - Are the allowed env vars per server type correct?
+ */
+
+/**
  * MCP Command Validator
  *
  * SECURITY: Validates and sanitizes MCP server commands to prevent command injection.

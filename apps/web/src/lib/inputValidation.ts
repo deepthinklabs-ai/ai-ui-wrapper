@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Input Validation Security
+ * - Are the regex patterns correct and complete for each token type?
+ * - Can validation be bypassed with Unicode or encoding tricks?
+ * - Is the sanitization removing all dangerous characters?
+ * - Are there any ReDoS (regex denial of service) vulnerabilities?
+ * - Should validation be stricter (length limits, character sets)?
+ */
+
+/**
  * Input Validation for API Keys and Credentials
  *
  * Validates format of API keys before storing/using them
