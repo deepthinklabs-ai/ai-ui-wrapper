@@ -216,12 +216,14 @@ export async function POST(req: NextRequest) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.error?.message || response.statusText;
 
-      // Log detailed error for debugging
+      // Log error details for debugging
+      // SECURITY: Only log non-sensitive fields, not user message content which may contain PII
       console.error('Grok API Error:', {
         status: response.status,
         statusText: response.statusText,
         errorData,
-        requestBody: JSON.stringify(requestBody, null, 2),
+        model: requestBody.model,
+        messageCount: requestBody.messages?.length,
       });
 
       if (response.status === 401) {

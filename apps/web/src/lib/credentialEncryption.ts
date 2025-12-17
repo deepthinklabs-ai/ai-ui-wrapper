@@ -237,25 +237,29 @@ export function validateEncryptionKey(): {
 }
 
 /**
- * Attempt to wipe sensitive data from memory
- * Use this after decryption to minimize exposure
+ * Clear references to sensitive data (defense-in-depth measure)
  *
- * SECURITY LIMITATION: JavaScript strings are immutable. This function
- * creates new strings rather than overwriting the original data in memory.
- * The original sensitive strings remain in memory until garbage collected.
- * This is a defense-in-depth measure, not a guarantee of secure wiping.
- * For true memory security, consider using Node.js Buffer objects which
- * support .fill(0) for actual memory overwriting.
+ * IMPORTANT: This does NOT securely wipe memory!
+ *
+ * JavaScript strings are immutable - this function only:
+ * - Overwrites object property references with dummy strings
+ * - Deletes the properties
+ * - Allows the original data to be garbage collected sooner
+ *
+ * The original sensitive strings remain in memory until GC runs.
+ * Use this as one layer of defense, not as a security guarantee.
+ *
+ * For actual memory wiping, use Node.js Buffer objects with .fill(0).
  */
-export function wipeSensitiveData(data: any): void {
+export function clearSensitiveDataReferences(data: any): void {
   if (typeof data === "object" && data !== null) {
     for (const key in data) {
       if (typeof data[key] === "string") {
-        // Overwrite string data (note: creates new string, see limitation above)
+        // Replace with dummy string and delete reference
         data[key] = "0".repeat(data[key].length);
         delete data[key];
       } else if (typeof data[key] === "object") {
-        wipeSensitiveData(data[key]);
+        clearSensitiveDataReferences(data[key]);
       }
     }
   }
