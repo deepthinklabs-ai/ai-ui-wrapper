@@ -31,6 +31,9 @@ import { getProviderKey } from '@/lib/secretManager/getKey';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
 
 export async function POST(req: NextRequest) {
+  // Declare outside try so it can be cleared in catch/finally
+  let userApiKey: string | null = null;
+
   try {
     // SECURITY: Authenticate user from session token, not from request body
     const { user, error: authError } = await getAuthenticatedUser(req);
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
     }
 
     // BYOK: Get user's Grok API key from Secret Manager
-    let userApiKey = await getProviderKey(userId, 'grok');
+    userApiKey = await getProviderKey(userId, 'grok');
     if (!userApiKey) {
       return NextResponse.json(
         {
@@ -284,6 +287,9 @@ export async function POST(req: NextRequest) {
       { headers: rateLimitHeaders }
     );
   } catch (error: any) {
+    // Security: Ensure API key is cleared even on error
+    userApiKey = null;
+
     console.error('Error in /api/pro/grok:', error);
 
     // Handle Grok API errors
