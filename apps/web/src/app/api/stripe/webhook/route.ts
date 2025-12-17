@@ -108,7 +108,11 @@ export async function POST(req: NextRequest) {
 
         if (subUpdateError) {
           console.error('[Webhook] Failed to update subscription:', subUpdateError.message);
-          break;
+          // Return 500 to trigger Stripe retry for transient DB failures
+          return NextResponse.json(
+            { error: 'Database update failed' },
+            { status: 500 }
+          );
         }
 
         // Update user_profiles tier and mark onboarding as complete
@@ -125,7 +129,11 @@ export async function POST(req: NextRequest) {
 
         if (profileUpdateError) {
           console.error('[Webhook] Failed to update user profile:', profileUpdateError.message);
-          // Note: Subscription was updated but profile failed - may need manual intervention
+          // Return 500 to trigger Stripe retry - critical that profile is updated
+          return NextResponse.json(
+            { error: 'Profile update failed' },
+            { status: 500 }
+          );
         }
 
         console.log(`[Webhook] ✅ Checkout completed for user ${userId}, set to ${userTier} (status: ${subStatus}), onboarding marked complete`);
@@ -176,7 +184,11 @@ export async function POST(req: NextRequest) {
 
         if (subStatusUpdateError) {
           console.error('[Webhook] Failed to update subscription status:', subStatusUpdateError.message);
-          break;
+          // Return 500 to trigger Stripe retry for transient DB failures
+          return NextResponse.json(
+            { error: 'Database update failed' },
+            { status: 500 }
+          );
         }
 
         // Update user_profiles tier if we determined one
@@ -191,6 +203,11 @@ export async function POST(req: NextRequest) {
 
           if (tierUpdateError) {
             console.error('[Webhook] Failed to update user tier:', tierUpdateError.message);
+            // Return 500 to trigger Stripe retry
+            return NextResponse.json(
+              { error: 'Tier update failed' },
+              { status: 500 }
+            );
           }
         }
 
@@ -226,7 +243,11 @@ export async function POST(req: NextRequest) {
 
         if (cancelError) {
           console.error('[Webhook] Failed to mark subscription as canceled:', cancelError.message);
-          break;
+          // Return 500 to trigger Stripe retry for transient DB failures
+          return NextResponse.json(
+            { error: 'Database update failed' },
+            { status: 500 }
+          );
         }
 
         console.log(`[Webhook] ✅ Subscription deleted for customer ${customerId}`);
@@ -261,7 +282,11 @@ export async function POST(req: NextRequest) {
 
         if (pastDueError) {
           console.error('[Webhook] Failed to mark subscription as past_due:', pastDueError.message);
-          break;
+          // Return 500 to trigger Stripe retry for transient DB failures
+          return NextResponse.json(
+            { error: 'Database update failed' },
+            { status: 500 }
+          );
         }
 
         console.log(`[Webhook] ⚠️ Payment failed for customer ${customerId}`);

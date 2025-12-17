@@ -163,10 +163,14 @@ export async function POST(req: NextRequest) {
     }
 
     // SECURITY: Validate origin against allowed domains to prevent open redirect
-    const requestOrigin = req.headers.get('origin') || 'http://localhost:3000';
-    const origin = ALLOWED_ORIGINS.includes(requestOrigin)
-      ? requestOrigin
-      : ALLOWED_ORIGINS[0] || 'http://localhost:3000';
+    const requestOrigin = req.headers.get('origin');
+    if (!requestOrigin || !ALLOWED_ORIGINS.includes(requestOrigin)) {
+      return NextResponse.json(
+        { error: 'Invalid or missing origin' },
+        { status: 403 }
+      );
+    }
+    const origin = requestOrigin;
 
     // Create Checkout session
     const session = await stripe.checkout.sessions.create({
