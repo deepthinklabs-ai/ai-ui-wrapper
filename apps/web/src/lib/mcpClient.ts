@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: MCP Client Manager Security
+ * - Can SSE URLs be manipulated for SSRF attacks?
+ * - Is the auth token properly included in all requests?
+ * - Can connection state be manipulated by other users?
+ * - Are tool arguments sanitized before execution?
+ * - Can resource URIs cause path traversal or SSRF?
+ * - Is error information leaking sensitive data?
+ */
+
+/**
  * MCP Client Manager
  *
  * Manages connections to MCP servers and provides tool execution capabilities.

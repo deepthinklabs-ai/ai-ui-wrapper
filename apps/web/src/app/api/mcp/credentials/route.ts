@@ -1,4 +1,16 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: MCP Credentials API Security
+ * - Is authentication properly enforced on all routes?
+ * - Can users access/modify other users' credentials (IDOR)?
+ * - Is rate limiting sufficient to prevent credential stuffing?
+ * - Are decrypted credentials exposed in logs or error messages?
+ * - Is input validation sufficient (serverName, serverId, config)?
+ * - Are there any SQL injection vectors in the queries?
+ * - Is the encryption/decryption error handling secure?
+ */
+
+/**
  * MCP Credentials API
  *
  * SECURITY: Phase 1 - Encrypted credential storage
