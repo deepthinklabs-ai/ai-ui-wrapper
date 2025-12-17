@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: 2FA code generation and delivery
+ * - Is the verification code cryptographically random (not Math.random)?
+ * - Can the rate limiting be bypassed?
+ * - Is userId authenticated or just passed from client (IDOR risk)?
+ * - Can an attacker enumerate valid emails?
+ * - Is the code leaked in logs or responses?
+ * - Is the email content safe from injection?
+ */
+
+/**
  * Send Email Verification Code API
  *
  * Generates a 6-digit code and sends it to the user's email.
@@ -8,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { randomInt } from 'crypto';
 
 // Initialize Supabase admin client
 const supabaseAdmin = createClient(
@@ -18,9 +30,9 @@ const supabaseAdmin = createClient(
 // Initialize Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Generate a 6-digit verification code
+// SECURITY: Generate a cryptographically secure 6-digit verification code
 function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
 }
 
 export async function POST(req: NextRequest) {
@@ -31,6 +43,27 @@ export async function POST(req: NextRequest) {
     if (!userId || !email) {
       return NextResponse.json(
         { error: 'Missing userId or email' },
+        { status: 400 }
+      );
+    }
+
+    // SECURITY: Verify the userId exists and the email matches
+    // This prevents IDOR attacks where an attacker could spam arbitrary emails
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+    if (userError || !userData?.user) {
+      // Don't reveal if user exists - use generic error
+      return NextResponse.json(
+        { error: 'Unable to send verification code' },
+        { status: 400 }
+      );
+    }
+
+    // Verify the email matches the user's actual email
+    if (userData.user.email?.toLowerCase() !== email.toLowerCase()) {
+      // Don't reveal the mismatch - use generic error
+      return NextResponse.json(
+        { error: 'Unable to send verification code' },
         { status: 400 }
       );
     }
@@ -130,7 +163,10 @@ export async function POST(req: NextRequest) {
       console.log(`[2FA] Email sent to ${email}, messageId: ${emailData?.id}`);
     }
 
-    console.log(`[2FA] Verification code for ${email}: ${code}`);
+    // SECURITY: Never log verification codes in production
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[2FA] Verification code for ${email}: ${code}`);
+    }
 
     return NextResponse.json({
       success: true,
