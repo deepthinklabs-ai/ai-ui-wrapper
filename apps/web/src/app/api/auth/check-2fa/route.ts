@@ -62,36 +62,34 @@ export async function POST(req: NextRequest) {
       userId = authUser.id;
     }
 
+    // SECURITY: Track start time to apply consistent delay at end
+    const startTime = Date.now();
+    const MIN_RESPONSE_TIME = 150; // Minimum response time in ms to mask timing differences
+
     // SECURITY: Always return the same response structure to prevent user enumeration
     // Don't reveal whether user exists or not
-    if (!userId) {
-      // Simulate similar processing time to prevent timing attacks
-      await new Promise(resolve => setTimeout(resolve, 50));
-      return NextResponse.json({
-        requires2FA: false,
-      });
+    let requires2FA = false;
+
+    if (userId) {
+      // Check if user has 2FA enabled in their profile
+      const { data: profile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('email_2fa_enabled')
+        .eq('id', userId)
+        .single();
+
+      requires2FA = profile?.email_2fa_enabled ?? false;
     }
 
-    // Check if user has 2FA enabled in their profile
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('email_2fa_enabled, id')
-      .eq('id', userId)
-      .single();
-
-    if (profileError || !profile) {
-      // User might not have a profile yet (new user)
-      return NextResponse.json({
-        requires2FA: false,
-        // SECURITY: Only return userId if user exists and we need it for 2FA flow
-        userId: userId,
-      });
+    // SECURITY: Apply consistent timing delay to all responses to prevent timing attacks
+    // This masks the difference between "user exists" and "user doesn't exist" paths
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_RESPONSE_TIME) {
+      await new Promise(resolve => setTimeout(resolve, MIN_RESPONSE_TIME - elapsed));
     }
 
     return NextResponse.json({
-      requires2FA: profile?.email_2fa_enabled ?? false,
-      // SECURITY: Only return userId when needed for the 2FA verification flow
-      userId: profile.id,
+      requires2FA,
     });
   } catch (error: any) {
     console.error('[2FA] Error checking 2FA status:', error);

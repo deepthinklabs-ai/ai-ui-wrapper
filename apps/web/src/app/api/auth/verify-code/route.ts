@@ -73,15 +73,20 @@ export async function POST(req: NextRequest) {
     }
 
     // SECURITY: Use timing-safe comparison to prevent timing attacks
+    // IMPORTANT: Must iterate ALL records to maintain constant time (no early break)
     let verificationRecord = null;
+    let matchFound = false;
     for (const record of verificationRecords) {
       try {
         const recordCodeBuffer = Buffer.from(record.code.padEnd(6, '0'));
         const inputCodeBuffer = Buffer.from(code.padEnd(6, '0'));
         if (recordCodeBuffer.length === inputCodeBuffer.length &&
             timingSafeEqual(recordCodeBuffer, inputCodeBuffer)) {
-          verificationRecord = record;
-          break;
+          // Only capture the first match, but continue iterating for constant time
+          if (!matchFound) {
+            verificationRecord = record;
+            matchFound = true;
+          }
         }
       } catch {
         // Continue to next record if comparison fails
