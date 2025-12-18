@@ -24,7 +24,7 @@
 
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
-import { strictRatelimit, rateLimitErrorResponse } from '@/lib/ratelimit';
+import { strictRatelimitAsync, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { updateUserKey, type BYOKProvider } from '@/lib/secretManager';
 import { validateKeyFormat, testApiKey } from '@/lib/secretManager/validation';
 import { auditApiKey, auditSecurity } from '@/lib/auditLog';
@@ -42,9 +42,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Rate limit (strict: 3 per minute)
+    // 2. Rate limit (strict: 3 per minute) - uses Redis when available
     const rateLimitKey = `byok_store_${user.id}`;
-    const rateLimitResult = strictRatelimit(rateLimitKey);
+    const rateLimitResult = await strictRatelimitAsync(rateLimitKey);
     if (!rateLimitResult.success) {
       // Audit: Rate limit exceeded
       await auditSecurity.rateLimitExceeded(user.id, '/api/byok/store', {

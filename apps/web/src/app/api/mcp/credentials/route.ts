@@ -30,7 +30,7 @@ import {
   encryptMCPConfig,
   decryptMCPConfig,
 } from "@/lib/credentialEncryption";
-import { standardRatelimit, rateLimitErrorResponse } from "@/lib/ratelimit";
+import { lenientRatelimitAsync, standardRatelimitAsync, rateLimitErrorResponse } from "@/lib/ratelimit";
 import {
   validateMCPServerConfig,
   validateServerName,
@@ -74,6 +74,15 @@ export async function GET(request: Request) {
     return NextResponse.json(
       { error: authError || "Unauthorized - Authentication required" },
       { status: 401 }
+    );
+  }
+
+  // SECURITY: Rate limiting - 30 requests per 10 seconds for read operations
+  const rateLimitResult = await lenientRatelimitAsync(`mcp_credentials_get_${user.id}`);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      rateLimitErrorResponse(rateLimitResult),
+      { status: 429 }
     );
   }
 
@@ -155,8 +164,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // SECURITY: Rate limiting - 10 requests per 10 seconds
-  const rateLimitResult = standardRatelimit(`mcp_credentials_post_${user.id}`);
+  // SECURITY: Rate limiting - 10 requests per 10 seconds - uses Redis when available
+  const rateLimitResult = await standardRatelimitAsync(`mcp_credentials_post_${user.id}`);
   if (!rateLimitResult.success) {
     return NextResponse.json(
       rateLimitErrorResponse(rateLimitResult),
@@ -272,6 +281,15 @@ export async function PUT(request: Request) {
     );
   }
 
+  // SECURITY: Rate limiting - 10 requests per 10 seconds for modifications
+  const rateLimitResult = await standardRatelimitAsync(`mcp_credentials_put_${user.id}`);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      rateLimitErrorResponse(rateLimitResult),
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { serverId, config, enabled } = body;
@@ -333,6 +351,15 @@ export async function DELETE(request: Request) {
     return NextResponse.json(
       { error: authError || "Unauthorized - Authentication required" },
       { status: 401 }
+    );
+  }
+
+  // SECURITY: Rate limiting - 10 requests per 10 seconds for modifications
+  const rateLimitResult = await standardRatelimitAsync(`mcp_credentials_delete_${user.id}`);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      rateLimitErrorResponse(rateLimitResult),
+      { status: 429 }
     );
   }
 

@@ -11,7 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { getAuthenticatedSupabaseClient } from "@/lib/serverAuth";
-import { standardRatelimit } from "@/lib/ratelimit";
+import { standardRatelimitAsync } from "@/lib/ratelimit";
 import { headers } from "next/headers";
 import { apiError, APIErrors, handleAPIError } from "@/lib/apiErrors";
 
@@ -53,8 +53,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Rate limiting
-    const rateLimitResult = standardRatelimit(`encryption-get-${user.id}`);
+    // Rate limiting - uses Redis when available
+    const rateLimitResult = await standardRatelimitAsync(`encryption-get-${user.id}`);
     if (!rateLimitResult.success) {
       const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
       return apiError('RATE_LIMITED', `Rate limit exceeded. Retry after ${retryAfter}s`);
@@ -119,9 +119,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Rate limiting (stricter for setup)
+    // Rate limiting (stricter for setup) - uses Redis when available
     const headersList = await headers();
-    const rateLimitResult = standardRatelimit(`encryption-setup-${user.id}`);
+    const rateLimitResult = await standardRatelimitAsync(`encryption-setup-${user.id}`);
     if (!rateLimitResult.success) {
       const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
       return apiError('RATE_LIMITED', `Rate limit exceeded. Retry after ${retryAfter}s`);
@@ -192,9 +192,9 @@ export async function PUT(request: Request) {
   }
 
   try {
-    // Rate limiting
+    // Rate limiting - uses Redis when available
     const headersList = await headers();
-    const rateLimitResult = standardRatelimit(`encryption-update-${user.id}`);
+    const rateLimitResult = await standardRatelimitAsync(`encryption-update-${user.id}`);
     if (!rateLimitResult.success) {
       const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
       return apiError('RATE_LIMITED', `Rate limit exceeded. Retry after ${retryAfter}s`);

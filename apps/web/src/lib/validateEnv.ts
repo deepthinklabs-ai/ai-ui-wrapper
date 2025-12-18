@@ -177,6 +177,33 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
       },
     ],
   },
+  redis: {
+    name: "Upstash Redis",
+    description: "Distributed rate limiting and caching",
+    vars: [
+      {
+        name: "UPSTASH_REDIS_REST_URL",
+        required: false,
+        description: "Upstash Redis REST API URL",
+        // SECURITY: Strict URL validation to prevent bypass attacks
+        validator: (v) => {
+          try {
+            const url = new URL(v);
+            return url.protocol === "https:" &&
+              (url.hostname === "upstash.io" || url.hostname.endsWith(".upstash.io"));
+          } catch {
+            return false;
+          }
+        },
+      },
+      {
+        name: "UPSTASH_REDIS_REST_TOKEN",
+        required: false,
+        description: "Upstash Redis REST API token",
+        sensitive: true,
+      },
+    ],
+  },
   staging: {
     name: "Staging Protection",
     description: "Password protection for staging environments",
