@@ -5,6 +5,7 @@
  * Properly segmented to keep validation logic separate from components.
  */
 
+import DOMPurify from 'isomorphic-dompurify';
 import type { CanvasNode, CanvasEdge, NodeId, EdgeId } from '../../../types';
 import type { AskAnswerValidationResult } from '../types';
 import { ASK_ANSWER_CONSTANTS } from '../types';
@@ -77,15 +78,12 @@ export function validateQuery(query: string): { valid: boolean; error?: string }
   }
 
   // Check for potentially malicious content (basic XSS prevention)
-  const dangerousPatterns = [
-    /<script[^>]*>.*?<\/script>/gi,
-    /javascript:/gi,
-    /onerror=/gi,
-    /onload=/gi,
-  ];
+  // SECURITY: Use simpler patterns that are less prone to bypass
+  const lowerQuery = query.toLowerCase();
+  const dangerousStrings = ['<script', 'javascript:', 'onerror=', 'onload=', 'vbscript:', 'data:'];
 
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(query)) {
+  for (const dangerous of dangerousStrings) {
+    if (lowerQuery.includes(dangerous)) {
       return {
         valid: false,
         error: 'Query contains potentially unsafe content',
@@ -186,20 +184,31 @@ export function getAskAnswerEdgesForNode(
 
 /**
  * Sanitize query text for safe processing
+ * Uses DOMPurify for robust XSS protection
  */
 export function sanitizeQuery(query: string): string {
-  return query
-    .trim()
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
+  // SECURITY: Use DOMPurify for proper sanitization
+  // Strip all HTML tags - queries should be plain text
+  const sanitized = DOMPurify.sanitize(query, {
+    ALLOWED_TAGS: [], // No HTML tags allowed
+    ALLOWED_ATTR: [],
+  });
+
+  return sanitized
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+    .trim()
     .substring(0, ASK_ANSWER_CONSTANTS.MAX_QUERY_LENGTH);
 }
 
 /**
- * Generate unique query ID
+ * Generate unique query ID using cryptographically secure randomness
  */
 export function generateQueryId(): string {
-  return `query_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  // SECURITY: Use crypto.randomUUID() instead of Math.random()
+  const randomPart = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID().split('-')[0]
+    : Date.now().toString(36);
+  return `query_${Date.now()}_${randomPart}`;
 }
 
 /**

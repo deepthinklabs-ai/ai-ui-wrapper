@@ -27,10 +27,14 @@ let sessionStatus: 'idle' | 'processing' | 'error' = 'idle';
 const wsConnections = new Set<WebSocket>();
 
 /**
- * Generate a unique session ID
+ * Generate a unique session ID using cryptographically secure randomness
  */
 function generateSessionId(): string {
-  return `session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  // SECURITY: Use crypto.randomUUID() instead of Math.random()
+  const randomPart = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID().split('-')[0]
+    : require('crypto').randomBytes(8).toString('hex');
+  return `session-${Date.now()}-${randomPart}`;
 }
 
 /**

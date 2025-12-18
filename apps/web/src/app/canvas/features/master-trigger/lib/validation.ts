@@ -4,6 +4,7 @@
  * Validation functions for Master Trigger configuration and inputs.
  */
 
+import DOMPurify from 'isomorphic-dompurify';
 import type { MasterTriggerNodeConfig } from '@/app/canvas/types';
 import type { MasterTriggerInput, TriggerValidationResult } from '../types';
 
@@ -107,21 +108,17 @@ export function validateTriggerInput(
 
 /**
  * Sanitize input message (remove potential XSS, etc.)
+ * Uses DOMPurify for robust XSS protection
  */
 export function sanitizeMessage(message: string): string {
-  // Remove script tags
-  let sanitized = message.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  // SECURITY: Use DOMPurify for proper HTML sanitization
+  // Strip all HTML tags and return plain text for messages
+  const sanitized = DOMPurify.sanitize(message, {
+    ALLOWED_TAGS: [], // No HTML tags allowed - plain text only
+    ALLOWED_ATTR: [],
+  });
 
-  // Remove javascript: URLs
-  sanitized = sanitized.replace(/javascript:/gi, '');
-
-  // Remove on* event handlers
-  sanitized = sanitized.replace(/\bon\w+\s*=/gi, '');
-
-  // Trim whitespace
-  sanitized = sanitized.trim();
-
-  return sanitized;
+  return sanitized.trim();
 }
 
 /**

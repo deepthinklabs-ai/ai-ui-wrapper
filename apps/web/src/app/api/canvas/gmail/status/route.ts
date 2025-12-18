@@ -53,9 +53,14 @@ export async function GET(request: NextRequest) {
         : 'connected';
 
     // Check if Gmail scopes are present
+    // SECURITY: Use exact patterns for Google OAuth scope validation
+    const GMAIL_SCOPE_PATTERNS = [
+      'https://www.googleapis.com/auth/gmail',     // Gmail API scopes prefix
+      'https://mail.google.com/',                   // Full Gmail access
+    ];
     const scopes = connection.scopes || [];
     const hasGmailScopes = scopes.some((scope: string) =>
-      scope.includes('gmail') || scope.includes('mail.google.com')
+      GMAIL_SCOPE_PATTERNS.some(pattern => scope.startsWith(pattern))
     );
 
     if (!hasGmailScopes) {

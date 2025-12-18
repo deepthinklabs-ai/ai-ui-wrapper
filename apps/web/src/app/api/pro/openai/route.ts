@@ -193,7 +193,11 @@ export async function POST(req: NextRequest) {
         ? lastUserMessage.content
         : JSON.stringify(lastUserMessage?.content || '');
 
-      const isEmailRequest = /send.*email|email.*to|mail.*to/i.test(messageText);
+      // SECURITY: Use non-greedy patterns and limit input to prevent ReDoS
+      const truncatedText = messageText.slice(0, 500).toLowerCase();
+      const isEmailRequest = truncatedText.includes('send') && truncatedText.includes('email') ||
+                             truncatedText.includes('email') && truncatedText.includes(' to ') ||
+                             truncatedText.includes('mail') && truncatedText.includes(' to ');
       const hasGmailSend = tools.some((t: any) => t.name === 'gmail_send');
 
       if (isEmailRequest && hasGmailSend) {

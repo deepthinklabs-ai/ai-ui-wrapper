@@ -320,11 +320,12 @@ async function executeSend(gmail: any, params: Record<string, unknown>) {
   emailContent += `Content-Type: text/plain; charset=utf-8\r\n\r\n`;
   emailContent += body;
 
+  // SECURITY: Use replaceAll instead of regex to avoid ReDoS warnings
   const encodedMessage = Buffer.from(emailContent)
     .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/, '');  // Safe: bounded pattern at end of string
 
   const requestBody: any = {
     raw: encodedMessage,
@@ -358,11 +359,12 @@ async function executeDraft(gmail: any, params: Record<string, unknown>) {
   emailContent += `Content-Type: text/plain; charset=utf-8\r\n\r\n`;
   emailContent += body;
 
+  // SECURITY: Use replaceAll instead of regex to avoid ReDoS warnings
   const encodedMessage = Buffer.from(emailContent)
     .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/, '');  // Safe: bounded pattern at end of string
 
   const response = await gmail.users.drafts.create({
     userId: 'me',

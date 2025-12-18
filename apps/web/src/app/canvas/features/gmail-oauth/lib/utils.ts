@@ -4,6 +4,7 @@
  * Helper functions for Gmail OAuth feature.
  */
 
+import DOMPurify from 'isomorphic-dompurify';
 import type { EmailMessage } from '../types';
 
 /**
@@ -92,31 +93,35 @@ export function formatEmailList(emails: EmailMessage[]): string {
 
 /**
  * Sanitize email body for safe display
+ * Uses DOMPurify for robust XSS protection
  */
 export function sanitizeEmailBody(body: string): string {
-  // Remove potentially dangerous HTML if present
-  return body
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/on\w+="[^"]*"/gi, '')
-    .replace(/on\w+='[^']*'/gi, '');
+  // SECURITY: Use DOMPurify for proper HTML sanitization
+  // This removes all scripts, event handlers, and dangerous content
+  return DOMPurify.sanitize(body, {
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
+    ALLOW_DATA_ATTR: false,
+  });
 }
 
 /**
  * Extract plain text from HTML email body
  */
 export function htmlToPlainText(html: string): string {
+  // SECURITY: Decode &amp; LAST to prevent double-decoding attacks
+  // (e.g., &amp;lt; -> &lt; -> < if done in wrong order)
   return html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')  // Decode &amp; LAST
     .trim();
 }
 
