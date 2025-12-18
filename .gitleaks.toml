@@ -28,7 +28,7 @@ paths = [
 
     # Documentation that may reference placeholder secrets
     '''SECURITY_AUDIT\.md$''',
-    '''\.md$''',  # Be careful with this - review MD files manually
+    '''README\.md$''',
 
     # Test fixtures (should use fake data)
     '''__tests__/.*\.ts$''',
