@@ -38,7 +38,8 @@ const CORE_VARS: EnvVarConfig[] = [
     name: "NEXT_PUBLIC_SUPABASE_URL",
     required: true,
     description: "Supabase project URL",
-    validator: (v) => v.startsWith("https://") && v.includes(".supabase.co"),
+    // SECURITY: Strict URL validation to prevent substring bypass attacks
+    validator: (v) => /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(v),
   },
   {
     name: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -118,7 +119,8 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
         name: "GOOGLE_OAUTH_CLIENT_ID",
         required: false,
         description: "Google OAuth client ID",
-        validator: (v) => v.includes(".apps.googleusercontent.com"),
+        // SECURITY: Ensure it ends with the correct domain to prevent substring bypass
+        validator: (v) => /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(v),
       },
       {
         name: "GOOGLE_OAUTH_CLIENT_SECRET",
