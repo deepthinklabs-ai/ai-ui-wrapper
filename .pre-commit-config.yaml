@@ -1,0 +1,72 @@
+# Pre-commit hooks configuration
+# https://pre-commit.com/
+#
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+# Skip hooks: git commit --no-verify (NOT recommended)
+#
+# This enforces secret scanning before commits reach the repository.
+
+repos:
+  # Gitleaks - Secret detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: Detect secrets with Gitleaks
+        description: Scans for hardcoded secrets, API keys, and credentials
+        entry: gitleaks protect --verbose --redact --staged
+        language: golang
+        pass_filenames: false
+
+  # Basic file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Prevent committing large files
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+        name: Check for large files
+
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        name: Fix end of file
+        exclude: '\.md$'
+
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        exclude: '\.md$'
+
+      # Check JSON syntax
+      - id: check-json
+        name: Check JSON syntax
+        exclude: 'package-lock\.json$'
+
+      # Check YAML syntax
+      - id: check-yaml
+        name: Check YAML syntax
+
+      # Detect private keys
+      - id: detect-private-key
+        name: Detect private keys
+
+      # Check for merge conflicts
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+
+      # Prevent committing to main directly
+      - id: no-commit-to-branch
+        args: ['--branch', 'main']
+        name: Prevent direct commits to main
+
+# CI configuration
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
