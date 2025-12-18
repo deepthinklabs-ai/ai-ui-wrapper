@@ -50,7 +50,10 @@ if (isRedisConfigured) {
       url: REDIS_URL!,
       token: REDIS_TOKEN!,
     });
-    console.log("[Rate Limit] Redis-based rate limiting enabled");
+    // Only log in development to avoid log noise in production cold starts
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Rate Limit] Redis-based rate limiting enabled");
+    }
   } catch (error) {
     console.error("[Rate Limit] Failed to initialize Redis:", error);
   }
