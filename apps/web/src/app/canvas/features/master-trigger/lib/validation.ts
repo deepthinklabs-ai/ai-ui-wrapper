@@ -107,16 +107,26 @@ export function validateTriggerInput(
 
 /**
  * Sanitize input message (remove potential XSS, etc.)
+ * NOTE: For production use, consider using DOMPurify or similar library
  */
 export function sanitizeMessage(message: string): string {
-  // Remove script tags
-  let sanitized = message.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  let sanitized = message;
+  let previousResult = '';
 
-  // Remove javascript: URLs
-  sanitized = sanitized.replace(/javascript:/gi, '');
+  // SECURITY: Iterative replacement to handle nested/malformed tags
+  while (sanitized !== previousResult) {
+    previousResult = sanitized;
+    // Remove script tags (including malformed variants)
+    sanitized = sanitized.replace(/<script[^>]*>[\s\S]*?<\/script[^>]*>/gi, '');
+    sanitized = sanitized.replace(/<script[^>]*\/?>/gi, '');
+  }
+
+  // Remove dangerous URL schemes (javascript:, vbscript:, data:)
+  sanitized = sanitized.replace(/\b(javascript|vbscript|data)\s*:/gi, '');
 
   // Remove on* event handlers
-  sanitized = sanitized.replace(/\bon\w+\s*=/gi, '');
+  sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+  sanitized = sanitized.replace(/\s+on\w+\s*=\s*[^\s>]+/gi, '');
 
   // Trim whitespace
   sanitized = sanitized.trim();

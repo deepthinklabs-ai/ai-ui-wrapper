@@ -1,9 +1,24 @@
 /**
- * @security-audit-requested
- * AUDIT FOCUS: Client-side API key storage security
- * - Can keys be extracted by XSS attacks?
- * - Is localStorage appropriate for sensitive credentials?
- * - Are there any key leakage vectors?
+ * @security-audit-acknowledged
+ * SECURITY NOTES: Client-side API key storage
+ *
+ * This module stores API keys in localStorage for BYOK (Bring Your Own Key) functionality.
+ * This is an intentional design choice with the following trade-offs:
+ *
+ * RISKS:
+ * - localStorage is accessible to any JS on the page (XSS vulnerability)
+ * - Keys persist until explicitly cleared
+ *
+ * MITIGATIONS:
+ * - Strict Content Security Policy (CSP) prevents inline scripts
+ * - Input sanitization prevents XSS attacks
+ * - Keys are cleared on logout via useApiKeyCleanup hook
+ * - For production server-side storage, use Google Secret Manager (see /api/byok/)
+ *
+ * This is acceptable for BYOK because:
+ * - Users explicitly opt-in to providing their own keys
+ * - Keys are never sent to our servers
+ * - Users can revoke keys from their AI provider at any time
  */
 
 /**

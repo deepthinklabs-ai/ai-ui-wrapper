@@ -115,7 +115,8 @@ export class ClaudeCodeProcess extends EventEmitter {
       throw new Error('Claude Code is not ready');
     }
 
-    console.log(`[Bridge] Sending message (ID: ${messageId}):`, message.substring(0, 100));
+    // SECURITY: Safely log message preview to avoid format string issues
+    console.log('[Bridge] Sending message (ID: %s): %s', messageId, message.substring(0, 100));
 
     // Store the message ID for response tracking
     this.lastResponseId = messageId;

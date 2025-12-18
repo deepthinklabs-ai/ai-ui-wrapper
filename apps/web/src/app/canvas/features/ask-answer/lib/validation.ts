@@ -77,15 +77,12 @@ export function validateQuery(query: string): { valid: boolean; error?: string }
   }
 
   // Check for potentially malicious content (basic XSS prevention)
-  const dangerousPatterns = [
-    /<script[^>]*>.*?<\/script>/gi,
-    /javascript:/gi,
-    /onerror=/gi,
-    /onload=/gi,
-  ];
+  // SECURITY: Use simpler patterns that are less prone to bypass
+  const lowerQuery = query.toLowerCase();
+  const dangerousStrings = ['<script', 'javascript:', 'onerror=', 'onload=', 'vbscript:', 'data:'];
 
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(query)) {
+  for (const dangerous of dangerousStrings) {
+    if (lowerQuery.includes(dangerous)) {
       return {
         valid: false,
         error: 'Query contains potentially unsafe content',
@@ -188,18 +185,29 @@ export function getAskAnswerEdgesForNode(
  * Sanitize query text for safe processing
  */
 export function sanitizeQuery(query: string): string {
-  return query
-    .trim()
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
+  // SECURITY: Iterative tag removal to handle nested/malformed tags
+  let result = query.trim();
+  let previousResult = '';
+
+  while (result !== previousResult) {
+    previousResult = result;
+    result = result.replace(/<[^>]*>/g, '');
+  }
+
+  return result
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
     .substring(0, ASK_ANSWER_CONSTANTS.MAX_QUERY_LENGTH);
 }
 
 /**
- * Generate unique query ID
+ * Generate unique query ID using cryptographically secure randomness
  */
 export function generateQueryId(): string {
-  return `query_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  // SECURITY: Use crypto.randomUUID() instead of Math.random()
+  const randomPart = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID().split('-')[0]
+    : Date.now().toString(36);
+  return `query_${Date.now()}_${randomPart}`;
 }
 
 /**

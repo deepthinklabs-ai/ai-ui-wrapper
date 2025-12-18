@@ -92,31 +92,48 @@ export function formatEmailList(emails: EmailMessage[]): string {
 
 /**
  * Sanitize email body for safe display
+ * NOTE: For production use, consider using DOMPurify or similar library
  */
 export function sanitizeEmailBody(body: string): string {
-  // Remove potentially dangerous HTML if present
-  return body
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/on\w+="[^"]*"/gi, '')
-    .replace(/on\w+='[^']*'/gi, '');
+  // SECURITY: Use iterative replacement to handle nested/malformed tags
+  let result = body;
+  let previousResult = '';
+
+  // Iterate until no more changes (handles nested cases)
+  while (result !== previousResult) {
+    previousResult = result;
+    // Remove script tags (including malformed variants)
+    result = result.replace(/<script[^>]*>[\s\S]*?<\/script[^>]*>/gi, '');
+    result = result.replace(/<script[^>]*\/?>/gi, '');
+    // Remove style tags
+    result = result.replace(/<style[^>]*>[\s\S]*?<\/style[^>]*>/gi, '');
+    result = result.replace(/<style[^>]*\/?>/gi, '');
+  }
+
+  // Remove event handlers
+  result = result.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+  result = result.replace(/\s+on\w+\s*=\s*[^\s>]+/gi, '');
+
+  return result;
 }
 
 /**
  * Extract plain text from HTML email body
  */
 export function htmlToPlainText(html: string): string {
+  // SECURITY: Decode &amp; LAST to prevent double-decoding attacks
+  // (e.g., &amp;lt; -> &lt; -> < if done in wrong order)
   return html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')  // Decode &amp; LAST
     .trim();
 }
 
