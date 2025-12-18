@@ -243,6 +243,19 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
       },
     ],
   },
+  requestSigning: {
+    name: "Request Signing",
+    description: "HMAC signing for internal API requests",
+    vars: [
+      {
+        name: "INTERNAL_API_SIGNING_SECRET",
+        required: false,
+        description: "Secret key for signing internal API requests (min 32 chars)",
+        validator: (v) => v.length >= 32,
+        sensitive: true,
+      },
+    ],
+  },
 };
 
 type ValidationResult = {
