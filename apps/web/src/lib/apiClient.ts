@@ -27,7 +27,7 @@
  */
 
 const CSRF_COOKIE_NAME = "csrf-token";
-const CSRF_HEADER_NAME = "X-CSRF-Token";
+const CSRF_HEADER_NAME = "x-csrf-token";
 
 /**
  * Get CSRF token from cookie
@@ -77,9 +77,9 @@ async function request<T = unknown>(
     }
   }
 
-  // Add Content-Type for JSON body
+  // Add Content-Type for JSON body (only if not already set)
   if (body !== undefined && body !== null) {
-    headers["Content-Type"] = "application/json";
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
   try {
