@@ -1,4 +1,13 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Stripe Configuration Security
+ * - Is STRIPE_SECRET_KEY properly protected?
+ * - Is STRIPE_WEBHOOK_SECRET properly protected?
+ * - Could missing webhook secret allow unsigned webhooks?
+ * - Are success/cancel URLs validated against allowed domains?
+ */
+
+/**
  * Stripe Configuration
  *
  * Server-side Stripe SDK initialization and utilities
