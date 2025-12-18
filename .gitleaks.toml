@@ -1,0 +1,159 @@
+# Gitleaks Configuration
+# https://github.com/gitleaks/gitleaks
+#
+# This configuration defines secret detection rules for the AI UI Wrapper project.
+# It extends the default gitleaks rules with project-specific patterns.
+
+title = "AI UI Wrapper Secret Scanning"
+
+[extend]
+# Use the default gitleaks rules as a base
+useDefault = true
+
+# Allowlist - paths and patterns that are safe to ignore
+[allowlist]
+description = "Global allowlist for false positives"
+
+# Files that are safe to ignore
+paths = [
+    # Example and template files
+    '''\.env\.local\.example$''',
+    '''\.env\.example$''',
+    '''\.env\.template$''',
+
+    # Lock files (contain hashes, not secrets)
+    '''package-lock\.json$''',
+    '''pnpm-lock\.yaml$''',
+    '''yarn\.lock$''',
+
+    # Documentation that may reference placeholder secrets
+    '''SECURITY_AUDIT\.md$''',
+    '''\.md$''',  # Be careful with this - review MD files manually
+
+    # Test fixtures (should use fake data)
+    '''__tests__/.*\.ts$''',
+    '''\.test\.ts$''',
+    '''\.spec\.ts$''',
+
+    # Node modules (third-party code)
+    '''node_modules/''',
+]
+
+# Regex patterns that are safe to ignore (false positives)
+regexes = [
+    # Placeholder/example values
+    '''sk-[\.]{3,}''',  # sk-... (placeholder)
+    '''sk-your-.*-key''',
+    '''your[-_]api[-_]key''',
+    '''example[-_]key''',
+    '''test[-_]key''',
+    '''fake[-_]key''',
+    '''placeholder''',
+    '''xxxx+''',
+
+    # Supabase example URLs
+    '''https://[a-z]+-placeholder\.supabase\.co''',
+
+    # Common false positive patterns
+    '''eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*''',  # JWT in docs
+]
+
+# Custom rules for project-specific secrets
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{20,}T3BlbkFJ[a-zA-Z0-9]{20,}'''
+tags = ["api-key", "openai"]
+
+[[rules]]
+id = "openai-api-key-project"
+description = "OpenAI Project API Key"
+regex = '''sk-proj-[a-zA-Z0-9_-]{80,}'''
+tags = ["api-key", "openai"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic/Claude API Key"
+regex = '''sk-ant-[a-zA-Z0-9_-]{90,}'''
+tags = ["api-key", "anthropic", "claude"]
+
+[[rules]]
+id = "stripe-secret-key"
+description = "Stripe Secret Key"
+regex = '''sk_live_[a-zA-Z0-9]{24,}'''
+tags = ["api-key", "stripe", "payment"]
+
+[[rules]]
+id = "stripe-restricted-key"
+description = "Stripe Restricted Key"
+regex = '''rk_live_[a-zA-Z0-9]{24,}'''
+tags = ["api-key", "stripe", "payment"]
+
+[[rules]]
+id = "stripe-webhook-secret"
+description = "Stripe Webhook Secret"
+regex = '''whsec_[a-zA-Z0-9]{24,}'''
+tags = ["webhook", "stripe"]
+
+[[rules]]
+id = "resend-api-key"
+description = "Resend API Key"
+regex = '''re_[a-zA-Z0-9]{20,}'''
+tags = ["api-key", "resend", "email"]
+
+[[rules]]
+id = "supabase-service-role"
+description = "Supabase Service Role Key"
+regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+'''
+keywords = ["service_role", "SUPABASE_SERVICE_ROLE"]
+tags = ["api-key", "supabase", "critical"]
+
+[[rules]]
+id = "google-oauth-client-secret"
+description = "Google OAuth Client Secret"
+regex = '''GOCSPX-[a-zA-Z0-9_-]{28}'''
+tags = ["oauth", "google"]
+
+[[rules]]
+id = "slack-bot-token"
+description = "Slack Bot Token"
+regex = '''xoxb-[0-9]{10,}-[0-9]{10,}-[a-zA-Z0-9]{24}'''
+tags = ["api-key", "slack"]
+
+[[rules]]
+id = "slack-user-token"
+description = "Slack User Token"
+regex = '''xoxp-[0-9]{10,}-[0-9]{10,}-[a-zA-Z0-9]{24}'''
+tags = ["api-key", "slack"]
+
+[[rules]]
+id = "gcp-service-account"
+description = "GCP Service Account Key"
+regex = '''"private_key":\s*"-----BEGIN (RSA )?PRIVATE KEY-----'''
+tags = ["gcp", "service-account", "critical"]
+
+[[rules]]
+id = "encryption-key-hex"
+description = "256-bit Hex Encryption Key"
+regex = '''(MCP_ENCRYPTION_KEY|OAUTH_ENCRYPTION_KEY)\s*=\s*[a-fA-F0-9]{64}'''
+tags = ["encryption", "critical"]
+
+[[rules]]
+id = "xai-grok-api-key"
+description = "xAI/Grok API Key"
+regex = '''xai-[a-zA-Z0-9]{40,}'''
+tags = ["api-key", "grok", "xai"]
+
+[[rules]]
+id = "gemini-api-key"
+description = "Google Gemini API Key"
+regex = '''AIza[a-zA-Z0-9_-]{35}'''
+tags = ["api-key", "gemini", "google"]
+
+# Entropy-based detection for high-entropy strings in sensitive contexts
+[[rules]]
+id = "high-entropy-base64"
+description = "High entropy base64 string in sensitive context"
+regex = '''(?i)(secret|password|token|key|credential)["']?\s*[:=]\s*["'][A-Za-z0-9+/=]{40,}["']'''
+entropy = 4.5
+tags = ["entropy", "potential-secret"]
