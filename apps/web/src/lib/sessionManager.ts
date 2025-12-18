@@ -120,6 +120,22 @@ export function getSessionState(): SessionState {
   const startTime = parseInt(startTimeStr, 10);
   const lastActivity = parseInt(lastActivityStr, 10);
 
+  // Validate parsed timestamps - prevent NaN propagation from corrupted/tampered localStorage
+  if (isNaN(startTime) || isNaN(lastActivity) || startTime < 0 || lastActivity < 0) {
+    // Clear corrupted session data
+    clearSession();
+    return {
+      isValid: false,
+      sessionId: null,
+      startTime: null,
+      lastActivity: null,
+      idleTimeRemaining: 0,
+      absoluteTimeRemaining: 0,
+      shouldWarn: false,
+      reason: 'no_session',
+    };
+  }
+
   // Calculate time remaining
   const timeSinceStart = now - startTime;
   const timeSinceActivity = now - lastActivity;
