@@ -120,8 +120,15 @@ export function getSessionState(): SessionState {
   const startTime = parseInt(startTimeStr, 10);
   const lastActivity = parseInt(lastActivityStr, 10);
 
-  // Validate parsed timestamps - prevent NaN propagation from corrupted/tampered localStorage
-  if (isNaN(startTime) || isNaN(lastActivity) || startTime < 0 || lastActivity < 0) {
+  // Validate parsed timestamps - prevent NaN propagation and clock skew/tampering
+  if (
+    isNaN(startTime) ||
+    isNaN(lastActivity) ||
+    startTime < 0 ||
+    lastActivity < 0 ||
+    startTime > now ||
+    lastActivity > now
+  ) {
     // Clear corrupted session data
     clearSession();
     return {
@@ -198,9 +205,10 @@ export function clearSession(): void {
 }
 
 /**
- * Check if session exists and is potentially valid (quick check)
+ * Check if session data exists in localStorage (quick presence check).
+ * NOTE: This does NOT validate if the session has expired - use getSessionState() for full validation.
  */
-export function hasActiveSession(): boolean {
+export function hasSessionData(): boolean {
   if (typeof window === 'undefined') return false;
   return !!localStorage.getItem(SESSION_CONFIG.STORAGE_KEY_SESSION_ID);
 }
