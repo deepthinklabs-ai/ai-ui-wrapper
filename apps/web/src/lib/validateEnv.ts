@@ -177,6 +177,24 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
       },
     ],
   },
+  redis: {
+    name: "Upstash Redis",
+    description: "Distributed rate limiting and caching",
+    vars: [
+      {
+        name: "UPSTASH_REDIS_REST_URL",
+        required: false,
+        description: "Upstash Redis REST API URL",
+        validator: (v) => v.startsWith("https://") && v.includes("upstash.io"),
+      },
+      {
+        name: "UPSTASH_REDIS_REST_TOKEN",
+        required: false,
+        description: "Upstash Redis REST API token",
+        sensitive: true,
+      },
+    ],
+  },
   staging: {
     name: "Staging Protection",
     description: "Password protection for staging environments",
