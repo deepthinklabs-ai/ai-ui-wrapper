@@ -252,9 +252,11 @@ export function getApiKey(): string | null {
 
 /**
  * Save OpenAI API key to localStorage
+ * @security-audit-acknowledged - Intentional BYOK design, see file header for details
  */
 export function setApiKey(apiKey: string): void {
   if (typeof window === 'undefined') return;
+  // codeql-suppress js/clear-text-storage-of-sensitive-data - Intentional BYOK: users provide their own keys
   localStorage.setItem(API_KEY_STORAGE_KEY, apiKey.trim());
 }
 
