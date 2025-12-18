@@ -385,6 +385,33 @@ export const auditApiKey = {
       resourceType: "api_key",
       resourceId: provider,
     }),
+
+  rotated: (userId: string, provider: string, request?: RequestContext) =>
+    logAuditEvent("api_key", "api_key_rotated", {
+      userId,
+      request,
+      resourceType: "api_key",
+      resourceId: provider,
+      details: { reason: "manual_rotation" },
+    }),
+
+  rotationWarning: (
+    userId: string,
+    providers: string[],
+    details: { ageInDays?: Record<string, number | null> }
+  ) =>
+    logAuditEvent("api_key", "api_key_rotated", {
+      userId,
+      severity: "warning",
+      success: true,
+      resourceType: "api_key",
+      resourceId: providers.join(","),
+      details: {
+        reason: "rotation_reminder",
+        providers,
+        ...details,
+      },
+    }),
 };
 
 export const auditSession = {
