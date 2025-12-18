@@ -39,12 +39,21 @@ export type SessionState = {
 };
 
 /**
- * Generate a unique session ID
+ * Generate a cryptographically secure session ID
  */
 export function generateSessionId(): string {
-  const timestamp = Date.now().toString(36);
-  const randomPart = Math.random().toString(36).substring(2, 15);
-  return `sess_${timestamp}_${randomPart}`;
+  // Use crypto.randomUUID() for cryptographically secure random IDs
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `sess_${crypto.randomUUID()}`;
+  }
+  // Fallback using crypto.getRandomValues for older environments
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
+    return `sess_${Array.from(array, b => b.toString(16).padStart(2, '0')).join('')}`;
+  }
+  // This should never happen in modern browsers/Node.js
+  throw new Error('No cryptographically secure random number generator available');
 }
 
 /**
