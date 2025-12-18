@@ -4,6 +4,7 @@
  * Helper functions for Gmail OAuth feature.
  */
 
+import DOMPurify from 'isomorphic-dompurify';
 import type { EmailMessage } from '../types';
 
 /**
@@ -92,29 +93,16 @@ export function formatEmailList(emails: EmailMessage[]): string {
 
 /**
  * Sanitize email body for safe display
- * NOTE: For production use, consider using DOMPurify or similar library
+ * Uses DOMPurify for robust XSS protection
  */
 export function sanitizeEmailBody(body: string): string {
-  // SECURITY: Use iterative replacement to handle nested/malformed tags
-  let result = body;
-  let previousResult = '';
-
-  // Iterate until no more changes (handles nested cases)
-  while (result !== previousResult) {
-    previousResult = result;
-    // Remove script tags (including malformed variants)
-    result = result.replace(/<script[^>]*>[\s\S]*?<\/script[^>]*>/gi, '');
-    result = result.replace(/<script[^>]*\/?>/gi, '');
-    // Remove style tags
-    result = result.replace(/<style[^>]*>[\s\S]*?<\/style[^>]*>/gi, '');
-    result = result.replace(/<style[^>]*\/?>/gi, '');
-  }
-
-  // Remove event handlers
-  result = result.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
-  result = result.replace(/\s+on\w+\s*=\s*[^\s>]+/gi, '');
-
-  return result;
+  // SECURITY: Use DOMPurify for proper HTML sanitization
+  // This removes all scripts, event handlers, and dangerous content
+  return DOMPurify.sanitize(body, {
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
+    ALLOW_DATA_ATTR: false,
+  });
 }
 
 /**

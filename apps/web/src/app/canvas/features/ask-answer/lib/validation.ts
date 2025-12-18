@@ -5,6 +5,7 @@
  * Properly segmented to keep validation logic separate from components.
  */
 
+import DOMPurify from 'isomorphic-dompurify';
 import type { CanvasNode, CanvasEdge, NodeId, EdgeId } from '../../../types';
 import type { AskAnswerValidationResult } from '../types';
 import { ASK_ANSWER_CONSTANTS } from '../types';
@@ -183,19 +184,19 @@ export function getAskAnswerEdgesForNode(
 
 /**
  * Sanitize query text for safe processing
+ * Uses DOMPurify for robust XSS protection
  */
 export function sanitizeQuery(query: string): string {
-  // SECURITY: Iterative tag removal to handle nested/malformed tags
-  let result = query.trim();
-  let previousResult = '';
+  // SECURITY: Use DOMPurify for proper sanitization
+  // Strip all HTML tags - queries should be plain text
+  const sanitized = DOMPurify.sanitize(query, {
+    ALLOWED_TAGS: [], // No HTML tags allowed
+    ALLOWED_ATTR: [],
+  });
 
-  while (result !== previousResult) {
-    previousResult = result;
-    result = result.replace(/<[^>]*>/g, '');
-  }
-
-  return result
+  return sanitized
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+    .trim()
     .substring(0, ASK_ANSWER_CONSTANTS.MAX_QUERY_LENGTH);
 }
 

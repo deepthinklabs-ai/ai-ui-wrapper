@@ -4,6 +4,7 @@
  * Validation functions for Master Trigger configuration and inputs.
  */
 
+import DOMPurify from 'isomorphic-dompurify';
 import type { MasterTriggerNodeConfig } from '@/app/canvas/types';
 import type { MasterTriggerInput, TriggerValidationResult } from '../types';
 
@@ -107,31 +108,17 @@ export function validateTriggerInput(
 
 /**
  * Sanitize input message (remove potential XSS, etc.)
- * NOTE: For production use, consider using DOMPurify or similar library
+ * Uses DOMPurify for robust XSS protection
  */
 export function sanitizeMessage(message: string): string {
-  let sanitized = message;
-  let previousResult = '';
+  // SECURITY: Use DOMPurify for proper HTML sanitization
+  // Strip all HTML tags and return plain text for messages
+  const sanitized = DOMPurify.sanitize(message, {
+    ALLOWED_TAGS: [], // No HTML tags allowed - plain text only
+    ALLOWED_ATTR: [],
+  });
 
-  // SECURITY: Iterative replacement to handle nested/malformed tags
-  while (sanitized !== previousResult) {
-    previousResult = sanitized;
-    // Remove script tags (including malformed variants)
-    sanitized = sanitized.replace(/<script[^>]*>[\s\S]*?<\/script[^>]*>/gi, '');
-    sanitized = sanitized.replace(/<script[^>]*\/?>/gi, '');
-  }
-
-  // Remove dangerous URL schemes (javascript:, vbscript:, data:)
-  sanitized = sanitized.replace(/\b(javascript|vbscript|data)\s*:/gi, '');
-
-  // Remove on* event handlers
-  sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
-  sanitized = sanitized.replace(/\s+on\w+\s*=\s*[^\s>]+/gi, '');
-
-  // Trim whitespace
-  sanitized = sanitized.trim();
-
-  return sanitized;
+  return sanitized.trim();
 }
 
 /**
