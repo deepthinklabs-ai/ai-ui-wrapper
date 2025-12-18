@@ -30,7 +30,7 @@ import {
   encryptMCPConfig,
   decryptMCPConfig,
 } from "@/lib/credentialEncryption";
-import { standardRatelimit, rateLimitErrorResponse } from "@/lib/ratelimit";
+import { standardRatelimitAsync, rateLimitErrorResponse } from "@/lib/ratelimit";
 import {
   validateMCPServerConfig,
   validateServerName,
@@ -155,8 +155,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // SECURITY: Rate limiting - 10 requests per 10 seconds
-  const rateLimitResult = standardRatelimit(`mcp_credentials_post_${user.id}`);
+  // SECURITY: Rate limiting - 10 requests per 10 seconds - uses Redis when available
+  const rateLimitResult = await standardRatelimitAsync(`mcp_credentials_post_${user.id}`);
   if (!rateLimitResult.success) {
     return NextResponse.json(
       rateLimitErrorResponse(rateLimitResult),

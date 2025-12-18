@@ -36,7 +36,7 @@ import {
   sanitizeEnvironment,
   logSecurityEvent
 } from "@/lib/mcpCommandValidator";
-import { strictRatelimit, rateLimitErrorResponse } from "@/lib/ratelimit";
+import { strictRatelimitAsync, rateLimitErrorResponse } from "@/lib/ratelimit";
 
 // Store active connections
 // In production, use Redis or similar for multi-instance deployments
@@ -55,8 +55,8 @@ export async function POST(request: Request) {
 
   const userId = authResult.user.id; // Use Supabase user ID
 
-  // SECURITY: Rate limiting - 3 requests per minute for MCP operations
-  const rateLimitResult = strictRatelimit(`mcp_stdio_${userId}`);
+  // SECURITY: Rate limiting - 3 requests per minute for MCP operations - uses Redis when available
+  const rateLimitResult = await strictRatelimitAsync(`mcp_stdio_${userId}`);
   if (!rateLimitResult.success) {
     console.log(`[Rate Limit] User ${userId} exceeded rate limit`);
     return NextResponse.json(

@@ -185,7 +185,16 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
         name: "UPSTASH_REDIS_REST_URL",
         required: false,
         description: "Upstash Redis REST API URL",
-        validator: (v) => v.startsWith("https://") && v.includes("upstash.io"),
+        // SECURITY: Strict URL validation to prevent bypass attacks
+        validator: (v) => {
+          try {
+            const url = new URL(v);
+            return url.protocol === "https:" &&
+              (url.hostname === "upstash.io" || url.hostname.endsWith(".upstash.io"));
+          } catch {
+            return false;
+          }
+        },
       },
       {
         name: "UPSTASH_REDIS_REST_TOKEN",

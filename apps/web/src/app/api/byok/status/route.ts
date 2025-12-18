@@ -13,7 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
-import { lenientRatelimit, rateLimitErrorResponse } from '@/lib/ratelimit';
+import { lenientRatelimitAsync, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { getUserKeyStatus, hasAnyKey } from '@/lib/secretManager';
 
 export async function GET(request: Request) {
@@ -27,9 +27,9 @@ export async function GET(request: Request) {
       );
     }
 
-    // 2. Rate limit (lenient for read operations)
+    // 2. Rate limit (lenient for read operations) - uses Redis when available
     const rateLimitKey = `byok_status_${user.id}`;
-    const rateLimitResult = lenientRatelimit(rateLimitKey);
+    const rateLimitResult = await lenientRatelimitAsync(rateLimitKey);
     if (!rateLimitResult.success) {
       return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
     }
