@@ -402,7 +402,6 @@ export const auditApiKey = {
   ) =>
     logAuditEvent("api_key", "api_key_rotated", {
       userId,
-      severity: "warning",
       success: true,
       resourceType: "api_key",
       resourceId: providers.join(","),
