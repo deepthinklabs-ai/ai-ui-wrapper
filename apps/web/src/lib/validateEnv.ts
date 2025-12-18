@@ -216,6 +216,33 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
       },
     ],
   },
+  ipAccessControl: {
+    name: "IP Access Control",
+    description: "IP-based access restrictions for sensitive endpoints",
+    vars: [
+      {
+        name: "IP_ALLOWLIST_ADMIN",
+        required: false,
+        description: "Comma-separated list of allowed IPs/CIDRs for admin endpoints",
+        // Validate format: comma-separated IPs or CIDRs
+        validator: (v) => {
+          const ips = v.split(",").map((ip) => ip.trim());
+          const ipOrCIDR = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+          return ips.every((ip) => ipOrCIDR.test(ip));
+        },
+      },
+      {
+        name: "IP_ALLOWLIST_INTERNAL",
+        required: false,
+        description: "Comma-separated list of allowed IPs/CIDRs for internal APIs",
+        validator: (v) => {
+          const ips = v.split(",").map((ip) => ip.trim());
+          const ipOrCIDR = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+          return ips.every((ip) => ipOrCIDR.test(ip));
+        },
+      },
+    ],
+  },
 };
 
 type ValidationResult = {
