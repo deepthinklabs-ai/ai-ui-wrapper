@@ -75,13 +75,12 @@ export function extractClientIP(request: Request): string | null {
 }
 
 /**
- * Basic IP validation (IPv4 and IPv6)
+ * Basic IP validation (IPv4 only)
+ * Note: IPv6 is not currently supported for CIDR/range matching
  */
 function isValidIP(ip: string): boolean {
   // IPv4 pattern
   const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
-  // IPv6 pattern (simplified)
-  const ipv6Pattern = /^([a-fA-F0-9:]+)$/;
 
   if (ipv4Pattern.test(ip)) {
     const parts = ip.split('.');
@@ -91,7 +90,9 @@ function isValidIP(ip: string): boolean {
     });
   }
 
-  return ipv6Pattern.test(ip);
+  // IPv6 is currently not supported for CIDR/range matching
+  // Return false to avoid passing unsupported addresses downstream
+  return false;
 }
 
 /**
@@ -112,7 +113,15 @@ function isIPInCIDR(ip: string, cidr: string): boolean {
     return ip === range;
   }
 
-  const mask = ~((1 << (32 - parseInt(bits, 10))) - 1) >>> 0;
+  const bitCount = parseInt(bits, 10);
+
+  // Handle edge case: /0 matches all IPs
+  // JavaScript bit shifts are limited to 32 bits, so 1 << 32 returns 1 instead of 0
+  if (bitCount === 0) {
+    return true;
+  }
+
+  const mask = ~((1 << (32 - bitCount)) - 1) >>> 0;
   const ipNum = ipToNumber(ip);
   const rangeNum = ipToNumber(range);
 
