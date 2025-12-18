@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { timingSafeEqual } from 'crypto';
+import { auditAuth } from '@/lib/auditLog';
 
 // Initialize Supabase admin client
 const supabaseAdmin = createClient(
@@ -117,6 +118,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Audit: 2FA verification failed
+      await auditAuth.twoFactorFailed(userId, { headers: req.headers });
+
       return NextResponse.json(
         { error: 'Invalid verification code. Please check and try again.' },
         { status: 400 }
@@ -167,6 +171,9 @@ export async function POST(req: NextRequest) {
         console.log(`[2FA] 2FA enabled for user ${userId}`);
       }
     }
+
+    // Audit: 2FA verification successful
+    await auditAuth.twoFactorVerified(userId, { headers: req.headers });
 
     return NextResponse.json({
       success: true,

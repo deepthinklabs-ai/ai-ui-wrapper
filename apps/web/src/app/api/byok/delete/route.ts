@@ -15,6 +15,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
 import { strictRatelimit, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { deleteUserKey, deleteAllUserKeys, type BYOKProvider } from '@/lib/secretManager';
+import { auditApiKey, auditSecurity } from '@/lib/auditLog';
 
 const VALID_PROVIDERS: BYOKProvider[] = ['openai', 'claude', 'grok', 'gemini'];
 
@@ -33,6 +34,10 @@ export async function DELETE(request: Request) {
     const rateLimitKey = `byok_delete_${user.id}`;
     const rateLimitResult = strictRatelimit(rateLimitKey);
     if (!rateLimitResult.success) {
+      // Audit: Rate limit exceeded
+      await auditSecurity.rateLimitExceeded(user.id, '/api/byok/delete', {
+        headers: request.headers,
+      });
       return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
     }
 
@@ -44,6 +49,10 @@ export async function DELETE(request: Request) {
     if (!provider) {
       try {
         await deleteAllUserKeys(user.id);
+        // Audit: All API keys deleted
+        for (const p of VALID_PROVIDERS) {
+          await auditApiKey.deleted(user.id, p, { headers: request.headers });
+        }
         return NextResponse.json({
           success: true,
           message: 'All API keys have been removed',
@@ -71,6 +80,8 @@ export async function DELETE(request: Request) {
     // 6. Delete specific provider key
     try {
       await deleteUserKey(user.id, provider as BYOKProvider);
+      // Audit: API key deleted
+      await auditApiKey.deleted(user.id, provider, { headers: request.headers });
       return NextResponse.json({
         success: true,
         message: `${provider.charAt(0).toUpperCase() + provider.slice(1)} API key has been removed`,

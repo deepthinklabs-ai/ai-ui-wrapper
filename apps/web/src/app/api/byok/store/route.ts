@@ -27,6 +27,7 @@ import { getAuthenticatedUser } from '@/lib/serverAuth';
 import { strictRatelimit, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { updateUserKey, type BYOKProvider } from '@/lib/secretManager';
 import { validateKeyFormat, testApiKey } from '@/lib/secretManager/validation';
+import { auditApiKey, auditSecurity } from '@/lib/auditLog';
 
 const VALID_PROVIDERS: BYOKProvider[] = ['openai', 'claude', 'grok', 'gemini'];
 
@@ -45,6 +46,10 @@ export async function POST(request: Request) {
     const rateLimitKey = `byok_store_${user.id}`;
     const rateLimitResult = strictRatelimit(rateLimitKey);
     if (!rateLimitResult.success) {
+      // Audit: Rate limit exceeded
+      await auditSecurity.rateLimitExceeded(user.id, '/api/byok/store', {
+        headers: request.headers,
+      });
       return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
     }
 
@@ -123,7 +128,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // 9. Return success (never return the key)
+    // 9. Audit: API key created
+    await auditApiKey.created(user.id, providerType, { headers: request.headers });
+
+    // 10. Return success (never return the key)
     return NextResponse.json({
       success: true,
       message: `${providerType.charAt(0).toUpperCase() + providerType.slice(1)} API key saved successfully`,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getAuthenticatedUser } from "@/lib/serverAuth";
+import { auditSession } from "@/lib/auditLog";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,6 +80,9 @@ export async function DELETE(req: NextRequest) {
         );
       }
 
+      // Audit: All sessions revoked
+      await auditSession.revokedAll(user.id, { headers: req.headers });
+
       return NextResponse.json({
         success: true,
         message: "All sessions revoked successfully",
@@ -99,6 +103,9 @@ export async function DELETE(req: NextRequest) {
           { status: 500 }
         );
       }
+
+      // Audit: Current session revoked
+      await auditSession.revoked(user.id, { headers: req.headers });
 
       return NextResponse.json({
         success: true,

@@ -22,6 +22,7 @@ import { createClient } from '@supabase/supabase-js';
 import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
 import { mapStripeStatusToTier } from '@/lib/config/tiers';
 import Stripe from 'stripe';
+import { auditPayment } from '@/lib/auditLog';
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -135,6 +136,9 @@ export async function POST(req: NextRequest) {
             { status: 500 }
           );
         }
+
+        // Audit: Subscription created
+        await auditPayment.subscriptionCreated(userId, userTier, { headers: req.headers });
 
         console.log(`[Webhook] ✅ Checkout completed for user ${userId}, set to ${userTier} (status: ${subStatus}), onboarding marked complete`);
         break;
@@ -250,6 +254,9 @@ export async function POST(req: NextRequest) {
           );
         }
 
+        // Audit: Subscription cancelled
+        await auditPayment.subscriptionCancelled(existingRecord.user_id, { headers: req.headers });
+
         console.log(`[Webhook] ✅ Subscription deleted for customer ${customerId}`);
         break;
       }
@@ -288,6 +295,9 @@ export async function POST(req: NextRequest) {
             { status: 500 }
           );
         }
+
+        // Audit: Payment failed
+        await auditPayment.paymentFailed(existingRecord.user_id, 'Invoice payment failed', { headers: req.headers });
 
         console.log(`[Webhook] ⚠️ Payment failed for customer ${customerId}`);
         break;

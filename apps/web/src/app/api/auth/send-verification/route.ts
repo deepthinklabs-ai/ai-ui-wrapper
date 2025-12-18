@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { randomInt } from 'crypto';
+import { auditAuth, auditSecurity } from '@/lib/auditLog';
 
 // Initialize Supabase admin client
 const supabaseAdmin = createClient(
@@ -81,6 +82,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (recentCodes && recentCodes.length >= 3) {
+      // Audit: Rate limit exceeded
+      await auditSecurity.rateLimitExceeded(userId, '/api/auth/send-verification', {
+        headers: req.headers,
+      });
       return NextResponse.json(
         { error: 'Too many verification requests. Please wait a minute before trying again.' },
         { status: 429 }
@@ -167,6 +172,9 @@ export async function POST(req: NextRequest) {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[2FA] Verification code for ${email}: ${code}`);
     }
+
+    // Audit: 2FA code sent successfully
+    await auditAuth.twoFactorSent(userId, email, { headers: req.headers });
 
     return NextResponse.json({
       success: true,
