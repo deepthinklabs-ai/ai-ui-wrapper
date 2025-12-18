@@ -6,6 +6,7 @@
  */
 
 import { useState } from "react";
+import { getCSRFToken } from "@/hooks/useCSRF";
 
 type UseStripePortalOptions = {
   userId: string | undefined;
@@ -26,9 +27,13 @@ export function useStripePortal({ userId }: UseStripePortalOptions) {
 
     try {
       // Call portal API to create Customer Portal session
+      const csrfToken = getCSRFToken();
       const response = await fetch("/api/stripe/portal", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken && { "X-CSRF-Token": csrfToken }),
+        },
         body: JSON.stringify({
           userId,
         }),

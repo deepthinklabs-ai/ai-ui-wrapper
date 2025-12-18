@@ -6,10 +6,25 @@
  * - Are API routes properly excluded or should they be protected?
  * - Can the redirect parameter be used for open redirect attacks? ✅ FIXED - validated
  * - Is the cookie secure (HttpOnly, Secure, SameSite)?
+ * - CSRF protection for mutation requests? ✅ FIXED - double-submit cookie pattern
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+
+// CSRF Configuration (duplicated from lib/csrf.ts for Edge Runtime compatibility)
+const CSRF_CONFIG = {
+  COOKIE_NAME: 'csrf-token',
+  HEADER_NAME: 'x-csrf-token',
+  TOKEN_LENGTH: 32,
+  MAX_AGE_SECONDS: 24 * 60 * 60,
+} as const;
+
+const CSRF_EXEMPT_ROUTES = [
+  '/api/stripe/webhook',
+  '/api/oauth/',
+  '/api/staging-auth',
+] as const;
 
 /**
  * Middleware for staging environment password protection
@@ -52,6 +67,50 @@ function timingSafeCompare(a: string, b: string): boolean {
     result |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return result === 0;
+}
+
+// CSRF: Generate cryptographically secure token
+function generateCSRFToken(): string {
+  const array = new Uint8Array(CSRF_CONFIG.TOKEN_LENGTH);
+  crypto.getRandomValues(array);
+  return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// CSRF: Timing-safe string comparison
+function csrfTimingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    let result = 0;
+    const maxLen = Math.max(a.length, b.length);
+    for (let i = 0; i < maxLen; i++) {
+      const charA = i < a.length ? a.charCodeAt(i) : 0;
+      const charB = i < b.length ? b.charCodeAt(i) : 0;
+      result |= charA ^ charB;
+    }
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+// CSRF: Check if route is exempt from CSRF protection
+function isCSRFExemptRoute(pathname: string): boolean {
+  return CSRF_EXEMPT_ROUTES.some(route => pathname.startsWith(route));
+}
+
+// CSRF: Check if method requires protection
+function requiresCSRFProtection(method: string): boolean {
+  return ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase());
+}
+
+// CSRF: Validate token from header against cookie
+function validateCSRFToken(headerToken: string | null, cookieToken: string | null): boolean {
+  if (!headerToken || !cookieToken) return false;
+  if (headerToken.length !== CSRF_CONFIG.TOKEN_LENGTH * 2) return false;
+  if (cookieToken.length !== CSRF_CONFIG.TOKEN_LENGTH * 2) return false;
+  return csrfTimingSafeEqual(headerToken, cookieToken);
 }
 
 // SECURITY: Verify HMAC-signed staging token using Web Crypto API
@@ -98,21 +157,10 @@ async function verifyStagingToken(token: string, secret: string): Promise<boolea
 }
 
 export async function middleware(request: NextRequest) {
-  const stagingPassword = process.env.STAGING_PASSWORD;
-
-  // If no staging password is set, skip protection (production)
-  if (!stagingPassword) {
-    return NextResponse.next();
-  }
-
   const { pathname } = request.nextUrl;
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  // Allow access to staging login page and its API
-  if (pathname === '/staging-login' || pathname === '/api/staging-auth') {
-    return NextResponse.next();
-  }
-
-  // Allow access to static files and Next.js internals
+  // Allow access to static files and Next.js internals (always)
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
@@ -121,11 +169,62 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // ============================================
+  // CSRF Protection (runs in all environments)
+  // ============================================
+
+  // Check if this request requires CSRF protection
+  if (requiresCSRFProtection(request.method) && pathname.startsWith('/api/')) {
+    // Skip CSRF for exempt routes (webhooks, OAuth)
+    if (!isCSRFExemptRoute(pathname)) {
+      const headerToken = request.headers.get(CSRF_CONFIG.HEADER_NAME);
+      const cookieToken = request.cookies.get(CSRF_CONFIG.COOKIE_NAME)?.value ?? null;
+
+      if (!validateCSRFToken(headerToken, cookieToken)) {
+        return NextResponse.json(
+          { error: 'CSRF validation failed' },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
+  // Ensure CSRF token cookie exists for all responses
+  let response = NextResponse.next();
+  const existingCSRFToken = request.cookies.get(CSRF_CONFIG.COOKIE_NAME)?.value;
+
+  if (!existingCSRFToken || existingCSRFToken.length !== CSRF_CONFIG.TOKEN_LENGTH * 2) {
+    const newToken = generateCSRFToken();
+    response.cookies.set(CSRF_CONFIG.COOKIE_NAME, newToken, {
+      httpOnly: false, // Must be readable by client JS to include in headers
+      secure: isProduction,
+      sameSite: 'strict',
+      maxAge: CSRF_CONFIG.MAX_AGE_SECONDS,
+      path: '/',
+    });
+  }
+
+  // ============================================
+  // Staging Protection (only when STAGING_PASSWORD is set)
+  // ============================================
+
+  const stagingPassword = process.env.STAGING_PASSWORD;
+
+  // If no staging password is set, skip staging protection
+  if (!stagingPassword) {
+    return response;
+  }
+
+  // Allow access to staging login page and its API
+  if (pathname === '/staging-login' || pathname === '/api/staging-auth') {
+    return response;
+  }
+
   // SECURITY: Verify HMAC-signed staging auth cookie
   const stagingCookie = request.cookies.get(STAGING_COOKIE_NAME);
 
   if (stagingCookie?.value && await verifyStagingToken(stagingCookie.value, stagingPassword)) {
-    return NextResponse.next();
+    return response;
   }
 
   // SECURITY: Validate redirect parameter to prevent open redirect attacks

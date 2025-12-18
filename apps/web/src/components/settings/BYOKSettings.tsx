@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getCSRFToken } from "@/hooks/useCSRF";
 import {
   useBYOKStatus,
   getProviderDisplayName,
@@ -76,11 +77,13 @@ export default function BYOKSettings() {
     setSuccesses((prev) => ({ ...prev, [provider]: false }));
 
     try {
+      const csrfToken = getCSRFToken();
       const response = await fetch("/api/byok/store", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
+          ...(csrfToken && { "X-CSRF-Token": csrfToken }),
         },
         body: JSON.stringify({ provider, apiKey }),
       });
@@ -117,10 +120,12 @@ export default function BYOKSettings() {
     setErrors((prev) => ({ ...prev, [provider]: null }));
 
     try {
+      const csrfToken = getCSRFToken();
       const response = await fetch(`/api/byok/delete?provider=${provider}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          ...(csrfToken && { "X-CSRF-Token": csrfToken }),
         },
       });
 
