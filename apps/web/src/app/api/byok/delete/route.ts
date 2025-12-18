@@ -15,7 +15,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
 import { strictRatelimit, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { deleteUserKey, deleteAllUserKeys, type BYOKProvider } from '@/lib/secretManager';
-import { auditApiKey, auditSecurity } from '@/lib/auditLog';
+import { auditApiKey, auditSecurity, logAuditEvent } from '@/lib/auditLog';
 
 const VALID_PROVIDERS: BYOKProvider[] = ['openai', 'claude', 'grok', 'gemini'];
 
@@ -49,10 +49,14 @@ export async function DELETE(request: Request) {
     if (!provider) {
       try {
         await deleteAllUserKeys(user.id);
-        // Audit: All API keys deleted
-        for (const p of VALID_PROVIDERS) {
-          await auditApiKey.deleted(user.id, p, { headers: request.headers });
-        }
+        // Audit: All API keys deleted (single event with all providers listed)
+        await logAuditEvent("api_key", "api_key_deleted", {
+          userId: user.id,
+          request: { headers: request.headers },
+          resourceType: "api_key",
+          resourceId: "all",
+          details: { providers: VALID_PROVIDERS, action: "delete_all" },
+        });
         return NextResponse.json({
           success: true,
           message: 'All API keys have been removed',

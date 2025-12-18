@@ -234,13 +234,12 @@ export async function logAuditEvent(
 
 /**
  * Sanitize details to remove sensitive information
+ * Recursively handles nested objects and arrays
  */
 function sanitizeDetails(
   details?: Record<string, unknown>
 ): Record<string, unknown> | undefined {
   if (!details) return undefined;
-
-  const sanitized = { ...details };
 
   // List of keys to redact
   const sensitiveKeys = [
@@ -257,14 +256,42 @@ function sanitizeDetails(
     "credential",
   ];
 
-  for (const key of Object.keys(sanitized)) {
+  // Check if a key should be redacted
+  const shouldRedact = (key: string): boolean => {
     const lowerKey = key.toLowerCase();
-    if (sensitiveKeys.some((sk) => lowerKey.includes(sk.toLowerCase()))) {
-      sanitized[key] = "[REDACTED]";
-    }
-  }
+    return sensitiveKeys.some((sk) => lowerKey.includes(sk.toLowerCase()));
+  };
 
-  return sanitized;
+  // Recursively sanitize a value
+  const sanitizeValue = (value: unknown, seen = new WeakSet()): unknown => {
+    if (value === null || value === undefined) return value;
+
+    // Handle primitive types
+    if (typeof value !== "object") return value;
+
+    // Prevent circular reference issues
+    const objValue = value as object;
+    if (seen.has(objValue)) return "[CIRCULAR]";
+    seen.add(objValue);
+
+    // Handle arrays
+    if (Array.isArray(value)) {
+      return value.map((item) => sanitizeValue(item, seen));
+    }
+
+    // Handle objects
+    const sanitizedObj: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      if (shouldRedact(key)) {
+        sanitizedObj[key] = "[REDACTED]";
+      } else {
+        sanitizedObj[key] = sanitizeValue(val, seen);
+      }
+    }
+    return sanitizedObj;
+  };
+
+  return sanitizeValue(details) as Record<string, unknown>;
 }
 
 /**
