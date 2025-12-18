@@ -208,15 +208,22 @@ export async function logAuditEvent(
   };
 
   // Log to console in structured format
-  const logPrefix = `[AUDIT:${category.toUpperCase()}]`;
-  const logMessage = `${logPrefix} ${event} - user:${userId || "anonymous"} success:${success}`;
+  // SECURITY: Use structured logging to avoid format string vulnerabilities
+  // Pass event data as a separate object, not interpolated into the message
+  const logData = {
+    prefix: `[AUDIT:${category.toUpperCase()}]`,
+    event,
+    userId: userId || "anonymous",
+    success,
+    details: auditEvent,
+  };
 
   if (auditEvent.severity === "critical" || auditEvent.severity === "error") {
-    console.error(logMessage, JSON.stringify(auditEvent));
+    console.error("[AUDIT]", JSON.stringify(logData));
   } else if (auditEvent.severity === "warning") {
-    console.warn(logMessage, JSON.stringify(auditEvent));
+    console.warn("[AUDIT]", JSON.stringify(logData));
   } else {
-    console.log(logMessage, JSON.stringify(auditEvent));
+    console.log("[AUDIT]", JSON.stringify(logData));
   }
 
   // Optionally store to database (async, non-blocking)
