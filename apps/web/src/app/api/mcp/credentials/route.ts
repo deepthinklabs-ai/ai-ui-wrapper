@@ -36,6 +36,7 @@ import {
   validateServerName,
   sanitizeString,
 } from "@/lib/inputValidation";
+import { validateForFeature } from "@/lib/validateEnv";
 
 // Database record type
 interface MCPCredentialRecord {
@@ -56,6 +57,16 @@ interface MCPCredentialRecord {
  * List all MCP servers for the authenticated user
  */
 export async function GET(request: Request) {
+  // Validate MCP configuration
+  const envCheck = validateForFeature("mcp");
+  if (!envCheck.valid) {
+    console.error("[MCP Credentials] Missing configuration:", envCheck.missing);
+    return NextResponse.json(
+      { error: "MCP service not configured" },
+      { status: 503 }
+    );
+  }
+
   // SECURITY: Require authentication
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
@@ -124,6 +135,16 @@ export async function GET(request: Request) {
  * Save new encrypted MCP server credentials
  */
 export async function POST(request: Request) {
+  // Validate MCP configuration
+  const envCheck = validateForFeature("mcp");
+  if (!envCheck.valid) {
+    console.error("[MCP Credentials] Missing configuration:", envCheck.missing);
+    return NextResponse.json(
+      { error: "MCP service not configured" },
+      { status: 503 }
+    );
+  }
+
   // SECURITY: Require authentication
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
