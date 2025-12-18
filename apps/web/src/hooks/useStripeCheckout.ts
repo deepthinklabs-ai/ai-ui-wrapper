@@ -6,6 +6,7 @@
  */
 
 import { useState } from "react";
+import { getCSRFToken } from "@/hooks/useCSRF";
 
 type UseStripeCheckoutOptions = {
   userId: string | undefined;
@@ -27,9 +28,13 @@ export function useStripeCheckout({ userId, priceId }: UseStripeCheckoutOptions)
 
     try {
       // Call checkout API to create Stripe Checkout session
+      const csrfToken = getCSRFToken();
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken && { "X-CSRF-Token": csrfToken }),
+        },
         body: JSON.stringify({
           userId,
           priceId,
