@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { validateForFeature } from '@/lib/validateEnv';
 
 // SECURITY: Allowed origins for redirect URLs
 const ALLOWED_ORIGINS = [
@@ -31,6 +32,16 @@ const ALLOWED_ORIGINS = [
 const MAX_TRIAL_DAYS = 14;
 
 export async function POST(req: NextRequest) {
+  // Validate Stripe configuration
+  const envCheck = validateForFeature('stripe');
+  if (!envCheck.valid) {
+    console.error('[Stripe Checkout] Missing configuration:', envCheck.missing);
+    return NextResponse.json(
+      { error: 'Payment service not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
     // SECURITY: Require authentication
     const authResult = await getAuthenticatedUser(req);
