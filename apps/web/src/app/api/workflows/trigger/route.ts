@@ -28,6 +28,7 @@ import { validateTriggerInput, sanitizeMessage } from '@/app/canvas/features/mas
 import { executeSmartRouter } from '@/app/canvas/features/smart-router';
 import { executeResponseCompiler } from '@/app/canvas/features/response-compiler';
 import type { AgentResponse } from '@/app/canvas/features/response-compiler/types';
+import { getInternalBaseUrl } from '@/lib/internalApiUrl';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -270,8 +271,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Use the same origin as the incoming request (handles dynamic ports)
-    const internalBaseUrl = new URL(request.url).origin;
+    // SECURITY: Get validated internal base URL to prevent SSRF
+    // Uses only env vars, never request-derived values
+    const internalBaseUrl = getInternalBaseUrl();
 
     // Build conversation history in Ask/Answer format for context
     const askAnswerHistory = (input.conversationHistory || []).reduce((acc, msg, idx, arr) => {
