@@ -29,6 +29,7 @@ import {
 } from '@/lib/rateLimiting';
 import { getProviderKey } from '@/lib/secretManager/getKey';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { checkAIEnabled } from '@/lib/killSwitches';
 
 export async function POST(req: NextRequest) {
   // Declare outside try so it can be cleared in catch/finally
@@ -44,6 +45,15 @@ export async function POST(req: NextRequest) {
       );
     }
     const userId = user.id; // Use authenticated user ID, never trust client
+
+    // KILL SWITCH: Check if AI features are enabled
+    const aiCheck = await checkAIEnabled();
+    if (!aiCheck.enabled) {
+      return NextResponse.json(
+        { error: aiCheck.error!.message },
+        { status: aiCheck.error!.status }
+      );
+    }
 
     const body = await req.json();
     const { messages, model = 'grok-beta', unhinged = false, enableWebSearch = true } = body;

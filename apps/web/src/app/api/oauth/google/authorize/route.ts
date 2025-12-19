@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGoogleAuthUrl } from '@/lib/googleOAuth';
 import { createClient } from '@supabase/supabase-js';
+import { checkOAuthEnabled } from '@/lib/killSwitches';
 
 // Server-side Supabase client
 const supabase = createClient(
@@ -15,6 +16,15 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
+    // KILL SWITCH: Check if OAuth is enabled
+    const oauthCheck = await checkOAuthEnabled();
+    if (!oauthCheck.enabled) {
+      return NextResponse.json(
+        { error: oauthCheck.error!.message },
+        { status: oauthCheck.error!.status }
+      );
+    }
+
     // Get user ID and optional service from query params
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');

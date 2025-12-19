@@ -20,6 +20,7 @@ import { createClient } from '@supabase/supabase-js';
 import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
 import { validateForFeature } from '@/lib/validateEnv';
+import { checkPaymentsEnabled } from '@/lib/killSwitches';
 
 // SECURITY: Allowed origins for redirect URLs
 const ALLOWED_ORIGINS = [
@@ -39,6 +40,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: 'Payment service not configured' },
       { status: 503 }
+    );
+  }
+
+  // KILL SWITCH: Check if payments are enabled
+  const paymentsCheck = await checkPaymentsEnabled();
+  if (!paymentsCheck.enabled) {
+    return NextResponse.json(
+      { error: paymentsCheck.error!.message },
+      { status: paymentsCheck.error!.status }
     );
   }
 
