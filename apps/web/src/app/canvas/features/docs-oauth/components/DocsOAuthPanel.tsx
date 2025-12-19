@@ -11,6 +11,7 @@ import React, { useState, useEffect } from 'react';
 import { useGmailOAuth } from '../../gmail-oauth/hooks/useGmailOAuth'; // Reuse Gmail OAuth - same Google connection
 import type { DocsOAuthConfig, DocsPermissions } from '../types';
 import { DEFAULT_DOCS_CONFIG } from '../types';
+import { sanitizeImageUrl } from '@/lib/sanitizeUrl';
 
 interface DocsOAuthPanelProps {
   config: DocsOAuthConfig;
@@ -124,9 +125,9 @@ export function DocsOAuthPanel({
             ) : status === 'connected' && connection ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  {connection.picture && (
+                  {sanitizeImageUrl(connection.picture) && (
                     <img
-                      src={connection.picture}
+                      src={sanitizeImageUrl(connection.picture)}
                       alt=""
                       className="w-8 h-8 rounded-full"
                     />

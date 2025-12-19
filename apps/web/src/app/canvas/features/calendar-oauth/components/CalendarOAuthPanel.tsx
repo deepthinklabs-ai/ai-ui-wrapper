@@ -11,6 +11,7 @@ import React, { useState } from 'react';
 import { useCalendarOAuth } from '../hooks/useCalendarOAuth';
 import type { CalendarOAuthConfig, CalendarPermissions } from '../types';
 import { DEFAULT_CALENDAR_CONFIG } from '../types';
+import { sanitizeImageUrl } from '@/lib/sanitizeUrl';
 
 interface CalendarOAuthPanelProps {
   config: CalendarOAuthConfig;
@@ -133,9 +134,9 @@ export function CalendarOAuthPanel({
             ) : status === 'connected' && connection ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  {connection.picture && (
+                  {sanitizeImageUrl(connection.picture) && (
                     <img
-                      src={connection.picture}
+                      src={sanitizeImageUrl(connection.picture)}
                       alt=""
                       className="w-8 h-8 rounded-full"
                     />

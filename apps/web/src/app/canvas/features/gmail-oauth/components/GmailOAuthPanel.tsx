@@ -11,6 +11,7 @@ import React, { useState } from 'react';
 import { useGmailOAuth } from '../hooks/useGmailOAuth';
 import type { GmailOAuthConfig, GmailPermissions } from '../types';
 import { DEFAULT_GMAIL_CONFIG } from '../types';
+import { sanitizeImageUrl } from '@/lib/sanitizeUrl';
 
 interface GmailOAuthPanelProps {
   config: GmailOAuthConfig;
@@ -135,9 +136,9 @@ export function GmailOAuthPanel({
             ) : status === 'connected' && connection ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  {connection.picture && (
+                  {sanitizeImageUrl(connection.picture) && (
                     <img
-                      src={connection.picture}
+                      src={sanitizeImageUrl(connection.picture)}
                       alt=""
                       className="w-8 h-8 rounded-full"
                     />
