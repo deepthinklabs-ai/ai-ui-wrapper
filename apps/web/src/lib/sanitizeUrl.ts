@@ -11,6 +11,7 @@ const ALLOWED_IMAGE_SCHEMES = ['https:', 'http:', 'data:'];
 
 /**
  * Allowed data URL MIME types for images
+ * Note: SVG is intentionally excluded as it can contain <script> tags and event handlers
  */
 const ALLOWED_DATA_MIME_TYPES = [
   'image/png',
@@ -18,7 +19,6 @@ const ALLOWED_DATA_MIME_TYPES = [
   'image/jpg',
   'image/gif',
   'image/webp',
-  'image/svg+xml',
 ];
 
 /**
