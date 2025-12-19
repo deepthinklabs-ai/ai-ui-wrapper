@@ -14,6 +14,9 @@ import type { BridgeMessage, BridgeResponse, SessionInfo, ClaudeCodeConfig } fro
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// SECURITY: Disable X-Powered-By header to prevent information exposure (CWE-200)
+app.disable('x-powered-by');
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
