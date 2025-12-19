@@ -36,6 +36,7 @@ export type AuditEventType =
   | "2fa_code_failed"
   | "2fa_enabled"
   | "2fa_disabled"
+  | "account_deleted"
   // API key events
   | "api_key_created"
   | "api_key_deleted"
@@ -127,7 +128,8 @@ function getSeverity(event: AuditEventType, success: boolean): AuditSeverity {
   // Critical events
   if (
     event === "suspicious_activity" ||
-    event === "session_revoked_all"
+    event === "session_revoked_all" ||
+    event === "account_deleted"
   ) {
     return "critical";
   }
@@ -359,6 +361,17 @@ export const auditAuth = {
 
   twoFactorFailed: (userId: string, request?: RequestContext) =>
     logAuditEvent("auth", "2fa_code_failed", { userId, request, success: false }),
+
+  accountDeleted: (
+    context: { userId: string; email?: string; ip?: string; userAgent?: string },
+    details?: Record<string, unknown>
+  ) =>
+    logAuditEvent("auth", "account_deleted", {
+      userId: context.userId,
+      userEmail: context.email,
+      request: { ip: context.ip, userAgent: context.userAgent },
+      details,
+    }),
 };
 
 export const auditApiKey = {

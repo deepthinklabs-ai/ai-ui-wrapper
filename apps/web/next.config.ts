@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 /**
  * Next.js Configuration
@@ -81,7 +82,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://api.x.ai https://api.stripe.com https://*.vercel-insights.com https://*.vercel-analytics.com https://secretmanager.googleapis.com https://generativelanguage.googleapis.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://api.x.ai https://api.stripe.com https://*.vercel-insights.com https://*.vercel-analytics.com https://secretmanager.googleapis.com https://generativelanguage.googleapis.com https://*.sentry.io https://*.ingest.sentry.io",
               "media-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
@@ -96,4 +97,29 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry configuration options
+const sentryWebpackPluginOptions = {
+  // Suppress source map uploading logs during build
+  silent: true,
+
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-webpack-plugin#options
+
+  // Upload source maps to Sentry
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Only upload source maps in production
+  disable: !isProduction,
+
+  // Hides source maps from generated client bundles
+  hideSourceMaps: true,
+
+  // Automatically tree-shake Sentry logger statements to reduce bundle size
+  disableLogger: true,
+
+  // Enables automatic instrumentation of Vercel Cron Monitors
+  automaticVercelMonitors: true,
+};
+
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
