@@ -112,7 +112,14 @@ export default function PostDetailModal({
       // Get filename from Content-Disposition header
       const contentDisposition = res.headers.get('Content-Disposition');
       const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] || `download.${fileType}`;
+      let filename = filenameMatch?.[1] || `download.${fileType}`;
+
+      // Security: Sanitize filename to prevent path traversal and invalid characters
+      filename = filename
+        .replace(/[/\\]/g, '_')           // Replace path separators
+        .replace(/[<>:"|?*]/g, '_')       // Replace Windows invalid chars
+        .replace(/\.\./g, '_')            // Prevent path traversal
+        .slice(0, 255);                   // Limit length
 
       // Download file
       const blob = await res.blob();
@@ -124,12 +131,12 @@ export default function PostDetailModal({
         throw new Error('Invalid download URL');
       }
 
+      // Security: Create anchor without appending to DOM to avoid XSS vector (CWE-79)
+      // Modern browsers support click() on detached elements for downloads
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
-      document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err: any) {
       console.error('Download error:', err);
