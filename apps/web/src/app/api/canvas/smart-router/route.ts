@@ -14,6 +14,7 @@ import type {
   IntegrationType,
 } from '@/app/canvas/types';
 import { executeSmartRouter } from '@/app/canvas/features/smart-router';
+import { getInternalBaseUrl } from '@/lib/internalApiUrl';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -170,8 +171,9 @@ export async function POST(request: NextRequest) {
       console.log(`  - ${agent.name}: [${agent.integrations.join(', ')}]`);
     });
 
-    // Use the same origin as the incoming request
-    const internalBaseUrl = new URL(request.url).origin;
+    // SECURITY: Get validated internal base URL to prevent SSRF
+    // Uses only env vars, never request-derived values
+    const internalBaseUrl = getInternalBaseUrl();
 
     // Execute Smart Router logic
     const decision = await executeSmartRouter(
