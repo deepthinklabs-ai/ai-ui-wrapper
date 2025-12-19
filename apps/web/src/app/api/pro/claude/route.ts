@@ -29,6 +29,7 @@ import {
 } from '@/lib/rateLimiting';
 import { getProviderKey } from '@/lib/secretManager/getKey';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { checkAIEnabled } from '@/lib/killSwitches';
 
 // Map our internal model names to Claude API model names
 const CLAUDE_API_MODEL_MAP: Record<string, string> = {
@@ -53,6 +54,15 @@ export async function POST(req: NextRequest) {
       );
     }
     const userId = user.id; // Use authenticated user ID, never trust client
+
+    // KILL SWITCH: Check if AI features are enabled
+    const aiCheck = await checkAIEnabled();
+    if (!aiCheck.enabled) {
+      return NextResponse.json(
+        { error: aiCheck.error!.message },
+        { status: aiCheck.error!.status }
+      );
+    }
 
     const body = await req.json();
     // Temporarily disable web search by default until we debug the refusal issue

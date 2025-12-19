@@ -30,6 +30,7 @@ import {
 } from '@/lib/rateLimiting';
 import { getProviderKey } from '@/lib/secretManager/getKey';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { checkAIEnabled } from '@/lib/killSwitches';
 
 // Map models to their search-enabled variants
 const SEARCH_ENABLED_MODELS: Record<string, string> = {
@@ -53,6 +54,15 @@ export async function POST(req: NextRequest) {
       );
     }
     const userId = user.id; // Use authenticated user ID, never trust client
+
+    // KILL SWITCH: Check if AI features are enabled
+    const aiCheck = await checkAIEnabled();
+    if (!aiCheck.enabled) {
+      return NextResponse.json(
+        { error: aiCheck.error!.message },
+        { status: aiCheck.error!.status }
+      );
+    }
 
     const body = await req.json();
     const { messages, model = 'gpt-4o', enableWebSearch = true, tools, systemPrompt } = body;

@@ -4,6 +4,7 @@ import { useState, FormEvent, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { usePasswordStrength } from "@/hooks/usePasswordStrength";
+import { useSignupsEnabled } from "@/hooks/useSystemStatus";
 import PasswordStrengthIndicator from "@/components/auth/PasswordStrengthIndicator";
 import TwoFactorLogin from "@/components/auth/TwoFactorLogin";
 import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
@@ -74,6 +75,9 @@ function AuthPageContent() {
     enabled: isSignUp,
   });
 
+  // Check if signups are enabled (kill switch)
+  const { enabled: signupsEnabled, loading: signupsLoading } = useSignupsEnabled();
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -82,6 +86,13 @@ function AuthPageContent() {
 
     try {
       if (isSignUp) {
+        // Check if signups are enabled
+        if (!signupsEnabled) {
+          setError("New registrations are temporarily closed. Please try again later.");
+          setLoading(false);
+          return;
+        }
+
         // Sign up
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
