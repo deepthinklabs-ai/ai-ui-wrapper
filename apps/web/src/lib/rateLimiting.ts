@@ -488,3 +488,76 @@ export function getRateLimitHeaders(status: UsageStatus): Record<string, string>
       : {}),
   };
 }
+
+// ============================================================================
+// ADMIN NOTIFICATIONS
+// ============================================================================
+
+// Track recent threshold checks to prevent spam
+const recentThresholdChecks = new Map<string, number>();
+const THRESHOLD_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Check if a user has been rate limited too frequently and notify admins
+ * Call this after a rate limit block is detected
+ *
+ * @param supabase - Supabase client
+ * @param userId - User ID that was blocked
+ * @param userEmail - User's email (if available)
+ * @param modelName - Model that was rate limited
+ * @param blockReason - Why the user was blocked
+ */
+export async function checkRateLimitAlertThreshold(
+  supabase: SupabaseClient,
+  userId: string,
+  userEmail: string | null,
+  modelName: string,
+  blockReason: string
+): Promise<void> {
+  // Check cooldown to prevent spam
+  const key = `threshold:${userId}`;
+  const lastChecked = recentThresholdChecks.get(key);
+
+  if (lastChecked && Date.now() - lastChecked < THRESHOLD_COOLDOWN_MS) {
+    return; // Already checked recently
+  }
+
+  recentThresholdChecks.set(key, Date.now());
+
+  // Clean up old entries
+  if (recentThresholdChecks.size > 100) {
+    const now = Date.now();
+    for (const [k, v] of recentThresholdChecks.entries()) {
+      if (now - v > THRESHOLD_COOLDOWN_MS) {
+        recentThresholdChecks.delete(k);
+      }
+    }
+  }
+
+  try {
+    // Count recent rate limit blocks for this user from audit logs
+    const windowStart = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+    const { count, error } = await supabase
+      .from('audit_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_type', 'rate_limit_exceeded')
+      .eq('user_id', userId)
+      .gte('timestamp', windowStart);
+
+    if (error) {
+      console.error('[RateLimit] Failed to check threshold:', error.message);
+      return;
+    }
+
+    // Alert if user has been blocked 5+ times in 5 minutes
+    const ALERT_THRESHOLD = 5;
+    if (count && count >= ALERT_THRESHOLD) {
+      // Dynamic import to avoid circular dependencies
+      const { notifyRateLimitThreshold } = await import('./errorNotifications');
+      await notifyRateLimitThreshold(userId, userEmail, modelName, count);
+    }
+  } catch (err) {
+    console.error('[RateLimit] Error checking alert threshold:', err);
+  }
+}
