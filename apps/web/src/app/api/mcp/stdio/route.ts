@@ -1,4 +1,17 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: MCP Stdio Proxy Security (CRITICAL - executes shell commands)
+ * - Can command injection bypass the whitelist validation?
+ * - Are environment variables properly sanitized (env poisoning)?
+ * - Can users access other users' connections (cross-user access)?
+ * - Is the in-memory connection store vulnerable to DoS?
+ * - Are there any TOCTOU issues between validation and execution?
+ * - Can malicious tool arguments cause harm (path traversal, SSRF)?
+ * - Is rate limiting sufficient for expensive operations?
+ * - Are error messages leaking sensitive information?
+ */
+
+/**
  * MCP Stdio Proxy API Route
  *
  * Provides a backend proxy for stdio-based MCP servers.
@@ -23,7 +36,7 @@ import {
   sanitizeEnvironment,
   logSecurityEvent
 } from "@/lib/mcpCommandValidator";
-import { strictRatelimit, rateLimitErrorResponse } from "@/lib/ratelimit";
+import { strictRatelimitAsync, rateLimitErrorResponse } from "@/lib/ratelimit";
 
 // Store active connections
 // In production, use Redis or similar for multi-instance deployments
@@ -42,8 +55,8 @@ export async function POST(request: Request) {
 
   const userId = authResult.user.id; // Use Supabase user ID
 
-  // SECURITY: Rate limiting - 3 requests per minute for MCP operations
-  const rateLimitResult = strictRatelimit(`mcp_stdio_${userId}`);
+  // SECURITY: Rate limiting - 3 requests per minute for MCP operations - uses Redis when available
+  const rateLimitResult = await strictRatelimitAsync(`mcp_stdio_${userId}`);
   if (!rateLimitResult.success) {
     console.log(`[Rate Limit] User ${userId} exceeded rate limit`);
     return NextResponse.json(

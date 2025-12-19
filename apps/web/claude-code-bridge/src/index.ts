@@ -6,13 +6,18 @@
 
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { createServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
+import { readFileSync, existsSync } from 'fs';
+import selfsigned from 'selfsigned';
 import { WebSocketServer, WebSocket } from 'ws';
 import { ClaudeCodeProcess } from './claudeCodeProcess';
 import type { BridgeMessage, BridgeResponse, SessionInfo, ClaudeCodeConfig } from './types';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// SECURITY: Disable X-Powered-By header to prevent information exposure (CWE-200)
+app.disable('x-powered-by');
 
 // Middleware
 app.use(cors());
@@ -27,10 +32,14 @@ let sessionStatus: 'idle' | 'processing' | 'error' = 'idle';
 const wsConnections = new Set<WebSocket>();
 
 /**
- * Generate a unique session ID
+ * Generate a unique session ID using cryptographically secure randomness
  */
 function generateSessionId(): string {
-  return `session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  // SECURITY: Use crypto.randomUUID() instead of Math.random()
+  const randomPart = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID().split('-')[0]
+    : require('crypto').randomBytes(8).toString('hex');
+  return `session-${Date.now()}-${randomPart}`;
 }
 
 /**
@@ -280,76 +289,134 @@ app.get('/buffer', (req: Request, res: Response) => {
 // WEBSOCKET SERVER
 // ============================================================================
 
-const httpServer = createServer(app);
-const wss = new WebSocketServer({ server: httpServer });
+// Security: Always use HTTPS to prevent cleartext transmission (CWE-319)
+// Uses provided certificates or generates self-signed certs at runtime for local development
 
-wss.on('connection', (ws: WebSocket) => {
-  console.log('[Server] New WebSocket connection');
-  wsConnections.add(ws);
+// Generate self-signed certificate at runtime for localhost development
+// This avoids embedding private keys in source code (which triggers secret scanning)
+async function generateDevCertificate(): Promise<{ key: string; cert: string }> {
+  const attrs = [{ name: 'commonName', value: 'localhost' }];
+  const notAfterDate = new Date();
+  notAfterDate.setFullYear(notAfterDate.getFullYear() + 1); // Valid for 1 year
 
-  // Send current session info
-  ws.send(JSON.stringify({
-    type: 'session-info',
-    data: {
-      sessionId,
-      status: sessionStatus,
-      isRunning: claudeCodeProcess?.isRunning() || false
+  const pems = await selfsigned.generate(attrs, {
+    keySize: 2048,
+    notAfterDate,
+    algorithm: 'sha256',
+  });
+  return {
+    key: pems.private,
+    cert: pems.cert,
+  };
+}
+
+// Check for provided certificates, otherwise generate at runtime
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
+const hasProvidedCerts = SSL_KEY_PATH && SSL_CERT_PATH &&
+                         existsSync(SSL_KEY_PATH) && existsSync(SSL_CERT_PATH);
+
+// Start server with async certificate generation
+(async () => {
+  let httpsOptions: { key: string | Buffer; cert: string | Buffer };
+
+  if (hasProvidedCerts) {
+    httpsOptions = {
+      key: readFileSync(SSL_KEY_PATH!),
+      cert: readFileSync(SSL_CERT_PATH!),
+    };
+    console.log('[Server] Using provided SSL certificates');
+  } else {
+    // Generate self-signed certificate at runtime for local development
+    console.log('[Server] Generating self-signed certificate for localhost...');
+    const devCert = await generateDevCertificate();
+    httpsOptions = {
+      key: devCert.key,
+      cert: devCert.cert,
+    };
+    console.log('[Server] Self-signed certificate generated');
+  }
+
+  // Always use HTTPS - no HTTP fallback (CWE-319)
+  const server = createHttpsServer(httpsOptions, app);
+
+  const wss = new WebSocketServer({ server });
+
+  wss.on('connection', (ws: WebSocket) => {
+    console.log('[Server] New WebSocket connection');
+    wsConnections.add(ws);
+
+    // Send current session info
+    ws.send(JSON.stringify({
+      type: 'session-info',
+      data: {
+        sessionId,
+        status: sessionStatus,
+        isRunning: claudeCodeProcess?.isRunning() || false
+      }
+    }));
+
+    ws.on('close', () => {
+      console.log('[Server] WebSocket connection closed');
+      wsConnections.delete(ws);
+    });
+
+    ws.on('error', (error) => {
+      console.error('[Server] WebSocket error:', error);
+      wsConnections.delete(ws);
+    });
+  });
+
+  // ============================================================================
+  // START SERVER
+  // ============================================================================
+
+  // Always use HTTPS - bind to configurable host (default localhost for security)
+  const BIND_HOST = process.env.BIND_HOST || '127.0.0.1';
+
+  server.listen(Number(PORT), BIND_HOST, () => {
+    console.log(`\n==============================================`);
+    console.log(`🌉 Claude Code Bridge Server (HTTPS)`);
+    console.log(`==============================================`);
+    console.log(`HTTPS API: https://${BIND_HOST}:${PORT}`);
+    console.log(`WebSocket: wss://${BIND_HOST}:${PORT}`);
+    if (!hasProvidedCerts) {
+      console.log(`\n⚠️  Using self-signed certificate (browser will show warning)`);
+      console.log(`   Set SSL_KEY_PATH and SSL_CERT_PATH for custom certificates`);
     }
-  }));
-
-  ws.on('close', () => {
-    console.log('[Server] WebSocket connection closed');
-    wsConnections.delete(ws);
+    console.log(`\nConfiguration:`);
+    console.log(`  Command: ${process.env.CLAUDE_CODE_PATH || 'claude'}`);
+    console.log(`  Working Dir: ${process.env.CLAUDE_CODE_WORKDIR || process.cwd()}`);
+    console.log(`\nEndpoints:`);
+    console.log(`  GET  /health      - Health check`);
+    console.log(`  GET  /session     - Session info`);
+    console.log(`  POST /start       - Start Claude Code`);
+    console.log(`  POST /stop        - Stop Claude Code`);
+    console.log(`  POST /message     - Send message`);
+    console.log(`  GET  /buffer      - Get output buffer`);
+    console.log(`==============================================\n`);
   });
 
-  ws.on('error', (error) => {
-    console.error('[Server] WebSocket error:', error);
-    wsConnections.delete(ws);
+  // Graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('\n[Server] Shutting down...');
+    if (claudeCodeProcess) {
+      claudeCodeProcess.stop();
+    }
+    server.close(() => {
+      console.log('[Server] Server closed');
+      process.exit(0);
+    });
   });
-});
 
-// ============================================================================
-// START SERVER
-// ============================================================================
-
-httpServer.listen(PORT, () => {
-  console.log(`\n==============================================`);
-  console.log(`🌉 Claude Code Bridge Server`);
-  console.log(`==============================================`);
-  console.log(`HTTP API: http://localhost:${PORT}`);
-  console.log(`WebSocket: ws://localhost:${PORT}`);
-  console.log(`\nConfiguration:`);
-  console.log(`  Command: ${process.env.CLAUDE_CODE_PATH || 'claude'}`);
-  console.log(`  Working Dir: ${process.env.CLAUDE_CODE_WORKDIR || process.cwd()}`);
-  console.log(`\nEndpoints:`);
-  console.log(`  GET  /health      - Health check`);
-  console.log(`  GET  /session     - Session info`);
-  console.log(`  POST /start       - Start Claude Code`);
-  console.log(`  POST /stop        - Stop Claude Code`);
-  console.log(`  POST /message     - Send message`);
-  console.log(`  GET  /buffer      - Get output buffer`);
-  console.log(`==============================================\n`);
-});
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n[Server] Shutting down...');
-  if (claudeCodeProcess) {
-    claudeCodeProcess.stop();
-  }
-  httpServer.close(() => {
-    console.log('[Server] Server closed');
-    process.exit(0);
+  process.on('SIGTERM', () => {
+    console.log('\n[Server] Received SIGTERM...');
+    if (claudeCodeProcess) {
+      claudeCodeProcess.stop();
+    }
+    server.close(() => {
+      console.log('[Server] Server closed');
+      process.exit(0);
+    });
   });
-});
-
-process.on('SIGTERM', () => {
-  console.log('\n[Server] Received SIGTERM...');
-  if (claudeCodeProcess) {
-    claudeCodeProcess.stop();
-  }
-  httpServer.close(() => {
-    console.log('[Server] Server closed');
-    process.exit(0);
-  });
-});
+})();

@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Client-side encryption implementation
+ * - Is PBKDF2 iteration count sufficient (600000)? ✅ FIXED - Updated to OWASP recommendation
+ * - Is key derivation secure?
+ * - Are wrapped keys properly protected?
+ * - Is the recovery code system secure?
+ * - Can an attacker brute-force recovery codes?
+ * - Are there any key extraction vulnerabilities?
+ */
+
+/**
  * Client-Side Encryption Utility
  *
  * Provides AES-GCM encryption for conversation history.
@@ -9,7 +20,8 @@
 // Constants for encryption
 const ALGORITHM = 'AES-GCM';
 const KEY_LENGTH = 256;
-const PBKDF2_ITERATIONS = 100000;
+// SECURITY: OWASP recommends 600,000+ iterations for PBKDF2-HMAC-SHA256
+const PBKDF2_ITERATIONS = 600000;
 const SALT_LENGTH = 16;
 const IV_LENGTH = 12;
 
@@ -325,18 +337,40 @@ const RECOVERY_CODE_COUNT = 12;  // Generate 12 codes
 
 /**
  * Generate a single recovery code in format XXXX-XXXX-XXXX
+ * Uses rejection sampling to avoid modulo bias in random character selection
  */
 function generateRecoveryCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding ambiguous: 0, O, I, 1
-  const randomValues = crypto.getRandomValues(new Uint8Array(12));
+  const charsLength = chars.length; // 32
+
+  // SECURITY: Use rejection sampling to avoid modulo bias
+  // For charsLength=32, maxValid=256 (32*8), so all values are valid
+  // But we implement rejection sampling correctly for any character set size
+  const maxValid = 256 - (256 % charsLength);
 
   let code = '';
-  for (let i = 0; i < 12; i++) {
-    if (i > 0 && i % 4 === 0) {
-      code += '-';
+  let position = 0;
+
+  while (position < 12) {
+    // Generate a batch of random bytes
+    const randomValues = crypto.getRandomValues(new Uint8Array(16));
+
+    for (let i = 0; i < randomValues.length && position < 12; i++) {
+      const value = randomValues[i];
+
+      // Rejection sampling: reject values that would cause bias
+      if (value >= maxValid) {
+        continue;
+      }
+
+      if (position > 0 && position % 4 === 0) {
+        code += '-';
+      }
+      code += chars[value % charsLength];
+      position++;
     }
-    code += chars[randomValues[i] % chars.length];
   }
+
   return code;
 }
 

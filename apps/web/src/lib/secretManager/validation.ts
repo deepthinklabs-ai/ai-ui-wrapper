@@ -1,4 +1,13 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: API key validation security
+ * - Does format validation prevent malicious input?
+ * - Are test API calls exposing keys in logs/errors?
+ * - Is error handling leaking sensitive information?
+ * - Can validation be bypassed?
+ */
+
+/**
  * API Key Validation and Testing
  *
  * Validates key formats and tests them against provider APIs

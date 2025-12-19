@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Slack OAuth callback security
+ * - Is CSRF protection (state parameter) properly implemented?
+ * - Is the state token cryptographically random?
+ * - Can an attacker steal tokens via open redirect in error handling?
+ * - Are tokens stored securely after exchange?
+ * - Is the state deletion atomic (race condition risk)?
+ * - Is client_secret properly protected (not leaked in logs)?
+ */
+
+/**
  * Slack OAuth Callback Endpoint
  * Handles the redirect from Slack after user authorization
  */
@@ -43,16 +54,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify state parameter (CSRF protection)
-    console.log('[Slack OAuth Callback] Verifying state:', state);
+    // SECURITY: Atomically claim and delete state to prevent TOCTOU race conditions
+    // This ensures each state can only be consumed once
+    console.log('[Slack OAuth Callback] Verifying and claiming state:', state);
     const { data: stateData, error: stateError } = await supabase
       .from('oauth_states')
-      .select('*')
+      .delete()
       .eq('state', state)
+      .select('*')
       .single();
 
     if (stateError || !stateData) {
-      console.error('[Slack OAuth Callback] State verification failed:', stateError?.message || 'State not found');
+      console.error('[Slack OAuth Callback] State verification failed:', stateError?.message || 'State not found or already used');
       return NextResponse.redirect(
         `${appUrl}/canvas?oauth_error=invalid_state&provider=slack`
       );
@@ -62,16 +75,13 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(stateData.expires_at);
     if (expiresAt < new Date()) {
       console.error('[Slack OAuth Callback] State expired');
-      await supabase.from('oauth_states').delete().eq('state', state);
+      // State already deleted above, no need to delete again
       return NextResponse.redirect(
         `${appUrl}/canvas?oauth_error=expired_state&provider=slack`
       );
     }
 
     const userId = stateData.user_id;
-
-    // Delete used state
-    await supabase.from('oauth_states').delete().eq('state', state);
 
     // Exchange authorization code for tokens
     const redirectUri = `${appUrl}/api/oauth/slack/callback`;

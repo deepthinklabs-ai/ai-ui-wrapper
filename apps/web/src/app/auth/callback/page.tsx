@@ -1,6 +1,17 @@
 "use client";
 
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Auth callback token handling
+ * - Are tokens in URL hash fragments safe from logging/referrer leaks?
+ * - Is setSession() secure (can malicious tokens be injected)?
+ * - Can the 'type' parameter be manipulated for privilege escalation?
+ * - Is the PKCE code exchange properly validated?
+ * - Are error messages safe from XSS?
+ * - Is there proper cleanup of tokens from URL after processing?
+ */
+
+/**
  * Supabase Auth Callback Page
  *
  * Handles authentication callbacks from Supabase, including:
@@ -45,6 +56,10 @@ export default function AuthCallbackPage() {
             throw exchangeError;
           }
 
+          // SECURITY: Clean up sensitive tokens from URL to prevent leaks via
+          // browser history, referrer headers, or logging
+          window.history.replaceState(null, '', window.location.pathname);
+
           // Check if this was a recovery flow
           const { data: { session } } = await supabase.auth.getSession();
           // For recovery, Supabase sets a special flag - check the URL type param
@@ -68,6 +83,10 @@ export default function AuthCallbackPage() {
           if (sessionError) {
             throw sessionError;
           }
+
+          // SECURITY: Clean up sensitive tokens from URL hash to prevent leaks via
+          // browser history, referrer headers, or logging
+          window.history.replaceState(null, '', window.location.pathname);
 
           // Handle different callback types
           if (type === "recovery") {

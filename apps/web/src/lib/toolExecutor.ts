@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Tool Executor Security
+ * - Can LLM-generated tool calls cause unintended execution?
+ * - Are tool inputs validated before passing to MCP servers?
+ * - Can parallel execution cause race conditions?
+ * - Are error messages exposing sensitive information?
+ * - Is there any injection vector in tool name or arguments?
+ */
+
+/**
  * Tool Executor
  *
  * Handles execution of MCP tool calls from LLM responses.

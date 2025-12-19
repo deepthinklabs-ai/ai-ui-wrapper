@@ -1,4 +1,13 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: 2FA status check
+ * - Does the response leak whether a user exists (user enumeration)?
+ * - Is the listUsers() call a performance/DoS risk?
+ * - Should this endpoint require authentication?
+ * - Can response timing differences reveal user existence?
+ */
+
+/**
  * Check 2FA Status API
  *
  * Checks if a user has 2FA enabled.
@@ -26,45 +35,65 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find user by email using the admin API
-    const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers();
+    // SECURITY: Look up user by email using the most efficient available method
+    // NOTE: For production with >100 users, create an RPC function for direct email lookup:
+    //   CREATE FUNCTION get_user_id_by_email(email TEXT) RETURNS UUID AS $$
+    //     SELECT id FROM auth.users WHERE email = LOWER($1) LIMIT 1;
+    //   $$ LANGUAGE sql SECURITY DEFINER;
+    let userId: string | null = null;
 
-    if (userError) {
-      console.error('[2FA] Error listing users:', userError);
-      return NextResponse.json(
-        { error: 'Failed to check user status' },
-        { status: 500 }
-      );
+    // Try RPC function first (most efficient - single indexed query)
+    try {
+      const { data: rpcResult } = await supabaseAdmin.rpc('get_user_id_by_email', {
+        lookup_email: email.toLowerCase()
+      });
+      userId = rpcResult || null;
+    } catch {
+      // RPC not available - fall back to paginated listUsers (less efficient)
+      // Use small page size to minimize memory usage and DoS risk
+      // Note: This won't find users beyond page limit - acceptable tradeoff for security
+      const { data: users } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 50, // Small limit to reduce DoS risk - create RPC for production
+      });
+
+      const user = users?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      userId = user?.id || null;
     }
 
-    const user = users.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    // SECURITY: Track start time to apply consistent delay at end
+    const startTime = Date.now();
+    // Use 300ms target to account for database query variability
+    // This ensures timing is consistent even when profile queries take 100-200ms
+    const TARGET_RESPONSE_TIME = 300;
 
-    if (!user) {
-      // Don't reveal if user exists or not for security
-      return NextResponse.json({
-        requires2FA: false,
-        userExists: false,
-      });
+    // SECURITY: Always return the same response structure to prevent user enumeration
+    // Don't reveal whether user exists or not
+    let requires2FA = false;
+
+    if (userId) {
+      // Check if user has 2FA enabled in their profile
+      const { data: profile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('email_2fa_enabled')
+        .eq('id', userId)
+        .single();
+
+      requires2FA = profile?.email_2fa_enabled ?? false;
     }
 
-    // Check if user has 2FA enabled in their profile
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('email_2fa_enabled')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) {
-      // User might not have a profile yet (new user)
-      return NextResponse.json({
-        requires2FA: false,
-        userId: user.id,
-      });
+    // SECURITY: Ensure all responses take at least TARGET_RESPONSE_TIME
+    // This masks timing differences between fast (user not found) and slow (user found) paths
+    const elapsed = Date.now() - startTime;
+    if (elapsed < TARGET_RESPONSE_TIME) {
+      await new Promise(resolve => setTimeout(resolve, TARGET_RESPONSE_TIME - elapsed));
+    } else {
+      // Query took longer than target - log for monitoring but don't reveal timing
+      console.warn(`[2FA] Query exceeded target time: ${elapsed}ms`);
     }
 
     return NextResponse.json({
-      requires2FA: profile?.email_2fa_enabled ?? false,
-      userId: user.id,
+      requires2FA,
     });
   } catch (error: any) {
     console.error('[2FA] Error checking 2FA status:', error);

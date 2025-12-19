@@ -38,7 +38,7 @@ export default function OnboardingWelcomeModal({ isOpen, onClose }: OnboardingWe
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-100">Welcome to Genesis Chat Bot!</h2>
+                <h2 className="text-xl font-bold text-slate-100">Welcome to Chatbot!</h2>
                 <p className="text-sm text-slate-400">One quick step to get started</p>
               </div>
             </div>
@@ -53,9 +53,9 @@ export default function OnboardingWelcomeModal({ isOpen, onClose }: OnboardingWe
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="text-sm font-semibold text-blue-200">Before you can chat with Genesis Chat Bot</p>
+                  <p className="text-sm font-semibold text-blue-200">Before you can chat with Chatbot</p>
                   <p className="mt-2 text-sm text-slate-300">
-                    You need to add at least one API key below. This allows Genesis Chat Bot to connect to AI models on your behalf.
+                    You need to add at least one API key below. This allows Chatbot to connect to AI models on your behalf.
                   </p>
                 </div>
               </div>
@@ -91,7 +91,7 @@ export default function OnboardingWelcomeModal({ isOpen, onClose }: OnboardingWe
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-slate-300">
-                      Start chatting with Genesis Chat Bot!
+                      Start chatting with Chatbot!
                     </p>
                   </div>
                 </div>

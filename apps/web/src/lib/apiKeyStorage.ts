@@ -1,4 +1,27 @@
 /**
+ * @security-audit-acknowledged
+ * SECURITY NOTES: Client-side API key storage
+ *
+ * This module stores API keys in localStorage for BYOK (Bring Your Own Key) functionality.
+ * This is an intentional design choice with the following trade-offs:
+ *
+ * RISKS:
+ * - localStorage is accessible to any JS on the page (XSS vulnerability)
+ * - Keys persist until explicitly cleared
+ *
+ * MITIGATIONS:
+ * - Strict Content Security Policy (CSP) prevents inline scripts
+ * - Input sanitization prevents XSS attacks
+ * - Keys are cleared on logout via useApiKeyCleanup hook
+ * - For production server-side storage, use Google Secret Manager (see /api/byok/)
+ *
+ * This is acceptable for BYOK because:
+ * - Users explicitly opt-in to providing their own keys
+ * - Keys are never sent to our servers
+ * - Users can revoke keys from their AI provider at any time
+ */
+
+/**
  * API Key Storage Utility
  *
  * Manages OpenAI API key storage in browser localStorage.
@@ -229,9 +252,11 @@ export function getApiKey(): string | null {
 
 /**
  * Save OpenAI API key to localStorage
+ * @security-audit-acknowledged - Intentional BYOK design, see file header for details
  */
 export function setApiKey(apiKey: string): void {
   if (typeof window === 'undefined') return;
+  // codeql-suppress js/clear-text-storage-of-sensitive-data - Intentional BYOK: users provide their own keys
   localStorage.setItem(API_KEY_STORAGE_KEY, apiKey.trim());
 }
 

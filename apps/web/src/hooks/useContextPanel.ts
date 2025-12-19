@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import { askContextQuestion } from "@/lib/contextChatClient";
 import type { UserTier } from "@/hooks/useUserTier";
 
@@ -16,7 +17,6 @@ type UseContextPanelOptions = {
   clearSelection: () => void;
   threadMessages: { role: "user" | "assistant"; content: string }[];
   userTier?: UserTier;
-  userId?: string;
 };
 
 type UseContextPanelResult = {
@@ -35,7 +35,7 @@ type UseContextPanelResult = {
 };
 
 export function useContextPanel(options: UseContextPanelOptions): UseContextPanelResult {
-  const { selection, clearSelection, threadMessages, userTier, userId } = options;
+  const { selection, clearSelection, threadMessages, userTier } = options;
 
   const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
   const [selectedContextSections, setSelectedContextSections] = useState<string[]>([]);
@@ -78,9 +78,16 @@ export function useContextPanel(options: UseContextPanelOptions): UseContextPane
     files?: File[]
   ): Promise<string> => {
     try {
+      // SECURITY: Get fresh access token from session for authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Authentication required. Please sign in.');
+      }
+
       // Use provided thread messages or fall back to the hook's thread messages
       const messagesToUse = threadMessagesParam || threadMessages;
-      const response = await askContextQuestion(question, contextSections, messagesToUse, files, userTier, userId);
+      const response = await askContextQuestion(question, contextSections, messagesToUse, files, userTier, accessToken);
       return response;
     } catch (error) {
       console.error("Error in context question:", error);

@@ -1,8 +1,8 @@
 /**
- * Workflow Selector Component
+ * Canvas Selector Component
  *
- * Dropdown to select an exposed Canvas workflow to route messages to.
- * When a workflow is selected, messages go through the workflow instead of direct chat.
+ * Dropdown to select an exposed Canvas to route messages to.
+ * When a canvas is selected, messages go through the canvas workflow instead of direct chat.
  */
 
 "use client";
@@ -47,10 +47,7 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
     setIsOpen(false);
   };
 
-  // Don't render if no workflows available
-  if (!isLoading && workflows.length === 0) {
-    return null;
-  }
+  // Always render when the component is called - visibility is controlled by parent via feature flag
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -64,9 +61,9 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
             ? "border-purple-500/50 bg-purple-900/30 text-purple-200 hover:bg-purple-900/50"
             : "border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
         } disabled:opacity-60`}
-        title={selectedWorkflow ? `Workflow: ${selectedWorkflow.displayName}` : "Select a workflow"}
+        title={selectedWorkflow ? `Canvas: ${selectedWorkflow.displayName}` : "Select a canvas"}
       >
-        {/* Workflow Icon */}
+        {/* Canvas Icon */}
         <span className={`flex h-4 w-4 items-center justify-center rounded text-[10px] ${
           selectedWorkflow
             ? "bg-purple-500/30 text-purple-300"
@@ -90,7 +87,7 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
               />
             </svg>
           ) : (
-            <span>W</span>
+            <span>C</span>
           )}
         </span>
 
@@ -100,7 +97,7 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
             ? "Loading..."
             : selectedWorkflow
               ? selectedWorkflow.displayName
-              : "Workflow"
+              : "Canvas"
           }
         </span>
 
@@ -156,14 +153,14 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
               <div className="border-t border-slate-700 my-2" />
             )}
 
-            {/* Workflows Header */}
+            {/* Canvases Header */}
             {workflows.length > 0 && (
               <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Canvas Workflows ({workflows.length})
+                Connected Canvases ({workflows.length})
               </div>
             )}
 
-            {/* Workflow Options */}
+            {/* Canvas Options */}
             <div className="space-y-1">
               {workflows.map((workflow) => (
                 <button
@@ -177,7 +174,7 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="flex h-5 w-5 items-center justify-center rounded bg-purple-500/20 text-purple-300 text-xs">
-                      W
+                      C
                     </span>
                     <span className="text-xs font-medium text-slate-100 truncate flex-1">
                       {workflow.displayName}
@@ -206,10 +203,10 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
             {/* Empty State */}
             {workflows.length === 0 && !isLoading && (
               <div className="text-center py-4 text-xs text-slate-500">
-                No workflows available.
+                No canvases available.
                 <br />
                 <span className="text-[10px]">
-                  Expose workflows in Canvas to use them here.
+                  Enable Master Trigger nodes in your canvases to use them here.
                 </span>
               </div>
             )}

@@ -4,6 +4,7 @@
  * Helper functions for Gmail OAuth feature.
  */
 
+import DOMPurify from 'isomorphic-dompurify';
 import type { EmailMessage } from '../types';
 
 /**
@@ -92,41 +93,54 @@ export function formatEmailList(emails: EmailMessage[]): string {
 
 /**
  * Sanitize email body for safe display
+ * Uses DOMPurify for robust XSS protection
  */
 export function sanitizeEmailBody(body: string): string {
-  // Remove potentially dangerous HTML if present
-  return body
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/on\w+="[^"]*"/gi, '')
-    .replace(/on\w+='[^']*'/gi, '');
+  // SECURITY: Use DOMPurify for proper HTML sanitization
+  // This removes all scripts, event handlers, and dangerous content
+  return DOMPurify.sanitize(body, {
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
+    ALLOW_DATA_ATTR: false,
+  });
 }
 
 /**
  * Extract plain text from HTML email body
+ * Uses DOMPurify for safe HTML stripping
  */
 export function htmlToPlainText(html: string): string {
-  return html
+  // SECURITY: Use DOMPurify to safely strip all HTML tags
+  // First, convert block elements to newlines for readability
+  const withNewlines = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
+    .replace(/<\/div>/gi, '\n');
+
+  // Strip all HTML using DOMPurify (returns plain text only)
+  const plainText = DOMPurify.sanitize(withNewlines, {
+    ALLOWED_TAGS: [], // No tags allowed - pure text output
+    ALLOWED_ATTR: [],
+    KEEP_CONTENT: true, // Keep the text content
+  });
+
+  // Clean up whitespace
+  return plainText
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
     .trim();
 }
 
 /**
  * Generate a unique confirmation ID for email sending
+ * Uses cryptographically secure randomness
  */
 export function generateConfirmationId(): string {
   const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `email_confirm_${timestamp}_${random}`;
+  // SECURITY: Use crypto.randomUUID() instead of Math.random()
+  const randomPart = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID().split('-')[0]
+    : Date.now().toString(36);
+  return `email_confirm_${timestamp}_${randomPart}`;
 }
 
 /**

@@ -2,15 +2,8 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  getSelectedModel,
-  setSelectedModel,
-  type AIModel,
-} from "@/lib/apiKeyStorage";
-import ModelSelector from "@/components/settings/ModelSelector";
 import SubscriptionManagement from "@/components/settings/SubscriptionManagement";
 import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal";
-import FeatureToggles from "@/components/settings/FeatureToggles";
 import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
 import MCPServerSettings from "@/components/settings/MCPServerSettings";
 import MCPMigrationBanner from "@/components/settings/MCPMigrationBanner";
@@ -18,14 +11,13 @@ import EncryptionSettings from "@/components/settings/EncryptionSettings";
 import BYOKSettings from "@/components/settings/BYOKSettings";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useUserTier } from "@/hooks/useUserTier";
+import { verifySubscriptionWithRetry, RETRY_STRATEGIES } from "@/lib/services/subscriptionService";
 
 function SettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthSession();
   const { tier, daysRemaining, isExpired, canUseServices, refreshTier } = useUserTier(user?.id);
-  const [selectedModel, setSelectedModelState] = useState<AIModel>("gpt-5.1");
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
 
@@ -46,30 +38,20 @@ function SettingsPageContent() {
     // Clean up URL immediately
     window.history.replaceState({}, '', '/settings');
 
-    // Verify subscription status (webhook might not have processed yet)
-    const verifySubscription = async (retryCount = 0) => {
+    // Use centralized subscription verification service
+    const verifySubscription = async () => {
       try {
-        const response = await fetch('/api/stripe/verify-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
-        });
+        const result = await verifySubscriptionWithRetry(
+          user.id,
+          RETRY_STRATEGIES.AGGRESSIVE, // 10 retries, 500ms delay for settings (fast feedback)
+          (attempt, max) => console.log(`[Settings] Verification attempt ${attempt}/${max}`)
+        );
 
-        const data = await response.json();
-        console.log('[Settings] Subscription verification:', data);
+        console.log('[Settings] Subscription verification:', result);
 
-        if (data.verified && (data.tier === 'pro' || data.tier === 'trial')) {
-          // Refresh the tier from database
-          await refreshTier();
-          console.log('[Settings] Subscription verified, tier updated');
-        } else if (retryCount < 10) {
-          // Webhook might not have processed yet, retry quickly
-          console.log(`[Settings] Subscription not verified yet, retrying in 500ms (attempt ${retryCount + 1}/10)`);
-          setTimeout(() => verifySubscription(retryCount + 1), 500);
-        } else {
-          console.log('[Settings] Max retries reached, refreshing tier anyway');
-          await refreshTier();
-        }
+        // Refresh the tier from database
+        await refreshTier();
+        console.log('[Settings] Tier refreshed');
       } catch (error) {
         console.error('[Settings] Error verifying subscription:', error);
         // Still try to refresh tier on error
@@ -79,23 +61,6 @@ function SettingsPageContent() {
 
     verifySubscription();
   }, [searchParams, user?.id, refreshTier]);
-
-  // Load existing settings on mount
-  useEffect(() => {
-    const existingModel = getSelectedModel();
-    setSelectedModelState(existingModel);
-  }, []);
-
-  const handleModelChange = (model: AIModel) => {
-    setSelectedModelState(model);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleSave = () => {
-    setSelectedModel(selectedModel);
-    setHasUnsavedChanges(false);
-    router.push("/dashboard");
-  };
 
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-50 overflow-hidden">
@@ -107,7 +72,7 @@ function SettingsPageContent() {
 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 px-6 py-4">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
+        <div className="mx-auto flex max-w-4xl items-center">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
@@ -118,19 +83,7 @@ function SettingsPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-2xl font-semibold">Settings</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            {hasUnsavedChanges && (
-              <span className="text-sm text-amber-400">Unsaved changes</span>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={!hasUnsavedChanges}
-              className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Save Settings
-            </button>
+            <h1 className="text-2xl font-semibold">Account Settings</h1>
           </div>
         </div>
       </header>
@@ -264,26 +217,6 @@ function SettingsPageContent() {
           {/* Encryption Settings Section */}
           <EncryptionSettings userEmail={user?.email} />
 
-          {/* Model Selection Section */}
-          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-100">Default Model</h2>
-              <p className="mt-2 text-sm text-slate-400">
-                Choose which AI model to use by default for your conversations. You can also switch models
-                on any message.
-              </p>
-            </div>
-
-            <ModelSelector value={selectedModel} onChange={handleModelChange} />
-
-            <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-              <p className="text-xs text-slate-400">
-                <strong className="text-slate-300">Note:</strong> You use your own API keys for each provider.
-                Make sure you have the corresponding API key configured above for the model you select.
-              </p>
-            </div>
-          </section>
-
           {/* Push-to-Talk Settings Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <PushToTalkSettings />
@@ -292,11 +225,6 @@ function SettingsPageContent() {
           {/* MCP Servers Section */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
             <MCPServerSettings />
-          </section>
-
-          {/* Feature Toggles Section */}
-          <section>
-            <FeatureToggles userId={user?.id} />
           </section>
 
         </div>

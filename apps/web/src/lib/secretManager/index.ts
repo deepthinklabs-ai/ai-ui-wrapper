@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Server-side API key storage in Google Secret Manager
+ * - Is the authentication flow secure (WIF + Service Account)?
+ * - Can unauthorized users access other users' keys?
+ * - Are keys properly isolated per user?
+ * - Is memory handling secure (key nullification)?
+ * - Are there any IDOR vulnerabilities in getUserSecretName?
+ */
+
+/**
  * Google Secret Manager Client for BYOK
  *
  * Manages user API keys securely in Google Cloud Secret Manager.
@@ -21,9 +31,16 @@ import { getVercelOidcToken } from '@vercel/functions/oidc';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
 // Provider types supported
 export type BYOKProvider = 'openai' | 'claude' | 'grok' | 'gemini';
+
+// Key metadata for rotation tracking
+export interface KeyMetadata {
+  createdAt: string;  // ISO timestamp when key was first stored
+  updatedAt: string;  // ISO timestamp when key was last updated
+}
 
 // JSON blob structure stored in Secret Manager
 export interface UserApiKeys {
@@ -31,6 +48,13 @@ export interface UserApiKeys {
   claude: string | null;
   grok: string | null;
   gemini: string | null;
+  // Metadata for key rotation tracking (optional for backward compatibility)
+  _metadata?: {
+    openai?: KeyMetadata;
+    claude?: KeyMetadata;
+    grok?: KeyMetadata;
+    gemini?: KeyMetadata;
+  };
 }
 
 // Empty keys template
@@ -76,11 +100,13 @@ async function getClient(): Promise<SecretManagerServiceClient> {
         throw new Error('OIDC token not available - are you running on Vercel?');
       }
 
-      console.log('[SecretManager] Got OIDC token, length:', oidcToken.length);
+      // SECURITY: Don't log token length - could aid attackers
+      console.log('[SecretManager] Got OIDC token');
 
       // Write token to temp file (required by google-auth-library)
-      const tokenPath = path.join(os.tmpdir(), `vercel-oidc-token-${Date.now()}.txt`);
-      fs.writeFileSync(tokenPath, oidcToken, 'utf-8');
+      // SECURITY: Use crypto.randomUUID() for unpredictable filename and restrictive permissions
+      const tokenPath = path.join(os.tmpdir(), `vercel-oidc-token-${crypto.randomUUID()}.txt`);
+      fs.writeFileSync(tokenPath, oidcToken, { encoding: 'utf-8', mode: 0o600 });
 
       const authClient = ExternalAccountClient.fromJSON({
         type: 'external_account',
@@ -257,12 +283,13 @@ export async function getUserKeys(userId: string): Promise<UserApiKeys> {
 
     const parsed = JSON.parse(jsonString) as Partial<UserApiKeys>;
 
-    // Ensure all fields exist
+    // Ensure all fields exist (including metadata for backward compatibility)
     return {
       openai: parsed.openai || null,
       claude: parsed.claude || null,
       grok: parsed.grok || null,
       gemini: parsed.gemini || null,
+      _metadata: parsed._metadata || undefined,
     };
   } catch (error: unknown) {
     const grpcError = error as { code?: number };
@@ -277,6 +304,7 @@ export async function getUserKeys(userId: string): Promise<UserApiKeys> {
 /**
  * Update a single provider's API key
  * Uses merge-and-replace pattern: fetch existing, update field, write back
+ * Tracks creation and update timestamps for key rotation reminders
  */
 export async function updateUserKey(
   userId: string,
@@ -292,10 +320,27 @@ export async function updateUserKey(
   // Get existing keys
   const currentKeys = await getUserKeys(userId);
 
+  // Get current timestamp
+  const now = new Date().toISOString();
+
+  // Determine if this is a new key or update
+  const existingMetadata = currentKeys._metadata?.[provider];
+  const isNewKey = !currentKeys[provider];
+
+  // Update metadata with timestamps
+  const updatedMetadata: UserApiKeys['_metadata'] = {
+    ...currentKeys._metadata,
+    [provider]: {
+      createdAt: isNewKey ? now : (existingMetadata?.createdAt || now),
+      updatedAt: now,
+    },
+  };
+
   // Update the specific provider
   const updatedKeys: UserApiKeys = {
     ...currentKeys,
     [provider]: apiKey,
+    _metadata: updatedMetadata,
   };
 
   // Write back entire blob as new version
@@ -308,7 +353,7 @@ export async function updateUserKey(
 
 /**
  * Delete a single provider's API key
- * Sets the provider's key to null and writes new version
+ * Sets the provider's key to null and clears metadata
  */
 export async function deleteUserKey(
   userId: string,
@@ -322,10 +367,17 @@ export async function deleteUserKey(
 
   const currentKeys = await getUserKeys(userId);
 
+  // Clear metadata for the deleted provider
+  const updatedMetadata = { ...currentKeys._metadata };
+  if (updatedMetadata[provider]) {
+    delete updatedMetadata[provider];
+  }
+
   // Set provider key to null
   const updatedKeys: UserApiKeys = {
     ...currentKeys,
     [provider]: null,
+    _metadata: Object.keys(updatedMetadata).length > 0 ? updatedMetadata : undefined,
   };
 
   await addSecretVersion(userId, updatedKeys);
@@ -371,4 +423,132 @@ export async function getUserKeyStatus(userId: string): Promise<Record<BYOKProvi
 export async function hasAnyKey(userId: string): Promise<boolean> {
   const status = await getUserKeyStatus(userId);
   return status.openai || status.claude || status.grok || status.gemini;
+}
+
+// ============================================
+// Key Rotation Tracking
+// ============================================
+
+// Default rotation period: 90 days
+const KEY_ROTATION_DAYS = 90;
+const KEY_ROTATION_WARNING_DAYS = 75; // Warn 15 days before rotation is due
+
+/**
+ * Key rotation status for a single provider
+ */
+export interface KeyRotationInfo {
+  hasKey: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  ageInDays: number | null;
+  needsRotation: boolean;
+  warningDue: boolean;
+  daysUntilRotation: number | null;
+}
+
+/**
+ * Full rotation status for all providers
+ */
+export interface KeyRotationStatus {
+  openai: KeyRotationInfo;
+  claude: KeyRotationInfo;
+  grok: KeyRotationInfo;
+  gemini: KeyRotationInfo;
+  anyKeyNeedsRotation: boolean;
+  anyWarningDue: boolean;
+}
+
+/**
+ * Calculate rotation info for a single provider
+ */
+function calculateRotationInfo(
+  hasKey: boolean,
+  metadata: KeyMetadata | undefined
+): KeyRotationInfo {
+  if (!hasKey) {
+    return {
+      hasKey: false,
+      createdAt: null,
+      updatedAt: null,
+      ageInDays: null,
+      needsRotation: false,
+      warningDue: false,
+      daysUntilRotation: null,
+    };
+  }
+
+  // If key exists but no metadata (legacy key), assume it's old and needs rotation
+  if (!metadata) {
+    return {
+      hasKey: true,
+      createdAt: null,
+      updatedAt: null,
+      ageInDays: null,
+      needsRotation: true, // Legacy keys should be rotated
+      warningDue: true,
+      daysUntilRotation: 0,
+    };
+  }
+
+  const updatedAt = new Date(metadata.updatedAt);
+  const now = new Date();
+  const ageInMs = now.getTime() - updatedAt.getTime();
+  const ageInDays = Math.floor(ageInMs / (1000 * 60 * 60 * 24));
+  const daysUntilRotation = Math.max(0, KEY_ROTATION_DAYS - ageInDays);
+
+  return {
+    hasKey: true,
+    createdAt: metadata.createdAt,
+    updatedAt: metadata.updatedAt,
+    ageInDays,
+    needsRotation: ageInDays >= KEY_ROTATION_DAYS,
+    warningDue: ageInDays >= KEY_ROTATION_WARNING_DAYS,
+    daysUntilRotation,
+  };
+}
+
+/**
+ * Get key rotation status for all providers
+ * Returns rotation warnings and recommendations
+ */
+export async function getKeyRotationStatus(userId: string): Promise<KeyRotationStatus> {
+  const keys = await getUserKeys(userId);
+  const keyStatus = await getUserKeyStatus(userId);
+
+  const openaiInfo = calculateRotationInfo(keyStatus.openai, keys._metadata?.openai);
+  const claudeInfo = calculateRotationInfo(keyStatus.claude, keys._metadata?.claude);
+  const grokInfo = calculateRotationInfo(keyStatus.grok, keys._metadata?.grok);
+  const geminiInfo = calculateRotationInfo(keyStatus.gemini, keys._metadata?.gemini);
+
+  return {
+    openai: openaiInfo,
+    claude: claudeInfo,
+    grok: grokInfo,
+    gemini: geminiInfo,
+    anyKeyNeedsRotation:
+      openaiInfo.needsRotation ||
+      claudeInfo.needsRotation ||
+      grokInfo.needsRotation ||
+      geminiInfo.needsRotation,
+    anyWarningDue:
+      openaiInfo.warningDue ||
+      claudeInfo.warningDue ||
+      grokInfo.warningDue ||
+      geminiInfo.warningDue,
+  };
+}
+
+/**
+ * Get list of providers that need rotation
+ */
+export async function getProvidersNeedingRotation(userId: string): Promise<BYOKProvider[]> {
+  const status = await getKeyRotationStatus(userId);
+  const providers: BYOKProvider[] = [];
+
+  if (status.openai.needsRotation) providers.push('openai');
+  if (status.claude.needsRotation) providers.push('claude');
+  if (status.grok.needsRotation) providers.push('grok');
+  if (status.gemini.needsRotation) providers.push('gemini');
+
+  return providers;
 }

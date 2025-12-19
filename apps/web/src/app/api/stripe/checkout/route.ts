@@ -1,4 +1,15 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Stripe Checkout Security
+ * - Is userId validated against the authenticated user (IDOR)? ✅ FIXED
+ * - Can an attacker create checkout sessions for other users? ✅ FIXED
+ * - Is priceId validated against allowed prices? ✅ FIXED
+ * - Can trialDays be manipulated for extended trials? ✅ FIXED
+ * - Is the origin header trusted for redirect URLs (open redirect)? ✅ FIXED
+ * - Are duplicate subscription checks sufficient?
+ */
+
+/**
  * Stripe Checkout Session API Route
  *
  * Creates a Stripe Checkout session for users to subscribe to Pro plan
@@ -7,9 +18,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
+import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { validateForFeature } from '@/lib/validateEnv';
+import { checkPaymentsEnabled } from '@/lib/killSwitches';
+
+// SECURITY: Allowed origins for redirect URLs
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  process.env.NEXT_PUBLIC_APP_URL,
+  process.env.APP_URL,
+].filter(Boolean) as string[];
+
+// SECURITY: Maximum allowed trial days
+const MAX_TRIAL_DAYS = 14;
 
 export async function POST(req: NextRequest) {
+  // Validate Stripe configuration
+  const envCheck = validateForFeature('stripe');
+  if (!envCheck.valid) {
+    console.error('[Stripe Checkout] Missing configuration:', envCheck.missing);
+    return NextResponse.json(
+      { error: 'Payment service not configured' },
+      { status: 503 }
+    );
+  }
+
+  // KILL SWITCH: Check if payments are enabled
+  const paymentsCheck = await checkPaymentsEnabled();
+  if (!paymentsCheck.enabled) {
+    return NextResponse.json(
+      { error: paymentsCheck.error!.message },
+      { status: paymentsCheck.error!.status }
+    );
+  }
+
   try {
+    // SECURITY: Require authentication
+    const authResult = await getAuthenticatedUser(req);
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { userId, priceId, trialDays } = body;
 
@@ -21,6 +73,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // SECURITY: Verify the authenticated user matches the requested userId (prevent IDOR)
+    if (authResult.user.id !== userId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Cannot create checkout for another user' },
+        { status: 403 }
+      );
+    }
+
     if (!priceId) {
       return NextResponse.json(
         { error: 'Missing priceId' },
@@ -28,13 +88,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // DEBUG: Log the price ID being used
-    console.log('[Stripe Checkout] Creating session with:', {
-      priceId,
-      userId,
-      trialDays,
-      envPriceId: process.env.STRIPE_PRICE_ID,
-    });
+    // SECURITY: Validate priceId against allowed prices
+    const allowedPrices = [
+      process.env.STRIPE_PRICE_ID,
+    ].filter(Boolean);
+
+    if (!allowedPrices.includes(priceId)) {
+      return NextResponse.json(
+        { error: 'Invalid price ID' },
+        { status: 400 }
+      );
+    }
+
+    // SECURITY: Cap trial days to prevent manipulation
+    const validatedTrialDays = trialDays
+      ? Math.min(Math.max(0, Number(trialDays) || 0), MAX_TRIAL_DAYS)
+      : 0;
+
+    // DEBUG: Log the price ID being used (don't log in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Stripe Checkout] Creating session with:', {
+        priceId,
+        userId,
+        trialDays: validatedTrialDays,
+        envPriceId: process.env.STRIPE_PRICE_ID,
+      });
+    }
 
     // Initialize Supabase client (server-side with service role key)
     const supabase = createClient(
@@ -104,8 +183,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Get the origin for redirect URLs
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    // SECURITY: Validate origin against allowed domains to prevent open redirect
+    const requestOrigin = req.headers.get('origin');
+    if (!requestOrigin || !ALLOWED_ORIGINS.includes(requestOrigin)) {
+      return NextResponse.json(
+        { error: 'Invalid or missing origin' },
+        { status: 403 }
+      );
+    }
+    const origin = requestOrigin;
 
     // Create Checkout session
     const session = await stripe.checkout.sessions.create({
@@ -123,10 +209,10 @@ export async function POST(req: NextRequest) {
         user_id: userId,
       },
       allow_promotion_codes: true, // Allow users to apply promo codes
-      // Add trial period if specified (for 7-day free trial)
-      ...(trialDays && trialDays > 0 ? {
+      // Add trial period if specified (capped at MAX_TRIAL_DAYS)
+      ...(validatedTrialDays > 0 ? {
         subscription_data: {
-          trial_period_days: trialDays,
+          trial_period_days: validatedTrialDays,
         },
       } : {}),
     });

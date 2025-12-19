@@ -42,6 +42,7 @@ import { executeCalendarToolCallsServer } from '@/app/canvas/features/calendar-o
 // Import OAuth connection lookup for fallback when connectionId not in config
 import { getOAuthConnection } from '@/lib/googleTokenStorage';
 import { getSlackConnection } from '@/lib/slackTokenStorage';
+import { buildInternalApiUrl } from '@/lib/internalApiUrl';
 
 interface ConversationHistoryEntry {
   id: string;
@@ -422,12 +423,12 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
       );
     }
 
-    // Use the same origin as the incoming request (handles dynamic ports in development)
-    const internalBaseUrl = new URL(request.url).origin;
-    const apiUrl = new URL(apiEndpoint, internalBaseUrl);
+    // SECURITY: Build internal API URL with validation to prevent SSRF
+    // Uses only env vars, never request-derived values
+    const apiUrl = buildInternalApiUrl(apiEndpoint);
 
     // Make initial API call
-    let apiResponse = await fetch(apiUrl.toString(), {
+    let apiResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -659,7 +660,7 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
         ];
       }
 
-      apiResponse = await fetch(apiUrl.toString(), {
+      apiResponse = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

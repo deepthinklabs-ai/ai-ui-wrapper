@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkOAuthEnabled } from '@/lib/killSwitches';
 
 // Server-side Supabase client
 const supabase = createClient(
@@ -38,6 +39,15 @@ const SLACK_BOT_SCOPES = [
 
 export async function GET(request: NextRequest) {
   try {
+    // KILL SWITCH: Check if OAuth is enabled
+    const oauthCheck = await checkOAuthEnabled();
+    if (!oauthCheck.enabled) {
+      return NextResponse.json(
+        { error: oauthCheck.error!.message },
+        { status: oauthCheck.error!.status }
+      );
+    }
+
     if (!SLACK_CLIENT_ID) {
       return NextResponse.json(
         { error: 'Slack OAuth is not configured' },

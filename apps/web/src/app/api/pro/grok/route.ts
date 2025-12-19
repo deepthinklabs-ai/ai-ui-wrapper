@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Grok API proxy security
+ * - Is userId properly authenticated (not just passed in body)? ✅ FIXED
+ * - Can an attacker use another user's API key? ✅ FIXED - uses authenticated userId
+ * - Is the API key cleared from memory after use?
+ * - Are there injection attacks possible via messages/tools?
+ * - Can rate limiting be bypassed?
+ */
+
+/**
  * Grok (xAI) API Proxy (BYOK)
  *
  * This route allows authenticated users to use Grok models
@@ -18,11 +28,35 @@ import {
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { checkAIEnabled } from '@/lib/killSwitches';
 
 export async function POST(req: NextRequest) {
+  // Declare outside try so it can be cleared in catch/finally
+  let userApiKey: string | null = null;
+
   try {
+    // SECURITY: Authenticate user from session token, not from request body
+    const { user, error: authError } = await getAuthenticatedUser(req);
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: authError || 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    const userId = user.id; // Use authenticated user ID, never trust client
+
+    // KILL SWITCH: Check if AI features are enabled
+    const aiCheck = await checkAIEnabled();
+    if (!aiCheck.enabled) {
+      return NextResponse.json(
+        { error: aiCheck.error!.message },
+        { status: aiCheck.error!.status }
+      );
+    }
+
     const body = await req.json();
-    const { userId, messages, model = 'grok-beta', unhinged = false, enableWebSearch = true } = body;
+    const { messages, model = 'grok-beta', unhinged = false, enableWebSearch = true } = body;
 
     // Debug logging
     console.log('[GROK API] Unhinged mode:', unhinged);
@@ -32,13 +66,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate required fields
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Missing userId' },
-        { status: 400 }
-      );
-    }
-
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
         { error: 'Missing messages array' },
@@ -92,7 +119,7 @@ export async function POST(req: NextRequest) {
     }
 
     // BYOK: Get user's Grok API key from Secret Manager
-    let userApiKey = await getProviderKey(userId, 'grok');
+    userApiKey = await getProviderKey(userId, 'grok');
     if (!userApiKey) {
       return NextResponse.json(
         {
@@ -202,12 +229,14 @@ export async function POST(req: NextRequest) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.error?.message || response.statusText;
 
-      // Log detailed error for debugging
+      // Log error details for debugging
+      // SECURITY: Only log non-sensitive fields, not user message content which may contain PII
       console.error('Grok API Error:', {
         status: response.status,
         statusText: response.statusText,
         errorData,
-        requestBody: JSON.stringify(requestBody, null, 2),
+        model: requestBody.model,
+        messageCount: requestBody.messages?.length,
       });
 
       if (response.status === 401) {
@@ -268,6 +297,9 @@ export async function POST(req: NextRequest) {
       { headers: rateLimitHeaders }
     );
   } catch (error: any) {
+    // Security: Ensure API key is cleared even on error
+    userApiKey = null;
+
     console.error('Error in /api/pro/grok:', error);
 
     // Handle Grok API errors

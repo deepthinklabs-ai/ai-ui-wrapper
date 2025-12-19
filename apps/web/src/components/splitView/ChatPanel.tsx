@@ -27,7 +27,7 @@ import type { MessageType, QuickSendTarget } from "@/types/splitView";
 interface ChatPanelProps {
   threadId: string | null;
   thread: Thread | null;
-  userId: string | undefined;
+  userId?: string | undefined; // Deprecated - no longer used, auth is handled internally
   userTier: UserTier;
   selectedModel: AIModel;
   onModelChange: (model: AIModel) => void;
@@ -53,7 +53,6 @@ interface ChatPanelProps {
 export default function ChatPanel({
   threadId,
   thread,
-  userId,
   userTier,
   selectedModel,
   onModelChange,
@@ -132,7 +131,6 @@ export default function ChatPanel({
     onThreadTitleUpdated,
     systemPromptAddition: buildSystemPrompt(),
     userTier,
-    userId,
     enableWebSearch,
   });
 
@@ -153,7 +151,6 @@ export default function ChatPanel({
   } = useTextConversion({
     onTextConverted: (convertedText) => setDraft(convertedText),
     userTier,
-    userId,
   });
 
   const handleConvertToMarkdown = useCallback(() => convertToMarkdown(draft), [draft, convertToMarkdown]);

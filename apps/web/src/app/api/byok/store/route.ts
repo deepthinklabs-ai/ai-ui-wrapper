@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: API key storage endpoint security
+ * - Is authentication properly enforced?
+ * - Can rate limiting be bypassed?
+ * - Is the userId properly validated (IDOR prevention)?
+ * - Are keys ever logged or leaked in error responses?
+ * - Is input validation sufficient?
+ */
+
+/**
  * BYOK Store API Route
  *
  * POST /api/byok/store
@@ -14,9 +24,10 @@
 
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
-import { strictRatelimit, rateLimitErrorResponse } from '@/lib/ratelimit';
-import { updateUserKey, type BYOKProvider } from '@/lib/secretManager';
+import { strictRatelimitAsync, rateLimitErrorResponse } from '@/lib/ratelimit';
+import { updateUserKey, getUserKeyStatus, type BYOKProvider } from '@/lib/secretManager';
 import { validateKeyFormat, testApiKey } from '@/lib/secretManager/validation';
+import { auditApiKey, auditSecurity } from '@/lib/auditLog';
 
 const VALID_PROVIDERS: BYOKProvider[] = ['openai', 'claude', 'grok', 'gemini'];
 
@@ -31,10 +42,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Rate limit (strict: 3 per minute)
+    // 2. Rate limit (strict: 3 per minute) - uses Redis when available
     const rateLimitKey = `byok_store_${user.id}`;
-    const rateLimitResult = strictRatelimit(rateLimitKey);
+    const rateLimitResult = await strictRatelimitAsync(rateLimitKey);
     if (!rateLimitResult.success) {
+      // Audit: Rate limit exceeded
+      await auditSecurity.rateLimitExceeded(user.id, '/api/byok/store', {
+        headers: request.headers,
+      });
       return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
     }
 
@@ -94,18 +109,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Store the key in Secret Manager
+    // 8. Check if this is a new key or rotation of existing key
+    const existingKeyStatus = await getUserKeyStatus(user.id);
+    const isRotation = existingKeyStatus[providerType];
+
+    // 9. Store the key in Secret Manager
     try {
-      console.log('[BYOK Store] Attempting to store key for user:', user.id, 'provider:', providerType);
+      console.log('[BYOK Store] Attempting to store key for user:', user.id, 'provider:', providerType, 'isRotation:', isRotation);
       await updateUserKey(user.id, providerType, trimmedKey);
       console.log('[BYOK Store] Successfully stored key for user:', user.id);
     } catch (storeError) {
-      // Log full error details for debugging
+      // Log error details for debugging
+      // SECURITY: Only log message and stack, NOT full error object which may contain API keys
       const errorMessage = storeError instanceof Error ? storeError.message : 'Unknown error';
       const errorStack = storeError instanceof Error ? storeError.stack : '';
       console.error('[BYOK Store] Failed to store key:', errorMessage);
       console.error('[BYOK Store] Error stack:', errorStack);
-      console.error('[BYOK Store] Full error:', JSON.stringify(storeError, Object.getOwnPropertyNames(storeError as object), 2));
 
       return NextResponse.json(
         { error: 'Storage failed', message: 'Failed to store API key. Please try again.' },
@@ -113,11 +132,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // 9. Return success (never return the key)
+    // 10. Audit: API key created or rotated
+    if (isRotation) {
+      await auditApiKey.rotated(user.id, providerType, { headers: request.headers });
+    } else {
+      await auditApiKey.created(user.id, providerType, { headers: request.headers });
+    }
+
+    // 11. Return success (never return the key)
+    const providerName = providerType.charAt(0).toUpperCase() + providerType.slice(1);
     return NextResponse.json({
       success: true,
-      message: `${providerType.charAt(0).toUpperCase() + providerType.slice(1)} API key saved successfully`,
+      message: isRotation
+        ? `${providerName} API key has been rotated successfully`
+        : `${providerName} API key saved successfully`,
       provider: providerType,
+      isRotation,
     });
   } catch (error) {
     console.error('[BYOK Store] Unexpected error:', error instanceof Error ? error.message : 'Unknown error');

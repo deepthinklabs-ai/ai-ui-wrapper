@@ -28,7 +28,10 @@ import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
 import { useThreadExport } from "@/hooks/useThreadExport";
 import { useEncryption } from "@/contexts/EncryptionContext";
 import { useBYOKStatus } from "@/hooks/useBYOKStatus";
+import { useChatbots, useChatbotFolders, useActiveChatbot, useChatbotExport } from "@/app/chatbots/hooks";
+import type { CreateChatbotInput } from "@/types/chatbot";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
+import { verifySubscriptionWithRetry, RETRY_STRATEGIES } from "@/lib/services/subscriptionService";
 import { supabase } from "@/lib/supabaseClient";
 import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
@@ -69,13 +72,20 @@ export default function DashboardPage() {
   // Thread info modal state - stores the thread ID to show info for
   const [threadInfoId, setThreadInfoId] = useState<string | null>(null);
 
+  // Chatbot settings panel editing state - tracks which chatbot ID is being edited
+  const [editingChatbotId, setEditingChatbotId] = useState<string | null>(null);
+  const isEditingChatbot = editingChatbotId !== null;
+
+  // Draft config for real-time preview while editing chatbot settings
+  const [previewConfig, setPreviewConfig] = useState<import("@/types/chatbotFile").ChatbotFileConfig | null>(null);
+
   // Get encryption function for importing threads
   const { encryptText, isReady: isEncryptionReadyForImport, state: encryptionState } = useEncryption();
   // Only provide encryption function if encryption is set up and unlocked
   const encryptForImport = isEncryptionReadyForImport && encryptionState.isUnlocked ? encryptText : undefined;
 
   useEffect(() => {
-    const verifyUpgrade = async (retryCount = 0) => {
+    const verifyUpgrade = async () => {
       if (!user?.id) return;
 
       const urlParams = new URLSearchParams(window.location.search);
@@ -84,37 +94,23 @@ export default function DashboardPage() {
       setVerifyingSubscription(true);
 
       try {
-        // Call verify API to sync subscription status
-        const response = await fetch('/api/stripe/verify-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
-        });
+        // Use centralized subscription verification service
+        const result = await verifySubscriptionWithRetry(
+          user.id,
+          RETRY_STRATEGIES.CONSERVATIVE, // 3 retries, 2s delay for dashboard
+          (attempt, max) => console.log(`[Dashboard] Verification attempt ${attempt}/${max}`)
+        );
 
-        const data = await response.json();
-        console.log('[Dashboard] Subscription verification:', data);
+        console.log('[Dashboard] Subscription verification:', result);
 
-        if (data.verified && (data.tier === 'pro' || data.tier === 'trial')) {
-          // Refresh the tier from database
-          await refreshTier();
-          // Clean up URL
-          window.history.replaceState({}, '', '/dashboard');
-          setVerifyingSubscription(false);
-          setIsFromSuccessfulCheckout(false);
-        } else if (retryCount < 3) {
-          // Stripe webhook might not have processed yet, retry after delay
-          console.log(`[Dashboard] Subscription not verified yet, retrying in 2s (attempt ${retryCount + 1}/3)`);
-          setTimeout(() => verifyUpgrade(retryCount + 1), 2000);
-        } else {
-          console.log('[Dashboard] Max retries reached, cleaning up URL');
-          // Still refresh tier and clean up URL after max retries
-          await refreshTier();
-          window.history.replaceState({}, '', '/dashboard');
-          setVerifyingSubscription(false);
-          setIsFromSuccessfulCheckout(false);
-        }
+        // Refresh the tier from database regardless of result
+        await refreshTier();
+        // Clean up URL
+        window.history.replaceState({}, '', '/dashboard');
       } catch (error) {
         console.error('[Dashboard] Error verifying subscription:', error);
+        await refreshTier(); // Still refresh on error
+      } finally {
         setVerifyingSubscription(false);
         setIsFromSuccessfulCheckout(false);
       }
@@ -147,14 +143,6 @@ export default function DashboardPage() {
     setSelectedModel(model); // Persist to localStorage
   }, []);
 
-  // Step-by-step mode
-  const {
-    isStepByStepWithExplanation,
-    isStepByStepNoExplanation,
-    toggleStepByStepWithExplanation,
-    toggleStepByStepNoExplanation,
-    getSystemPromptAddition,
-  } = useStepByStepMode();
 
   // Web search toggle
   const [enableWebSearch, setEnableWebSearch] = useState(true);
@@ -165,8 +153,8 @@ export default function DashboardPage() {
   // Auto-clear API key on logout for security
   useApiKeyCleanup();
 
-  // Load feature toggles
-  const { isFeatureEnabled } = useFeatureToggles(user?.id);
+  // Load user-level feature toggles (fallback when no chatbot config)
+  const { isFeatureEnabled: userIsFeatureEnabled } = useFeatureToggles(user?.id);
 
   // Split view feature
   const {
@@ -225,6 +213,38 @@ export default function DashboardPage() {
     isExecuting: workflowExecuting,
   } = useExposedWorkflows(user?.id || null);
 
+  // Chatbot management - basic hooks that don't depend on selectedThreadId
+  const {
+    chatbots,
+    loadingChatbots,
+    selectedChatbotId,
+    selectChatbot,
+    createChatbot,
+    updateChatbot,
+    deleteChatbot,
+    duplicateChatbot,
+    getChatbotById,
+    refreshChatbots,
+  } = useChatbots(user?.id);
+
+  // Chatbot folders
+  const {
+    folders: chatbotFolders,
+    folderTree: chatbotFolderTree,
+    defaultFolderId: chatbotDefaultFolderId,
+    createFolder: createChatbotFolder,
+    updateFolder: updateChatbotFolder,
+    deleteFolder: deleteChatbotFolder,
+    moveFolder: moveChatbotFolder,
+    moveChatbot,
+    toggleFolderCollapse: toggleChatbotFolderCollapse,
+  } = useChatbotFolders(user?.id, chatbots, {
+    onChatbotMoved: refreshChatbots,
+  });
+
+  // Chatbot export
+  const { exportChatbot } = useChatbotExport();
+
   // Debug MCP status
   useEffect(() => {
     console.log('[Dashboard MCP Status]', {
@@ -273,6 +293,110 @@ export default function DashboardPage() {
     onThreadMoved: refreshThreads,
   });
 
+  // Active chatbot for current thread - must be after useThreads since it uses selectedThreadId
+  const {
+    activeChatbot,
+    setThreadChatbot,
+    loadingActiveChatbot,
+  } = useActiveChatbot(user?.id, selectedThreadId, chatbots);
+
+  // Step-by-step mode - initialized from chatbot config
+  const {
+    isStepByStepWithExplanation,
+    isStepByStepNoExplanation,
+    toggleStepByStepWithExplanation,
+    toggleStepByStepNoExplanation,
+    getSystemPromptAddition,
+  } = useStepByStepMode(activeChatbot?.config);
+
+
+  // Handle creating a new chatbot
+  const handleCreateChatbot = useCallback(async (input: CreateChatbotInput) => {
+    const chatbot = await createChatbot(input);
+    if (!chatbot) {
+      // Throw error so the modal can display it
+      throw new Error("Failed to create chatbot. Please check if the database is set up correctly.");
+    }
+    console.log('[Dashboard] Created chatbot:', chatbot.name);
+  }, [createChatbot]);
+
+  // Handle editing a chatbot - opens the settings panel
+  const handleEditChatbot = useCallback((id: string) => {
+    console.log('[Dashboard] Edit chatbot:', id);
+    setEditingChatbotId(id);
+  }, []);
+
+  // Handle duplicating a chatbot
+  const handleDuplicateChatbot = useCallback(async (id: string) => {
+    await duplicateChatbot(id);
+  }, [duplicateChatbot]);
+
+  // Handle exporting a chatbot
+  const handleExportChatbot = useCallback((id: string) => {
+    const chatbot = getChatbotById(id);
+    if (chatbot) {
+      exportChatbot(chatbot);
+    }
+  }, [getChatbotById, exportChatbot]);
+
+  // Handle deleting a chatbot
+  const handleDeleteChatbot = useCallback(async (id: string) => {
+    await deleteChatbot(id);
+  }, [deleteChatbot]);
+
+  // Handle renaming a chatbot
+  const handleRenameChatbot = useCallback(async (id: string, newName: string) => {
+    await updateChatbot(id, { name: newName });
+  }, [updateChatbot]);
+
+  // Handle updating chatbot config (from settings panel)
+  const handleUpdateChatbotConfig = useCallback(async (id: string, config: import("@/types/chatbotFile").ChatbotFileConfig) => {
+    console.log('[Dashboard] Updating chatbot config:', id);
+    console.log('[Dashboard] New config:', config);
+    try {
+      await updateChatbot(id, { config });
+      console.log('[Dashboard] Chatbot config updated successfully');
+    } catch (error) {
+      console.error('[Dashboard] Failed to update chatbot config:', error);
+      throw error;
+    }
+  }, [updateChatbot]);
+
+  // Handle opening chatbot settings panel (from sidebar or header)
+  const handleOpenChatbotSettings = useCallback((chatbotId: string) => {
+    console.log('[Dashboard] Opening chatbot settings panel:', chatbotId);
+    setEditingChatbotId(chatbotId);
+  }, []);
+
+  // Handle closing chatbot settings panel
+  const handleCloseChatbotSettings = useCallback(() => {
+    console.log('[Dashboard] Closing chatbot settings panel');
+    setEditingChatbotId(null);
+    setPreviewConfig(null);
+  }, []);
+
+  // Handle draft config changes for real-time preview
+  const handleDraftConfigChange = useCallback((config: import("@/types/chatbotFile").ChatbotFileConfig | null) => {
+    console.log('[Dashboard] Draft config changed for preview:', config?.model?.model_name);
+    setPreviewConfig(config);
+  }, []);
+
+  // Handle opening settings for the active chatbot (from header)
+  const handleEditActiveChatbot = useCallback(() => {
+    if (activeChatbot) {
+      console.log('[Dashboard] Opening settings for active chatbot:', activeChatbot.name);
+      setEditingChatbotId(activeChatbot.id);
+    }
+  }, [activeChatbot]);
+
+
+  // Handle chatbot selection for thread (from MessageComposer)
+  const handleChatbotChange = useCallback(async (chatbot: { id: string } | null) => {
+    if (selectedThreadId) {
+      await setThreadChatbot(selectedThreadId, chatbot?.id || null);
+    }
+  }, [selectedThreadId, setThreadChatbot]);
+
   const {
     messages,
     loadingMessages,
@@ -295,6 +419,40 @@ export default function DashboardPage() {
 
   const currentThread =
     threads.find((t) => t.id === selectedThreadId) ?? null;
+
+  // Create a preview-aware chatbot for real-time editing preview
+  // When editing, use the preview config; otherwise use the saved chatbot
+  const previewChatbot = React.useMemo(() => {
+    if (!activeChatbot) return null;
+    if (!previewConfig || !isEditingChatbot) return activeChatbot;
+    // Overlay preview config on the active chatbot for display
+    return {
+      ...activeChatbot,
+      config: previewConfig,
+    };
+  }, [activeChatbot, previewConfig, isEditingChatbot]);
+
+  // Merged isFeatureEnabled that uses chatbot config first, then falls back to user preferences
+  // This allows chatbot-specific feature overrides while maintaining user defaults
+  const isFeatureEnabled = useCallback(
+    (featureId: import("@/types/features").FeatureId): boolean => {
+      // First check the preview/active chatbot's config
+      const chatbotConfig = previewChatbot?.config;
+      if (chatbotConfig?.features && featureId in chatbotConfig.features) {
+        const enabled = chatbotConfig.features[featureId];
+        // Only use chatbot config if explicitly set (not undefined)
+        if (enabled !== undefined) {
+          console.log(`[Dashboard] Feature '${featureId}' from chatbot config:`, enabled);
+          return enabled;
+        }
+      }
+      // Fall back to user-level preferences
+      const userEnabled = userIsFeatureEnabled(featureId);
+      console.log(`[Dashboard] Feature '${featureId}' from user prefs:`, userEnabled);
+      return userEnabled;
+    },
+    [previewChatbot, userIsFeatureEnabled]
+  );
 
   // Text selection detection
   const { selection, clearSelection } = useTextSelection(messagesContainerRef as RefObject<HTMLElement>);
@@ -422,7 +580,6 @@ export default function DashboardPage() {
   } = useTextConversion({
     onTextConverted: (convertedText) => setDraft(convertedText),
     userTier: tier,
-    userId: user?.id,
   });
 
   const handleConvertToMarkdown = useCallback(() => convertToMarkdown(draft), [draft, convertToMarkdown]);
@@ -460,7 +617,6 @@ export default function DashboardPage() {
     clearSelection,
     threadMessages: messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
     userTier: tier,
-    userId: user?.id,
   });
 
   // Combine text selection context with thread context
@@ -675,6 +831,30 @@ export default function DashboardPage() {
           }}
           // Encryption props for importing threads
           encryptForStorage={encryptForImport}
+          // Chatbot props
+          chatbots={chatbots}
+          chatbotFolderTree={chatbotFolderTree}
+          selectedChatbotId={selectedChatbotId}
+          onSelectChatbot={selectChatbot}
+          onCreateChatbot={handleCreateChatbot}
+          onEditChatbot={handleEditChatbot}
+          onDuplicateChatbot={handleDuplicateChatbot}
+          onExportChatbot={handleExportChatbot}
+          onDeleteChatbot={handleDeleteChatbot}
+          onRenameChatbot={handleRenameChatbot}
+          onUpdateChatbotConfig={handleUpdateChatbotConfig}
+          chatbotDefaultFolderId={chatbotDefaultFolderId}
+          currentChatbotConfig={activeChatbot?.config}
+          editingChatbotId={editingChatbotId}
+          onCloseChatbotSettings={handleCloseChatbotSettings}
+          onDraftConfigChange={handleDraftConfigChange}
+          // Chatbot folder props
+          onCreateChatbotFolder={createChatbotFolder}
+          onUpdateChatbotFolder={updateChatbotFolder}
+          onDeleteChatbotFolder={deleteChatbotFolder}
+          onMoveChatbotFolder={moveChatbotFolder}
+          onMoveChatbot={moveChatbot}
+          onToggleChatbotFolderCollapse={toggleChatbotFolderCollapse}
         />
         {/* Resize handle */}
         <div
@@ -728,6 +908,9 @@ export default function DashboardPage() {
                       currentThreadTitle={currentThread?.title ?? null}
                       hasThread={!!selectedThreadId}
                       onShowInfo={() => selectedThreadId && setThreadInfoId(selectedThreadId)}
+                      activeChatbot={previewChatbot}
+                      onEditChatbot={handleEditActiveChatbot}
+                      isEditingChatbot={isEditingChatbot}
                     />
                     <MCPServerIndicator
                       connections={connections}
@@ -885,7 +1068,7 @@ export default function DashboardPage() {
                   value={draft}
                   onChange={setDraft}
                   onSend={handleSend}
-                  disabled={sendInFlight || workflowExecuting || !canUseServices || (!byokLoading && !hasAnyKey)}
+                  disabled={sendInFlight || workflowExecuting || !canUseServices || (!byokLoading && !hasAnyKey) || isEditingChatbot}
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
                   onSummarize={handleSummarize}
@@ -914,6 +1097,11 @@ export default function DashboardPage() {
                   onWorkflowChange={selectWorkflow}
                   workflowsLoading={workflowsLoading}
                   workflowExecuting={workflowExecuting}
+                  // Chatbot props
+                  chatbots={chatbots}
+                  selectedChatbot={activeChatbot}
+                  onChatbotChange={handleChatbotChange}
+                  chatbotsLoading={loadingChatbots || loadingActiveChatbot}
                 />
               </div>
             </section>

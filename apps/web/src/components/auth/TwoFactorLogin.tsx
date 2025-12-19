@@ -8,6 +8,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import { getCSRFToken } from '@/hooks/useCSRF';
 
 type TwoFactorLoginProps = {
   userId: string;
@@ -52,9 +53,13 @@ export default function TwoFactorLogin({
     setError(null);
 
     try {
+      const csrfToken = getCSRFToken();
       const response = await fetch('/api/auth/send-verification', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+        },
         body: JSON.stringify({
           userId,
           email: userEmail,
@@ -126,9 +131,13 @@ export default function TwoFactorLogin({
     setError(null);
 
     try {
+      const csrfToken = getCSRFToken();
       const response = await fetch('/api/auth/verify-code', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+        },
         body: JSON.stringify({
           userId,
           code: codeToVerify,

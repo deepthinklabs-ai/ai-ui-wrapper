@@ -3,16 +3,20 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { Thread, FolderWithChildren } from "@/types/chat";
+import type { Chatbot, ChatbotFolderWithChildren } from "@/types/chatbot";
 import { FolderTree } from "./FolderTree";
 import NewThreadModal from "./NewThreadModal";
 import { ThreadImportButton } from "./ThreadImportButton";
+import { ChatbotFolderTree, NewChatbotModal, ChatbotImportButton, ChatbotSettingsPanel } from "@/app/chatbots/components";
+import type { CreateChatbotInput } from "@/types/chatbot";
+import type { ChatbotFileConfig } from "@/types/chatbotFile";
 
 type SidebarProps = {
   userEmail: string | null | undefined;
   threads: Thread[];
   selectedThreadId: string | null;
   onSelectThread: (id: string) => void;
-  onNewThread: (name: string, folderId: string | null) => void;
+  onNewThread: (name: string, folderId: string | null, chatbotId?: string | null) => void;
   onDeleteThread: (id: string) => Promise<void>;
   onUpdateThreadTitle: (id: string, newTitle: string) => Promise<void>;
   onSignOut: () => void;
@@ -41,6 +45,32 @@ type SidebarProps = {
   onThreadImported?: () => void;
   // Encryption props
   encryptForStorage?: (plaintext: string) => Promise<string>;
+  // Chatbot props
+  chatbots?: Chatbot[];
+  chatbotFolderTree?: ChatbotFolderWithChildren[];
+  selectedChatbotId?: string | null;
+  onSelectChatbot?: (id: string) => void;
+  onCreateChatbot?: (input: CreateChatbotInput) => Promise<void>;
+  onEditChatbot?: (id: string) => void;
+  onDuplicateChatbot?: (id: string) => Promise<void>;
+  onExportChatbot?: (id: string) => void;
+  onDeleteChatbot?: (id: string) => Promise<void>;
+  onRenameChatbot?: (id: string, newName: string) => Promise<void>;
+  onUpdateChatbotConfig?: (id: string, config: ChatbotFileConfig) => Promise<void>;
+  chatbotDefaultFolderId?: string | null;
+  currentChatbotConfig?: any;
+  // Controlled chatbot editing state from parent
+  editingChatbotId?: string | null;
+  onCloseChatbotSettings?: () => void;
+  /** Called when draft config changes for real-time preview */
+  onDraftConfigChange?: (config: ChatbotFileConfig | null) => void;
+  // Chatbot folder props
+  onCreateChatbotFolder?: (input: { name: string; parent_id?: string | null }) => Promise<any>;
+  onUpdateChatbotFolder?: (id: string, updates: { name?: string; color?: string; is_collapsed?: boolean }) => Promise<boolean>;
+  onDeleteChatbotFolder?: (id: string) => Promise<boolean>;
+  onMoveChatbotFolder?: (folderId: string, newParentId: string | null) => Promise<boolean>;
+  onMoveChatbot?: (chatbotId: string, folderId: string | null) => Promise<boolean>;
+  onToggleChatbotFolderCollapse?: (folderId: string) => Promise<boolean>;
 };
 
 export default function Sidebar({
@@ -71,6 +101,30 @@ export default function Sidebar({
   userId,
   onThreadImported,
   encryptForStorage,
+  // Chatbot props
+  chatbots = [],
+  chatbotFolderTree = [],
+  selectedChatbotId,
+  onSelectChatbot,
+  onCreateChatbot,
+  onEditChatbot,
+  onDuplicateChatbot,
+  onExportChatbot,
+  onDeleteChatbot,
+  onRenameChatbot,
+  onUpdateChatbotConfig,
+  chatbotDefaultFolderId,
+  currentChatbotConfig,
+  editingChatbotId,
+  onCloseChatbotSettings,
+  onDraftConfigChange,
+  // Chatbot folder props
+  onCreateChatbotFolder,
+  onUpdateChatbotFolder,
+  onDeleteChatbotFolder,
+  onMoveChatbotFolder,
+  onMoveChatbot,
+  onToggleChatbotFolderCollapse,
 }: SidebarProps) {
   // Check if folder features are enabled (all folder props provided)
   const hasFolderFeatures = !!(
@@ -83,8 +137,21 @@ export default function Sidebar({
     onToggleFolderCollapse
   );
 
+  // Check if chatbot folder features are enabled
+  const hasChatbotFolderFeatures = !!(
+    onCreateChatbotFolder &&
+    onUpdateChatbotFolder &&
+    onDeleteChatbotFolder &&
+    onMoveChatbotFolder &&
+    onMoveChatbot &&
+    onToggleChatbotFolderCollapse
+  );
+
   // Get root-level threads (threads without a folder)
   const rootThreads = threads.filter(t => !t.folder_id);
+
+  // Get root-level chatbots (chatbots without a folder)
+  const rootChatbots = chatbots.filter(c => !c.folder_id);
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
@@ -92,6 +159,17 @@ export default function Sidebar({
   const [isNewThreadModalOpen, setIsNewThreadModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const [isNewChatbotModalOpen, setIsNewChatbotModalOpen] = useState(false);
+  const [isChatbotsCollapsed, setIsChatbotsCollapsed] = useState(false);
+  // Pending chatbot for new thread creation
+  const [pendingChatbotId, setPendingChatbotId] = useState<string | null>(null);
+  const [pendingChatbotName, setPendingChatbotName] = useState<string | null>(null);
+
+  // Resizable chatbots section
+  const [chatbotsHeight, setChatbotsHeight] = useState(200);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartY = useRef(0);
+  const resizeStartHeight = useRef(0);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -115,6 +193,36 @@ export default function Sidebar({
     }
   }, [editingThreadId]);
 
+  // Handle resize drag
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - resizeStartY.current;
+      const newHeight = Math.max(100, Math.min(400, resizeStartHeight.current + deltaY));
+      setChatbotsHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartY.current = e.clientY;
+    resizeStartHeight.current = chatbotsHeight;
+  };
+
   // Find the default folder ID
   const findDefaultFolderId = (folders: FolderWithChildren[]): string | null => {
     for (const folder of folders) {
@@ -131,11 +239,29 @@ export default function Sidebar({
 
   const handleOpenNewThreadModal = () => {
     if (!canCreateThread) return;
+    // Clear any pending chatbot when opening from the + button
+    setPendingChatbotId(null);
+    setPendingChatbotName(null);
     setIsNewThreadModalOpen(true);
   };
 
-  const handleCreateThread = (name: string, folderId: string | null) => {
-    onNewThread(name, folderId);
+  const handleStartChatbotThread = (chatbotId: string, chatbotName: string) => {
+    if (!canCreateThread) return;
+    // Set the pending chatbot before opening the modal
+    setPendingChatbotId(chatbotId);
+    setPendingChatbotName(chatbotName);
+    setIsNewThreadModalOpen(true);
+  };
+
+  const handleCloseNewThreadModal = () => {
+    setIsNewThreadModalOpen(false);
+    // Clear pending chatbot when modal closes
+    setPendingChatbotId(null);
+    setPendingChatbotName(null);
+  };
+
+  const handleCreateThread = (name: string, folderId: string | null, chatbotId?: string | null) => {
+    onNewThread(name, folderId, chatbotId);
   };
 
   const handleDelete = (e: React.MouseEvent, threadId: string, threadTitle: string) => {
@@ -179,6 +305,43 @@ export default function Sidebar({
     } else if (e.key === "Escape") {
       cancelEditing();
     }
+  };
+
+  // Find the chatbot being edited
+  const editingChatbot = editingChatbotId
+    ? chatbots.find((c) => c.id === editingChatbotId) ?? null
+    : null;
+
+  const handleOpenChatbotSettingsLocal = (id: string) => {
+    const chatbot = chatbots.find((c) => c.id === id);
+    console.log('[Sidebar] Opening chatbot settings panel:', chatbot?.name, id);
+    // Call parent handler to open settings panel (controlled from page.tsx)
+    onEditChatbot?.(id);
+  };
+
+  const handleCloseChatbotSettingsLocal = () => {
+    console.log('[Sidebar] Closing chatbot settings panel');
+    // Clear draft config for real-time preview
+    onDraftConfigChange?.(null);
+    // Call parent handler to close settings panel (controlled from page.tsx)
+    onCloseChatbotSettings?.();
+  };
+
+  const handleSaveChatbotSettings = async (config: ChatbotFileConfig) => {
+    console.log('[Sidebar] Saving chatbot settings:', editingChatbotId);
+    if (editingChatbotId && onUpdateChatbotConfig) {
+      try {
+        await onUpdateChatbotConfig(editingChatbotId, config);
+        console.log('[Sidebar] Chatbot settings saved successfully');
+      } catch (error) {
+        console.error('[Sidebar] Failed to save chatbot settings:', error);
+        throw error; // Re-throw so panel can handle it
+      }
+    }
+    // Clear draft config for real-time preview
+    onDraftConfigChange?.(null);
+    // Close the panel via parent handler (controlled from page.tsx)
+    onCloseChatbotSettings?.();
   };
 
   return (
@@ -314,7 +477,7 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Navigation: Genesis Chat Bot & Canvas */}
+      {/* Navigation: Chatbot & Canvas */}
       <div className="border-b border-slate-800 px-3 py-3">
         <div className="space-y-2">
           <button
@@ -330,7 +493,7 @@ export default function Sidebar({
                 d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
               />
             </svg>
-            Genesis Chat Bot
+            Chatbot
           </button>
           <button
             type="button"
@@ -347,13 +510,108 @@ export default function Sidebar({
             </svg>
             Canvas
           </button>
+          <button
+            type="button"
+            onClick={() => router.push("/exchange")}
+            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
+            </svg>
+            Exchange
+          </button>
         </div>
       </div>
 
-      {/* Middle: threads list */}
-      <div className="flex-1 overflow-y-auto px-2 py-3">
+      {/* Chatbots Section - above Threads */}
+      {onCreateChatbot && (
+        <div
+          className="flex flex-col border-b border-slate-800"
+          style={{ height: isChatbotsCollapsed ? 'auto' : chatbotsHeight }}
+        >
+          {/* Section Header */}
+          <div className="flex items-center justify-between px-3 py-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsChatbotsCollapsed(!isChatbotsCollapsed)}
+              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-400"
+            >
+              <svg
+                className={`h-3 w-3 transition-transform ${isChatbotsCollapsed ? "-rotate-90" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              Chatbots
+            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setIsNewChatbotModalOpen(true)}
+                className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                title="New chatbot"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              <ChatbotImportButton
+                onImport={onCreateChatbot}
+                folderId={chatbotDefaultFolderId}
+                compact
+                className="text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+              />
+            </div>
+          </div>
+
+          {/* Chatbot Folder Tree */}
+          {!isChatbotsCollapsed && hasChatbotFolderFeatures && (
+            <div className="flex-1 overflow-y-auto px-2 pb-2">
+              <ChatbotFolderTree
+                folders={chatbotFolderTree}
+                chatbots={rootChatbots}
+                selectedChatbotId={selectedChatbotId ?? null}
+                onSelectChatbot={onSelectChatbot || (() => {})}
+                onDeleteChatbot={onDeleteChatbot ? (id) => onDeleteChatbot(id) : Promise.resolve}
+                onRenameChatbot={onRenameChatbot ? (id, name) => onRenameChatbot(id, name) : async () => {}}
+                onCreateFolder={onCreateChatbotFolder}
+                onUpdateFolder={onUpdateChatbotFolder}
+                onDeleteFolder={onDeleteChatbotFolder}
+                onMoveFolder={onMoveChatbotFolder}
+                onMoveChatbot={onMoveChatbot}
+                onToggleFolderCollapse={onToggleChatbotFolderCollapse}
+                onStartChatbotThread={handleStartChatbotThread}
+                onEditChatbot={handleOpenChatbotSettingsLocal}
+                onDuplicateChatbot={onDuplicateChatbot}
+                onExportChatbot={onExportChatbot}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Resizable Divider */}
+      {onCreateChatbot && !isChatbotsCollapsed && (
+        <div
+          className={`h-1 flex-shrink-0 cursor-ns-resize bg-slate-800 hover:bg-slate-600 transition-colors ${
+            isResizing ? "bg-slate-600" : ""
+          }`}
+          onMouseDown={handleResizeStart}
+          title="Drag to resize"
+        />
+      )}
+
+      {/* Threads section */}
+      <div className="flex-1 overflow-y-auto px-2 py-3 min-h-0">
         <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Directory
+          Threads
         </div>
 
         {/* Use FolderTree when folder features are enabled */}
@@ -468,11 +726,37 @@ export default function Sidebar({
       {/* New Thread Modal */}
       <NewThreadModal
         isOpen={isNewThreadModalOpen}
-        onClose={() => setIsNewThreadModalOpen(false)}
+        onClose={handleCloseNewThreadModal}
         onCreateThread={handleCreateThread}
         folderTree={folderTree}
         defaultFolderId={defaultFolderId}
+        chatbots={chatbots}
+        chatbotId={pendingChatbotId}
+        chatbotName={pendingChatbotName}
       />
+
+      {/* New Chatbot Modal */}
+      {onCreateChatbot && (
+        <NewChatbotModal
+          isOpen={isNewChatbotModalOpen}
+          onClose={() => setIsNewChatbotModalOpen(false)}
+          onCreate={onCreateChatbot}
+          folderTree={chatbotFolderTree}
+          defaultFolderId={chatbotDefaultFolderId}
+          currentConfig={currentChatbotConfig}
+        />
+      )}
+
+      {/* Chatbot Settings Panel */}
+      {editingChatbot && (
+        <ChatbotSettingsPanel
+          chatbot={editingChatbot}
+          isOpen={editingChatbotId !== null}
+          onClose={handleCloseChatbotSettingsLocal}
+          onSave={handleSaveChatbotSettings}
+          onDraftChange={onDraftConfigChange}
+        />
+      )}
     </div>
   );
 }

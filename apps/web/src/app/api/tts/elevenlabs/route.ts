@@ -6,6 +6,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+// SECURITY: Validate voiceId to prevent SSRF attacks
+// ElevenLabs voice IDs are alphanumeric strings (e.g., 'EXAVITQu4vr4xnSDxMaL')
+const VOICE_ID_PATTERN = /^[a-zA-Z0-9]{10,30}$/;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -21,6 +25,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // SECURITY: Validate voiceId format to prevent SSRF
+    if (!voiceId || typeof voiceId !== 'string' || !VOICE_ID_PATTERN.test(voiceId)) {
+      return NextResponse.json(
+        { error: 'Invalid voice ID format' },
+        { status: 400 }
+      );
+    }
+
     if (!process.env.ELEVENLABS_API_KEY) {
       return NextResponse.json(
         { error: 'ElevenLabs API key not configured' },
@@ -28,7 +40,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Call ElevenLabs API
+    // Call ElevenLabs API (voiceId validated above)
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {

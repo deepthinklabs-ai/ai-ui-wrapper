@@ -76,9 +76,9 @@ const MessageItem: React.FC<MessageItemProps> = ({
       } group`}
     >
       <div className="flex flex-col gap-0 max-w-[70%]">
-        {/* Message Actions - show on all messages (different buttons for user vs assistant) */}
+        {/* Message Actions - always visible on all messages (different buttons for user vs assistant) */}
         {onRevertToMessage && onForkFromMessage && onRevertWithDraft && currentModel && (
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <div>
             <MessageActions
               messageId={m.id}
               messageModel={m.model}
@@ -186,6 +186,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
 // Only re-render when props actually change
 export default memo(MessageItem, (prevProps, nextProps) => {
   // Custom comparison function for optimal performance
+  // Note: isFeatureEnabled is compared by reference - when parent re-creates the function
+  // (e.g., due to feature toggle changes), this will correctly trigger a re-render
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.content === nextProps.message.content &&
@@ -195,6 +197,7 @@ export default memo(MessageItem, (prevProps, nextProps) => {
     prevProps.totalMessages === nextProps.totalMessages &&
     prevProps.currentModel === nextProps.currentModel &&
     prevProps.messageActionsDisabled === nextProps.messageActionsDisabled &&
-    prevProps.nextMessage?.id === nextProps.nextMessage?.id
+    prevProps.nextMessage?.id === nextProps.nextMessage?.id &&
+    prevProps.isFeatureEnabled === nextProps.isFeatureEnabled
   );
 });

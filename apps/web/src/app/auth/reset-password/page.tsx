@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * @security-audit-requested
+ * AUDIT FOCUS: Password reset flow
+ * - Can an attacker access this page without a valid recovery session?
+ * - Is the password strength validation sufficient?
+ * - Is there rate limiting on password reset attempts?
+ * - Can the session be hijacked during the reset flow?
+ * - Is the old password invalidated immediately after reset?
+ */
+
 import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";

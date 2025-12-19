@@ -11,6 +11,7 @@ import React, { useState, useEffect } from 'react';
 import { useGmailOAuth } from '../../gmail-oauth/hooks/useGmailOAuth'; // Reuse Gmail OAuth - same Google connection
 import type { SheetsOAuthConfig, SheetsPermissions } from '../types';
 import { DEFAULT_SHEETS_CONFIG } from '../types';
+import { SafeImage } from '@/lib/sanitizeUrl';
 
 interface SheetsOAuthPanelProps {
   config: SheetsOAuthConfig;
@@ -122,13 +123,11 @@ export function SheetsOAuthPanel({
             ) : status === 'connected' && connection ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  {connection.picture && (
-                    <img
-                      src={connection.picture}
-                      alt=""
-                      className="w-8 h-8 rounded-full"
-                    />
-                  )}
+                  <SafeImage
+                    src={connection.picture}
+                    alt=""
+                    className="w-8 h-8 rounded-full"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-200 truncate">
                       {connection.name}

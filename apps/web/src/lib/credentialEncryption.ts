@@ -1,4 +1,14 @@
 /**
+ * @security-audit-requested
+ * AUDIT FOCUS: Credential encryption implementation
+ * - Is AES-256-GCM implementation correct?
+ * - Is the encryption key properly protected?
+ * - Are IVs generated securely and never reused?
+ * - Is the auth tag properly validated on decryption?
+ * - Are there any timing attacks possible?
+ */
+
+/**
  * Credential Encryption Utilities
  *
  * SECURITY: Phase 1 - Encrypt MCP credentials using AES-256-GCM
@@ -16,7 +26,6 @@ import crypto from "crypto";
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16; // 128 bits
 const AUTH_TAG_LENGTH = 16; // 128 bits
-const SALT_LENGTH = 32; // 256 bits
 
 /**
  * Get encryption key from environment
@@ -87,7 +96,8 @@ export function encrypt(plaintext: any): {
       authTag: authTag.toString("hex"),
     };
   } catch (error) {
-    console.error("[Encryption] Error encrypting data:", error);
+    // SECURITY: Only log error type/message, not full object which may contain sensitive data
+    console.error("[Encryption] Encryption failed:", error instanceof Error ? error.message : "Unknown error");
     throw new Error("Failed to encrypt credentials");
   }
 }
@@ -129,7 +139,8 @@ export function decrypt(
       return decrypted;
     }
   } catch (error) {
-    console.error("[Encryption] Error decrypting data:", error);
+    // SECURITY: Only log error type/message, not full object which may contain sensitive data
+    console.error("[Encryption] Decryption failed:", error instanceof Error ? error.message : "Unknown error");
     throw new Error("Failed to decrypt credentials");
   }
 }
@@ -226,18 +237,29 @@ export function validateEncryptionKey(): {
 }
 
 /**
- * Securely wipe sensitive data from memory
- * Use this after decryption to minimize exposure
+ * Clear references to sensitive data (defense-in-depth measure)
+ *
+ * IMPORTANT: This does NOT securely wipe memory!
+ *
+ * JavaScript strings are immutable - this function only:
+ * - Overwrites object property references with dummy strings
+ * - Deletes the properties
+ * - Allows the original data to be garbage collected sooner
+ *
+ * The original sensitive strings remain in memory until GC runs.
+ * Use this as one layer of defense, not as a security guarantee.
+ *
+ * For actual memory wiping, use Node.js Buffer objects with .fill(0).
  */
-export function wipeSensitiveData(data: any): void {
+export function clearSensitiveDataReferences(data: any): void {
   if (typeof data === "object" && data !== null) {
     for (const key in data) {
       if (typeof data[key] === "string") {
-        // Overwrite string data
+        // Replace with dummy string and delete reference
         data[key] = "0".repeat(data[key].length);
         delete data[key];
       } else if (typeof data[key] === "object") {
-        wipeSensitiveData(data[key]);
+        clearSensitiveDataReferences(data[key]);
       }
     }
   }

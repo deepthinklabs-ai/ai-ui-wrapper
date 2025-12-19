@@ -1,15 +1,45 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState, FormEvent, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { usePasswordStrength } from "@/hooks/usePasswordStrength";
+import { useSignupsEnabled } from "@/hooks/useSystemStatus";
 import PasswordStrengthIndicator from "@/components/auth/PasswordStrengthIndicator";
 import TwoFactorLogin from "@/components/auth/TwoFactorLogin";
 import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
 
+// Session timeout reason messages
+const SESSION_TIMEOUT_MESSAGES: Record<string, string> = {
+  idle_timeout: "You were signed out due to inactivity. Please sign in again.",
+  absolute_timeout: "Your session has expired. Please sign in again.",
+  manual_logout: "You have been signed out successfully.",
+};
+
+// Loading fallback for Suspense
+function AuthPageLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+      <div className="w-full max-w-md space-y-8 text-center">
+        <h1 className="text-3xl font-bold text-slate-100">AI Chat Platform</h1>
+        <div className="animate-pulse text-slate-400">Loading...</div>
+      </div>
+    </div>
+  );
+}
+
+// Wrapper component with Suspense
 export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthPageLoading />}>
+      <AuthPageContent />
+    </Suspense>
+  );
+}
+
+function AuthPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,11 +56,27 @@ export default function AuthPage() {
   // Forgot password state
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
+  // Session timeout message
+  const [sessionMessage, setSessionMessage] = useState<string | null>(null);
+
+  // Check for session timeout reason in URL
+  useEffect(() => {
+    const reason = searchParams.get("reason");
+    if (reason && SESSION_TIMEOUT_MESSAGES[reason]) {
+      setSessionMessage(SESSION_TIMEOUT_MESSAGES[reason]);
+      // Clear the URL parameter without triggering navigation
+      window.history.replaceState({}, "", "/auth");
+    }
+  }, [searchParams]);
+
   // Password strength checking (only enabled during signup)
   const passwordStrength = usePasswordStrength({
     password,
     enabled: isSignUp,
   });
+
+  // Check if signups are enabled (kill switch)
+  const { enabled: signupsEnabled, loading: signupsLoading } = useSignupsEnabled();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -40,6 +86,13 @@ export default function AuthPage() {
 
     try {
       if (isSignUp) {
+        // Check if signups are enabled
+        if (!signupsEnabled) {
+          setError("New registrations are temporarily closed. Please try again later.");
+          setLoading(false);
+          return;
+        }
+
         // Sign up
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -195,6 +248,16 @@ export default function AuthPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          {/* Session timeout message */}
+          {sessionMessage && (
+            <div className="rounded-md bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-400 flex items-start gap-3">
+              <svg className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{sessionMessage}</span>
+            </div>
+          )}
+
           <div className="space-y-4 rounded-lg border border-slate-800 bg-slate-900/50 p-6">
             <div>
               <label

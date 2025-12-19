@@ -13,8 +13,9 @@
 
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
-import { strictRatelimit, rateLimitErrorResponse } from '@/lib/ratelimit';
+import { strictRatelimitAsync, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { deleteUserKey, deleteAllUserKeys, type BYOKProvider } from '@/lib/secretManager';
+import { auditApiKey, auditSecurity, logAuditEvent } from '@/lib/auditLog';
 
 const VALID_PROVIDERS: BYOKProvider[] = ['openai', 'claude', 'grok', 'gemini'];
 
@@ -29,10 +30,14 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // 2. Rate limit (strict: 3 per minute)
+    // 2. Rate limit (strict: 3 per minute) - uses Redis when available
     const rateLimitKey = `byok_delete_${user.id}`;
-    const rateLimitResult = strictRatelimit(rateLimitKey);
+    const rateLimitResult = await strictRatelimitAsync(rateLimitKey);
     if (!rateLimitResult.success) {
+      // Audit: Rate limit exceeded
+      await auditSecurity.rateLimitExceeded(user.id, '/api/byok/delete', {
+        headers: request.headers,
+      });
       return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
     }
 
@@ -44,6 +49,14 @@ export async function DELETE(request: Request) {
     if (!provider) {
       try {
         await deleteAllUserKeys(user.id);
+        // Audit: All API keys deleted (single event with all providers listed)
+        await logAuditEvent("api_key", "api_key_deleted", {
+          userId: user.id,
+          request: { headers: request.headers },
+          resourceType: "api_key",
+          resourceId: "all",
+          details: { providers: VALID_PROVIDERS, action: "delete_all" },
+        });
         return NextResponse.json({
           success: true,
           message: 'All API keys have been removed',
@@ -71,6 +84,8 @@ export async function DELETE(request: Request) {
     // 6. Delete specific provider key
     try {
       await deleteUserKey(user.id, provider as BYOKProvider);
+      // Audit: API key deleted
+      await auditApiKey.deleted(user.id, provider, { headers: request.headers });
       return NextResponse.json({
         success: true,
         message: `${provider.charAt(0).toUpperCase() + provider.slice(1)} API key has been removed`,
