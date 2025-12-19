@@ -4,6 +4,8 @@
  * Validates and sanitizes URLs to prevent XSS attacks via dangerous schemes.
  */
 
+import React from 'react';
+
 /**
  * Allowed URL schemes for images
  */
@@ -91,4 +93,33 @@ export function sanitizeUrl(url: string | undefined | null): string | undefined 
   } catch {
     return undefined;
   }
+}
+
+/**
+ * SafeImage Component
+ *
+ * Renders an image only if the src URL passes sanitization.
+ * This component provides a security boundary for untrusted image URLs.
+ */
+interface SafeImageProps {
+  src: string | undefined | null;
+  alt: string;
+  className?: string;
+}
+
+export function SafeImage({ src, alt, className }: SafeImageProps): React.ReactElement | null {
+  // Sanitize the URL - returns undefined for dangerous schemes
+  const safeSrc = sanitizeImageUrl(src);
+
+  // Don't render anything if URL is invalid/dangerous
+  if (!safeSrc) {
+    return null;
+  }
+
+  // Safe to render - URL has been validated
+  return React.createElement('img', {
+    src: safeSrc,
+    alt,
+    className,
+  });
 }
