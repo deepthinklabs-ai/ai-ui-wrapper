@@ -6,7 +6,9 @@
 
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { createServer } from 'http';
+import { createServer as createHttpServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
+import { readFileSync, existsSync } from 'fs';
 import { WebSocketServer, WebSocket } from 'ws';
 import { ClaudeCodeProcess } from './claudeCodeProcess';
 import type { BridgeMessage, BridgeResponse, SessionInfo, ClaudeCodeConfig } from './types';
@@ -287,8 +289,30 @@ app.get('/buffer', (req: Request, res: Response) => {
 // WEBSOCKET SERVER
 // ============================================================================
 
-const httpServer = createServer(app);
-const wss = new WebSocketServer({ server: httpServer });
+// Security: Support HTTPS when certificates are provided (CWE-319)
+// For local development, HTTP on localhost-only is acceptable since traffic
+// never leaves the machine. HTTPS can be enabled via environment variables.
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
+const useHttps = SSL_KEY_PATH && SSL_CERT_PATH &&
+                 existsSync(SSL_KEY_PATH) && existsSync(SSL_CERT_PATH);
+
+let server;
+if (useHttps) {
+  // Use HTTPS when certificates are available
+  const httpsOptions = {
+    key: readFileSync(SSL_KEY_PATH!),
+    cert: readFileSync(SSL_CERT_PATH!),
+  };
+  server = createHttpsServer(httpsOptions, app);
+  console.log('[Server] Using HTTPS with provided certificates');
+} else {
+  // Fall back to HTTP for localhost-only development
+  server = createHttpServer(app);
+  console.log('[Server] Using HTTP (localhost-only, set SSL_KEY_PATH and SSL_CERT_PATH for HTTPS)');
+}
+
+const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws: WebSocket) => {
   console.log('[Server] New WebSocket connection');
@@ -319,12 +343,22 @@ wss.on('connection', (ws: WebSocket) => {
 // START SERVER
 // ============================================================================
 
-httpServer.listen(PORT, () => {
+// Security: Bind to localhost only when using HTTP to ensure traffic never leaves machine
+// When using HTTPS, allow binding to all interfaces via BIND_HOST env var
+const BIND_HOST = useHttps ? (process.env.BIND_HOST || '0.0.0.0') : '127.0.0.1';
+const protocol = useHttps ? 'https' : 'http';
+const wsProtocol = useHttps ? 'wss' : 'ws';
+
+server.listen(Number(PORT), BIND_HOST, () => {
   console.log(`\n==============================================`);
   console.log(`🌉 Claude Code Bridge Server`);
   console.log(`==============================================`);
-  console.log(`HTTP API: http://localhost:${PORT}`);
-  console.log(`WebSocket: ws://localhost:${PORT}`);
+  console.log(`${protocol.toUpperCase()} API: ${protocol}://${BIND_HOST}:${PORT}`);
+  console.log(`WebSocket: ${wsProtocol}://${BIND_HOST}:${PORT}`);
+  if (!useHttps) {
+    console.log(`\n⚠️  Running HTTP on localhost only (secure for local dev)`);
+    console.log(`   Set SSL_KEY_PATH and SSL_CERT_PATH for HTTPS`);
+  }
   console.log(`\nConfiguration:`);
   console.log(`  Command: ${process.env.CLAUDE_CODE_PATH || 'claude'}`);
   console.log(`  Working Dir: ${process.env.CLAUDE_CODE_WORKDIR || process.cwd()}`);
@@ -344,7 +378,7 @@ process.on('SIGINT', () => {
   if (claudeCodeProcess) {
     claudeCodeProcess.stop();
   }
-  httpServer.close(() => {
+  server.close(() => {
     console.log('[Server] Server closed');
     process.exit(0);
   });
@@ -355,7 +389,7 @@ process.on('SIGTERM', () => {
   if (claudeCodeProcess) {
     claudeCodeProcess.stop();
   }
-  httpServer.close(() => {
+  server.close(() => {
     console.log('[Server] Server closed');
     process.exit(0);
   });
