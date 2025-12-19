@@ -117,6 +117,13 @@ export default function PostDetailModal({
       // Download file
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+
+      // Security: Verify this is a blob URL (createObjectURL always returns blob: URLs)
+      if (!url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+        throw new Error('Invalid download URL');
+      }
+
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
