@@ -167,10 +167,23 @@ export async function POST(req: NextRequest) {
     // Get the actual Claude API model name
     const apiModel = CLAUDE_API_MODEL_MAP[model] || model;
 
+    // Debug: Log message roles being sent (not content for privacy)
+    console.log('[Claude API] Messages received:', messages.length, 'messages');
+    console.log('[Claude API] Message roles:', messages.map((m: any) => m.role).join(', '));
+
     // Claude API doesn't accept "system" role in messages array
     // Extract system messages and filter them out
     const systemMessages = messages.filter((m: any) => m.role === 'system');
     const conversationMessages = messages.filter((m: any) => m.role !== 'system');
+
+    // Debug: Log system messages (these might be causing refusals)
+    if (systemMessages.length > 0) {
+      console.log('[Claude API] System messages found:', systemMessages.length);
+      systemMessages.forEach((m: any, i: number) => {
+        const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+        console.log(`[Claude API] System message ${i + 1} (${content.length} chars):`, content.substring(0, 200) + (content.length > 200 ? '...' : ''));
+      });
+    }
 
     // Convert OpenAI image_url format to Claude image format
     const convertedMessages = conversationMessages.map((msg: any) => {
