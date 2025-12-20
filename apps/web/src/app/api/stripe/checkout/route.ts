@@ -27,7 +27,12 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   process.env.NEXT_PUBLIC_APP_URL,
   process.env.APP_URL,
+  // Vercel preview/staging deployments
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
 ].filter(Boolean) as string[];
+
+// SECURITY: Pattern for Vercel preview deployments (validated separately)
+const VERCEL_PREVIEW_PATTERN = /^https:\/\/[\w-]+-[\w-]+-[\w-]+\.vercel\.app$/;
 
 // SECURITY: Maximum allowed trial days
 const MAX_TRIAL_DAYS = 14;
@@ -185,7 +190,12 @@ export async function POST(req: NextRequest) {
 
     // SECURITY: Validate origin against allowed domains to prevent open redirect
     const requestOrigin = req.headers.get('origin');
-    if (!requestOrigin || !ALLOWED_ORIGINS.includes(requestOrigin)) {
+    const isAllowedOrigin = requestOrigin && (
+      ALLOWED_ORIGINS.includes(requestOrigin) ||
+      VERCEL_PREVIEW_PATTERN.test(requestOrigin)
+    );
+    if (!requestOrigin || !isAllowedOrigin) {
+      console.error('[Stripe Checkout] Invalid origin:', requestOrigin, 'Allowed:', ALLOWED_ORIGINS);
       return NextResponse.json(
         { error: 'Invalid or missing origin' },
         { status: 403 }
