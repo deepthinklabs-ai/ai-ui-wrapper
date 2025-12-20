@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { getCSRFToken } from "@/hooks/useCSRF";
+import { supabase } from "@/lib/supabaseClient";
 
 type UseStripeCheckoutOptions = {
   userId: string | undefined;
@@ -27,12 +28,21 @@ export function useStripeCheckout({ userId, priceId }: UseStripeCheckoutOptions)
     setError(null);
 
     try {
+      // Get session for auth header
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Not authenticated. Please log in again.");
+      }
+
       // Call checkout API to create Stripe Checkout session
       const csrfToken = getCSRFToken();
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
           ...(csrfToken && { "X-CSRF-Token": csrfToken }),
         },
         body: JSON.stringify({
