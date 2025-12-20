@@ -294,7 +294,9 @@ export async function POST(req: NextRequest) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.error?.message || response.statusText;
 
-      console.error('Claude API error:', errorMessage);
+      console.error('[Claude API] Error response status:', response.status);
+      console.error('[Claude API] Error data:', JSON.stringify(errorData, null, 2));
+      console.error('[Claude API] Request model:', apiModel);
 
       if (response.status === 429) {
         return NextResponse.json(
@@ -311,9 +313,11 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
 
-    // Log metadata only (not content for privacy)
+    // Log metadata for debugging (not content for privacy)
+    console.log('[Claude API] Response received for model:', apiModel);
     console.log('[Claude API] Response stop_reason:', data.stop_reason);
     console.log('[Claude API] Content blocks:', data.content?.length || 0, 'blocks');
+    console.log('[Claude API] Content block types:', data.content?.map((b: any) => b.type).join(', ') || 'none');
 
     // If stop_reason indicates truncation, log warning
     if (data.stop_reason === 'max_tokens') {
@@ -339,9 +343,12 @@ export async function POST(req: NextRequest) {
 
     if (!content && !hasClientToolUse) {
       // No text and no client-side tool use means something went wrong
-      console.error('[Claude API] No text content in response (block types:', data.content?.map((b: any) => b.type).join(', ') + ')');
+      console.error('[Claude API] No text content in response');
+      console.error('[Claude API] Full response data:', JSON.stringify(data, null, 2));
+      console.error('[Claude API] Request model:', apiModel);
+      console.error('[Claude API] Request body (without messages):', JSON.stringify({ ...requestBody, messages: `[${requestBody.messages?.length} messages]` }));
       return NextResponse.json(
-        { error: 'No response from Claude' },
+        { error: 'No response from Claude', debug: { model: apiModel, stop_reason: data.stop_reason, content_types: data.content?.map((b: any) => b.type) } },
         { status: 500 }
       );
     }
