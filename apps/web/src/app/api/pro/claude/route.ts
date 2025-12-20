@@ -68,13 +68,8 @@ export async function POST(req: NextRequest) {
     // Temporarily disable web search by default until we debug the refusal issue
     const { messages, model = 'claude-sonnet-4-5', systemPrompt, tools, enableWebSearch = false } = body;
 
-    // Debug: Log the system prompt parameter
-    if (systemPrompt) {
-      console.log('[Claude API] systemPrompt param received (length:', systemPrompt.length, ')');
-      console.log('[Claude API] systemPrompt preview:', systemPrompt.substring(0, 500) + (systemPrompt.length > 500 ? '...' : ''));
-    } else {
-      console.log('[Claude API] No systemPrompt param in request');
-    }
+    // Debug: Log system prompt metadata only (no content for security)
+    console.log('[Claude API] systemPrompt:', systemPrompt ? `present (${systemPrompt.length} chars)` : 'not provided');
 
     // Validate required fields
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -175,21 +170,31 @@ export async function POST(req: NextRequest) {
     // Get the actual Claude API model name
     const apiModel = CLAUDE_API_MODEL_MAP[model] || model;
 
-    // Debug: Log message roles being sent (not content for privacy)
+    // Debug: Log message structure (not content for privacy)
     console.log('[Claude API] Messages received:', messages.length, 'messages');
     console.log('[Claude API] Message roles:', messages.map((m: any) => m.role).join(', '));
+    // Log content types to debug refusal issues
+    messages.forEach((m: any, i: number) => {
+      const contentType = typeof m.content;
+      const contentLength = contentType === 'string' ? m.content.length : JSON.stringify(m.content).length;
+      console.log(`[Claude API] Message ${i}: role=${m.role}, contentType=${contentType}, length=${contentLength}`);
+      // TEMPORARY: Log first 100 chars of assistant messages to debug refusal
+      if (m.role === 'assistant' && typeof m.content === 'string') {
+        console.log(`[Claude API] DEBUG assistant preview: ${m.content.substring(0, 100)}...`);
+      }
+    });
 
     // Claude API doesn't accept "system" role in messages array
     // Extract system messages and filter them out
     const systemMessages = messages.filter((m: any) => m.role === 'system');
     const conversationMessages = messages.filter((m: any) => m.role !== 'system');
 
-    // Debug: Log system messages (these might be causing refusals)
+    // Debug: Log system message metadata only (no content for security)
     if (systemMessages.length > 0) {
       console.log('[Claude API] System messages found:', systemMessages.length);
       systemMessages.forEach((m: any, i: number) => {
         const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
-        console.log(`[Claude API] System message ${i + 1} (${content.length} chars):`, content.substring(0, 200) + (content.length > 200 ? '...' : ''));
+        console.log(`[Claude API] System message ${i + 1}: ${content.length} chars`);
       });
     }
 
@@ -284,6 +289,25 @@ export async function POST(req: NextRequest) {
     if (tools && Array.isArray(tools) && tools.length > 0) {
       requestBody.tools = [...(requestBody.tools || []), ...tools];
     }
+
+    // Debug: Log request body structure (not content)
+    console.log('[Claude API] Request body structure:', {
+      model: requestBody.model,
+      max_tokens: requestBody.max_tokens,
+      messageCount: requestBody.messages?.length,
+      hasSystem: !!requestBody.system,
+      systemLength: requestBody.system?.length || 0,
+      hasTools: !!requestBody.tools,
+      toolCount: requestBody.tools?.length || 0,
+    });
+    // Log each message's structure
+    requestBody.messages?.forEach((m: any, i: number) => {
+      const contentType = typeof m.content;
+      const contentPreview = contentType === 'string'
+        ? `string(${m.content.length} chars)`
+        : `array(${m.content?.length} parts)`;
+      console.log(`[Claude API] Final msg ${i}: role=${m.role}, content=${contentPreview}`);
+    });
 
     // Make request to Claude API
     const startTime = Date.now();

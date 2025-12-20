@@ -81,7 +81,20 @@
       "WebFetch(domain:resend.com)",
       "Bash(grep:*)",
       "Bash(npm update:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(git checkout:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr list:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(npx vercel:*)",
+      "Bash(claude --version:*)",
+      "WebFetch(domain:docs.coderabbit.ai)",
+      "Bash(coderabbit auth:*)",
+      "Bash(coderabbit --version:*)",
+      "Bash(wsl --status:*)",
+      "Bash(wsl --list:*)",
+      "Bash(wsl --install:*)"
     ],
     "deny": [],
     "ask": []

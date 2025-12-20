@@ -32,8 +32,18 @@ const ALLOWED_ORIGINS = [
 ].filter(Boolean) as string[];
 
 // SECURITY: Pattern for Vercel preview deployments (validated separately)
-// Matches: https://{project}-{branch}-{username}.vercel.app or similar patterns
-const VERCEL_PREVIEW_PATTERN = /^https:\/\/[\w-]+\.vercel\.app$/;
+// Tightened to only match this project's preview deployments
+// Uses VERCEL_PROJECT_PRODUCTION_URL or falls back to project name pattern
+const getVercelPreviewPattern = (): RegExp => {
+  // Try to extract project name from production URL (e.g., "ai-ui-wrapper.vercel.app" -> "ai-ui-wrapper")
+  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const projectName = productionUrl?.split('.')[0] || process.env.VERCEL_PROJECT || 'ai-ui-wrapper';
+  // Escape any special regex characters in project name
+  const escapedProjectName = projectName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Match: https://{projectName}-{anything}.vercel.app
+  return new RegExp(`^https:\\/\\/${escapedProjectName}-[\\w-]+\\.vercel\\.app$`);
+};
+const VERCEL_PREVIEW_PATTERN = getVercelPreviewPattern();
 
 // SECURITY: Maximum allowed trial days
 const MAX_TRIAL_DAYS = 14;

@@ -50,7 +50,8 @@ async function sendProChatRequest(
   model: AIModel,
   provider: 'openai' | 'claude' | 'grok' | 'gemini',
   accessToken: string,
-  tools?: any
+  tools?: any,
+  enableWebSearch?: boolean
 ): Promise<UnifiedChatResponse> {
   const endpoint =
     provider === 'openai' ? '/api/pro/openai' :
@@ -66,6 +67,11 @@ async function sendProChatRequest(
   // Add tools if provided
   if (tools) {
     requestBody.tools = tools;
+  }
+
+  // Add enableWebSearch for Claude
+  if (provider === 'claude' && enableWebSearch !== undefined) {
+    requestBody.enableWebSearch = enableWebSearch;
   }
 
   // SECURITY: Send access token in Authorization header for server-side authentication
@@ -121,7 +127,7 @@ export async function sendUnifiedChatRequest(
     enableWebSearch?: boolean;
   }
 ): Promise<UnifiedChatResponse> {
-  const { model, userTier = 'trial', accessToken, tools } = options || {};
+  const { model, userTier = 'trial', accessToken, tools, enableWebSearch } = options || {};
   const selectedModel = model || getSelectedModel();
   const provider = getModelProvider(selectedModel);
 
@@ -136,5 +142,5 @@ export async function sendUnifiedChatRequest(
   }
 
   // All users (trial and pro) route through backend API proxy
-  return sendProChatRequest(messages, selectedModel, provider, accessToken, tools);
+  return sendProChatRequest(messages, selectedModel, provider, accessToken, tools, enableWebSearch);
 }
