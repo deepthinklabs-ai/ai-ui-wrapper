@@ -32,7 +32,8 @@ const ALLOWED_ORIGINS = [
 ].filter(Boolean) as string[];
 
 // SECURITY: Pattern for Vercel preview deployments (validated separately)
-const VERCEL_PREVIEW_PATTERN = /^https:\/\/[\w-]+-[\w-]+-[\w-]+\.vercel\.app$/;
+// Matches: https://{project}-{branch}-{username}.vercel.app or similar patterns
+const VERCEL_PREVIEW_PATTERN = /^https:\/\/[\w-]+\.vercel\.app$/;
 
 // SECURITY: Maximum allowed trial days
 const MAX_TRIAL_DAYS = 14;
