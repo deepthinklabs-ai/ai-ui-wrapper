@@ -24,6 +24,7 @@ const CSRF_EXEMPT_ROUTES = [
   '/api/stripe/webhook',
   '/api/oauth/',
   '/api/staging-auth',
+  '/api/auth/', // Auth endpoints are called before login, need CSRF exemption
 ] as const;
 
 /**
