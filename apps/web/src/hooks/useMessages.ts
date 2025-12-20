@@ -188,8 +188,8 @@ export function useMessages(
         });
       }
 
-      // Add web search encouragement system prompt (only if web search is enabled)
-      if (options?.enableWebSearch !== false) {
+      // Add web search encouragement system prompt (only if web search is explicitly enabled)
+      if (options?.enableWebSearch === true) {
         payloadMessages.push({
           role: "system" as MessageRole,
           content: `🌐 WEB SEARCH: You have real-time web search. For news/current events, always cite DIRECT article URLs (not homepages/feeds). Each story needs its own specific URL. Format: [Article Title](direct-article-url)`,

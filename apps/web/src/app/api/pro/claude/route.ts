@@ -341,6 +341,13 @@ export async function POST(req: NextRequest) {
 
     console.log('[Claude API] Found', textBlocks.length, 'text blocks');
 
+    // Handle refusal responses
+    if (data.stop_reason === 'refusal') {
+      console.warn('[Claude API] Model refused to respond');
+      // Return a user-friendly message for refusals
+      content = "I'm sorry, but I can't help with that request. Please try rephrasing your question or asking something else.";
+    }
+
     if (!content && !hasClientToolUse) {
       // No text and no client-side tool use means something went wrong
       console.error('[Claude API] No text content in response');
