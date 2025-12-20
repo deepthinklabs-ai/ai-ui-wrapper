@@ -68,6 +68,14 @@ export async function POST(req: NextRequest) {
     // Temporarily disable web search by default until we debug the refusal issue
     const { messages, model = 'claude-sonnet-4-5', systemPrompt, tools, enableWebSearch = false } = body;
 
+    // Debug: Log the system prompt parameter
+    if (systemPrompt) {
+      console.log('[Claude API] systemPrompt param received (length:', systemPrompt.length, ')');
+      console.log('[Claude API] systemPrompt preview:', systemPrompt.substring(0, 500) + (systemPrompt.length > 500 ? '...' : ''));
+    } else {
+      console.log('[Claude API] No systemPrompt param in request');
+    }
+
     // Validate required fields
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
