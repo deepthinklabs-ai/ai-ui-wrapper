@@ -42,17 +42,21 @@ import {
   type EncryptionAction,
 } from '@/lib/encryptionStateMachine';
 
+import { getCSRFToken } from '@/hooks/useCSRF';
+
 /**
- * Helper to get auth headers for API requests
+ * Helper to get auth headers for API requests (includes CSRF token)
  */
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('No active session');
   }
+  const csrfToken = getCSRFToken();
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${session.access_token}`,
+    ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
   };
 }
 
