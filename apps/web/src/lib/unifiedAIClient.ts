@@ -13,6 +13,7 @@
 import { getSelectedModel, getModelProvider, type AIModel } from "./apiKeyStorage";
 import type { MessageRole } from "@/types/chat";
 import type { UserTier } from "@/hooks/useUserTier";
+import { getCSRFToken } from "@/hooks/useCSRF";
 
 /**
  * Unified content part type that supports both OpenAI and Claude formats
@@ -68,11 +69,13 @@ async function sendProChatRequest(
   }
 
   // SECURITY: Send access token in Authorization header for server-side authentication
+  const csrfToken = getCSRFToken();
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
+      ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
     },
     body: JSON.stringify(requestBody),
   });
