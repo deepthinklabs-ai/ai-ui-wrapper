@@ -75,6 +75,9 @@ export interface NodeDefinition {
     requiresPro?: boolean;
     canBeDisabled?: boolean;
   };
+
+  // UI visibility - if true, node is hidden from palette (for unfinished features)
+  hidden?: boolean;
 }
 
 // ============================================================================
@@ -184,6 +187,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       canHaveMultipleInstances: true,
       canBeDisabled: true,
     },
+    hidden: true, // Not yet implemented
   },
 
   BOARDROOM: {
@@ -237,6 +241,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       canHaveMultipleInstances: true,
       canBeDisabled: true,
     },
+    hidden: true, // Not yet implemented
   },
 
   TRIGGER: {
@@ -446,6 +451,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       canHaveMultipleInstances: true,
       canBeDisabled: true,
     },
+    hidden: true, // Not yet implemented
   },
 
   TOOL: {
@@ -489,6 +495,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       requiresAuth: true,
       canBeDisabled: true,
     },
+    hidden: true, // Not yet implemented
   },
 
   TERMINAL_COMMAND: {
@@ -526,6 +533,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       canHaveMultipleInstances: true,
       canBeDisabled: true,
     },
+    hidden: true, // Not yet implemented
   },
 
   CUSTOM: {
@@ -548,6 +556,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       canHaveMultipleInstances: true,
       canBeDisabled: true,
     },
+    hidden: true, // Not yet implemented
   },
 };
 
@@ -560,7 +569,7 @@ export function getNodeDefinition(type: CanvasNodeType): NodeDefinition {
 }
 
 export function getNodesByCategory(category: NodeDefinition['category']): NodeDefinition[] {
-  return Object.values(NODE_DEFINITIONS).filter(def => def.category === category);
+  return Object.values(NODE_DEFINITIONS).filter(def => def.category === category && !def.hidden);
 }
 
 export function getNodeColor(type: CanvasNodeType): string {
@@ -603,6 +612,7 @@ export function createDefaultNode(
 
 /**
  * Get all available node types grouped by category
+ * Filters out hidden nodes (unimplemented features)
  */
 export function getNodePalette(): Record<string, NodeDefinition[]> {
   const categories: Record<string, NodeDefinition[]> = {
@@ -615,8 +625,18 @@ export function getNodePalette(): Record<string, NodeDefinition[]> {
   };
 
   Object.values(NODE_DEFINITIONS).forEach(def => {
+    // Skip hidden nodes (not yet implemented)
+    if (def.hidden) return;
     categories[def.category].push(def);
   });
 
   return categories;
+}
+
+/**
+ * Get categories that have at least one visible (non-hidden) node
+ */
+export function getVisibleCategories() {
+  const palette = getNodePalette();
+  return NODE_CATEGORIES.filter(cat => palette[cat.id]?.length > 0);
 }

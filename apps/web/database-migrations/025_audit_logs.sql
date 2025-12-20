@@ -36,12 +36,7 @@ CREATE POLICY "Admins can read audit logs"
   ON public.audit_logs
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles
-      WHERE id = auth.uid() AND is_admin = TRUE
-    )
-  );
+  USING (public.is_admin(auth.uid()));
 
 -- RLS policy: Service role can insert (for server-side logging)
 -- Note: Service role bypasses RLS, so this is just for documentation
