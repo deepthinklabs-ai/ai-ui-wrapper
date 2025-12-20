@@ -27,7 +27,23 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   process.env.NEXT_PUBLIC_APP_URL,
   process.env.APP_URL,
+  // Vercel preview/staging deployments
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
 ].filter(Boolean) as string[];
+
+// SECURITY: Pattern for Vercel preview deployments (validated separately)
+// Tightened to only match this project's preview deployments
+// Uses VERCEL_PROJECT_PRODUCTION_URL or falls back to project name pattern
+const getVercelPreviewPattern = (): RegExp => {
+  // Try to extract project name from production URL (e.g., "ai-ui-wrapper.vercel.app" -> "ai-ui-wrapper")
+  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const projectName = productionUrl?.split('.')[0] || process.env.VERCEL_PROJECT || 'ai-ui-wrapper';
+  // Escape any special regex characters in project name
+  const escapedProjectName = projectName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Match: https://{projectName}-{anything}.vercel.app
+  return new RegExp(`^https:\\/\\/${escapedProjectName}-[\\w-]+\\.vercel\\.app$`);
+};
+const VERCEL_PREVIEW_PATTERN = getVercelPreviewPattern();
 
 // SECURITY: Maximum allowed trial days
 const MAX_TRIAL_DAYS = 14;
@@ -185,7 +201,12 @@ export async function POST(req: NextRequest) {
 
     // SECURITY: Validate origin against allowed domains to prevent open redirect
     const requestOrigin = req.headers.get('origin');
-    if (!requestOrigin || !ALLOWED_ORIGINS.includes(requestOrigin)) {
+    const isAllowedOrigin = requestOrigin && (
+      ALLOWED_ORIGINS.includes(requestOrigin) ||
+      VERCEL_PREVIEW_PATTERN.test(requestOrigin)
+    );
+    if (!requestOrigin || !isAllowedOrigin) {
+      console.error('[Stripe Checkout] Invalid origin:', requestOrigin, 'Allowed:', ALLOWED_ORIGINS);
       return NextResponse.json(
         { error: 'Invalid or missing origin' },
         { status: 403 }

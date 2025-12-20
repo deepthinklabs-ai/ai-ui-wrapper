@@ -79,7 +79,7 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
       },
       {
         name: "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
-        required: true,
+        required: false, // Only needed if using Stripe.js on client-side
         description: "Stripe publishable key (public)",
         validator: (v) => v.startsWith("pk_"),
       },

@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
     // Temporarily disable web search by default until we debug the refusal issue
     const { messages, model = 'claude-sonnet-4-5', systemPrompt, tools, enableWebSearch = false } = body;
 
+    // Debug: Log system prompt metadata only (no content for security)
+    console.log('[Claude API] systemPrompt:', systemPrompt ? `present (${systemPrompt.length} chars)` : 'not provided');
+
     // Validate required fields
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -167,10 +170,29 @@ export async function POST(req: NextRequest) {
     // Get the actual Claude API model name
     const apiModel = CLAUDE_API_MODEL_MAP[model] || model;
 
+    // Debug: Log message structure (not content for privacy)
+    console.log('[Claude API] Messages received:', messages.length, 'messages');
+    console.log('[Claude API] Message roles:', messages.map((m: any) => m.role).join(', '));
+    // Log content metadata only (no content for security)
+    messages.forEach((m: any, i: number) => {
+      const contentType = typeof m.content;
+      const contentLength = contentType === 'string' ? m.content.length : JSON.stringify(m.content).length;
+      console.log(`[Claude API] Message ${i}: role=${m.role}, contentType=${contentType}, length=${contentLength}`);
+    });
+
     // Claude API doesn't accept "system" role in messages array
     // Extract system messages and filter them out
     const systemMessages = messages.filter((m: any) => m.role === 'system');
     const conversationMessages = messages.filter((m: any) => m.role !== 'system');
+
+    // Debug: Log system message metadata only (no content for security)
+    if (systemMessages.length > 0) {
+      console.log('[Claude API] System messages found:', systemMessages.length);
+      systemMessages.forEach((m: any, i: number) => {
+        const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+        console.log(`[Claude API] System message ${i + 1}: ${content.length} chars`);
+      });
+    }
 
     // Convert OpenAI image_url format to Claude image format
     const convertedMessages = conversationMessages.map((msg: any) => {
@@ -294,7 +316,9 @@ export async function POST(req: NextRequest) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.error?.message || response.statusText;
 
-      console.error('Claude API error:', errorMessage);
+      console.error('[Claude API] Error response status:', response.status);
+      console.error('[Claude API] Error data:', JSON.stringify(errorData, null, 2));
+      console.error('[Claude API] Request model:', apiModel);
 
       if (response.status === 429) {
         return NextResponse.json(
@@ -311,9 +335,11 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
 
-    // Log metadata only (not content for privacy)
+    // Log metadata for debugging (not content for privacy)
+    console.log('[Claude API] Response received for model:', apiModel);
     console.log('[Claude API] Response stop_reason:', data.stop_reason);
     console.log('[Claude API] Content blocks:', data.content?.length || 0, 'blocks');
+    console.log('[Claude API] Content block types:', data.content?.map((b: any) => b.type).join(', ') || 'none');
 
     // If stop_reason indicates truncation, log warning
     if (data.stop_reason === 'max_tokens') {
@@ -337,11 +363,21 @@ export async function POST(req: NextRequest) {
 
     console.log('[Claude API] Found', textBlocks.length, 'text blocks');
 
+    // Handle refusal responses
+    if (data.stop_reason === 'refusal') {
+      console.warn('[Claude API] Model refused to respond');
+      // Return a user-friendly message for refusals
+      content = "I'm sorry, but I can't help with that request. Please try rephrasing your question or asking something else.";
+    }
+
     if (!content && !hasClientToolUse) {
       // No text and no client-side tool use means something went wrong
-      console.error('[Claude API] No text content in response (block types:', data.content?.map((b: any) => b.type).join(', ') + ')');
+      console.error('[Claude API] No text content in response');
+      console.error('[Claude API] Full response data:', JSON.stringify(data, null, 2));
+      console.error('[Claude API] Request model:', apiModel);
+      console.error('[Claude API] Request body (without messages):', JSON.stringify({ ...requestBody, messages: `[${requestBody.messages?.length} messages]` }));
       return NextResponse.json(
-        { error: 'No response from Claude' },
+        { error: 'No response from Claude', debug: { model: apiModel, stop_reason: data.stop_reason, content_types: data.content?.map((b: any) => b.type) } },
         { status: 500 }
       );
     }

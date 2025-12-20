@@ -29,6 +29,7 @@ type UseMessagesOptions = {
   disableMCPTools?: boolean;
   gmailTools?: GmailToolConfig; // Gmail integration for Genesis Bots
   encryptForStorage?: (plaintext: string) => Promise<string>; // Optional encryption for DB storage
+  decryptForSending?: (ciphertext: string) => Promise<string>; // Optional decryption for AI requests
 };
 
 type UseMessagesResult = {
@@ -140,11 +141,25 @@ export function useMessages(
       setMessages((prev) => [...prev, userMessageForDisplay]);
 
       // 3) Build payload for chat API (full conversation + new message)
-      // For previous messages, use simple string content
-      const previousMessages = messages.map((m) => ({
-        role: m.role as MessageRole,
-        content: m.content,
-      }));
+      // For previous messages, decrypt if encryption is enabled (messages from DB are encrypted)
+      const previousMessages = await Promise.all(
+        messages.map(async (m) => {
+          let content = m.content;
+          // Decrypt if decryption function provided and content looks encrypted (base64-like)
+          if (options?.decryptForSending && typeof content === 'string') {
+            try {
+              content = await options.decryptForSending(content);
+            } catch (e) {
+              // If decryption fails, content might already be plaintext (new messages)
+              console.warn('[useMessages] Decryption failed, using original content');
+            }
+          }
+          return {
+            role: m.role as MessageRole,
+            content,
+          };
+        })
+      );
 
       // For the new message, if there are images, use the vision format
       const imageFiles = processedFiles.filter(f => f.isImage);
@@ -188,8 +203,8 @@ export function useMessages(
         });
       }
 
-      // Add web search encouragement system prompt (only if web search is enabled)
-      if (options?.enableWebSearch !== false) {
+      // Add web search encouragement system prompt (only if web search is explicitly enabled)
+      if (options?.enableWebSearch === true) {
         payloadMessages.push({
           role: "system" as MessageRole,
           content: `🌐 WEB SEARCH: You have real-time web search. For news/current events, always cite DIRECT article URLs (not homepages/feeds). Each story needs its own specific URL. Format: [Article Title](direct-article-url)`,

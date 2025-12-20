@@ -13,6 +13,7 @@
 import { getSelectedModel, getModelProvider, type AIModel } from "./apiKeyStorage";
 import type { MessageRole } from "@/types/chat";
 import type { UserTier } from "@/hooks/useUserTier";
+import { getCSRFToken } from "@/hooks/useCSRF";
 
 /**
  * Unified content part type that supports both OpenAI and Claude formats
@@ -49,7 +50,8 @@ async function sendProChatRequest(
   model: AIModel,
   provider: 'openai' | 'claude' | 'grok' | 'gemini',
   accessToken: string,
-  tools?: any
+  tools?: any,
+  enableWebSearch?: boolean
 ): Promise<UnifiedChatResponse> {
   const endpoint =
     provider === 'openai' ? '/api/pro/openai' :
@@ -67,12 +69,19 @@ async function sendProChatRequest(
     requestBody.tools = tools;
   }
 
+  // Add enableWebSearch for Claude
+  if (provider === 'claude' && enableWebSearch !== undefined) {
+    requestBody.enableWebSearch = enableWebSearch;
+  }
+
   // SECURITY: Send access token in Authorization header for server-side authentication
+  const csrfToken = getCSRFToken();
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
+      ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
     },
     body: JSON.stringify(requestBody),
   });
@@ -118,7 +127,7 @@ export async function sendUnifiedChatRequest(
     enableWebSearch?: boolean;
   }
 ): Promise<UnifiedChatResponse> {
-  const { model, userTier = 'trial', accessToken, tools } = options || {};
+  const { model, userTier = 'trial', accessToken, tools, enableWebSearch } = options || {};
   const selectedModel = model || getSelectedModel();
   const provider = getModelProvider(selectedModel);
 
@@ -133,5 +142,5 @@ export async function sendUnifiedChatRequest(
   }
 
   // All users (trial and pro) route through backend API proxy
-  return sendProChatRequest(messages, selectedModel, provider, accessToken, tools);
+  return sendProChatRequest(messages, selectedModel, provider, accessToken, tools, enableWebSearch);
 }

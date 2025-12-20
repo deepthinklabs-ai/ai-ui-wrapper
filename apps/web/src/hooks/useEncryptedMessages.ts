@@ -102,11 +102,13 @@ export function useEncryptedMessages(
     return unsubscribe;
   }, [circuitBreaker]);
 
-  // Pass encryption function to useMessages for database storage
-  // The AI will receive plaintext, but the database will store encrypted
+  // Pass encryption/decryption functions to useMessages
+  // - encryptForStorage: encrypts messages before storing to DB
+  // - decryptForSending: decrypts messages from DB before sending to AI
   const baseMessages = useMessages(threadId, {
     ...options,
     encryptForStorage: isEncryptionReady && encryptionState.isUnlocked ? encryptText : undefined,
+    decryptForSending: isEncryptionReady && encryptionState.isUnlocked ? decryptText : undefined,
   });
 
   /**
