@@ -173,15 +173,11 @@ export async function POST(req: NextRequest) {
     // Debug: Log message structure (not content for privacy)
     console.log('[Claude API] Messages received:', messages.length, 'messages');
     console.log('[Claude API] Message roles:', messages.map((m: any) => m.role).join(', '));
-    // Log content types to debug refusal issues
+    // Log content metadata only (no content for security)
     messages.forEach((m: any, i: number) => {
       const contentType = typeof m.content;
       const contentLength = contentType === 'string' ? m.content.length : JSON.stringify(m.content).length;
       console.log(`[Claude API] Message ${i}: role=${m.role}, contentType=${contentType}, length=${contentLength}`);
-      // TEMPORARY: Log first 100 chars of assistant messages to debug refusal
-      if (m.role === 'assistant' && typeof m.content === 'string') {
-        console.log(`[Claude API] DEBUG assistant preview: ${m.content.substring(0, 100)}...`);
-      }
     });
 
     // Claude API doesn't accept "system" role in messages array
@@ -289,25 +285,6 @@ export async function POST(req: NextRequest) {
     if (tools && Array.isArray(tools) && tools.length > 0) {
       requestBody.tools = [...(requestBody.tools || []), ...tools];
     }
-
-    // Debug: Log request body structure (not content)
-    console.log('[Claude API] Request body structure:', {
-      model: requestBody.model,
-      max_tokens: requestBody.max_tokens,
-      messageCount: requestBody.messages?.length,
-      hasSystem: !!requestBody.system,
-      systemLength: requestBody.system?.length || 0,
-      hasTools: !!requestBody.tools,
-      toolCount: requestBody.tools?.length || 0,
-    });
-    // Log each message's structure
-    requestBody.messages?.forEach((m: any, i: number) => {
-      const contentType = typeof m.content;
-      const contentPreview = contentType === 'string'
-        ? `string(${m.content.length} chars)`
-        : `array(${m.content?.length} parts)`;
-      console.log(`[Claude API] Final msg ${i}: role=${m.role}, content=${contentPreview}`);
-    });
 
     // Make request to Claude API
     const startTime = Date.now();
