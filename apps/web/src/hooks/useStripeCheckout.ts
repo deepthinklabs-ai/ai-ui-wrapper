@@ -60,9 +60,7 @@ export function useStripeCheckout({ userId, priceId }: UseStripeCheckoutOptions)
 
       // Redirect to Stripe Checkout
       if (data.url) {
-        // Security: Validate and reconstruct URL to break taint flow (CWE-601)
-        // We parse the URL, validate it, then construct a NEW URL from scratch
-        // using only the pathname and search params with a hardcoded origin
+        // Security: Validate URL domain to prevent open redirect (CWE-601)
         let parsedUrl: URL;
         try {
           parsedUrl = new URL(data.url);
@@ -80,21 +78,13 @@ export function useStripeCheckout({ userId, priceId }: UseStripeCheckoutOptions)
           throw new Error("Checkout URL must use HTTPS");
         }
 
-        // Security: Extract and validate only the session ID (CWE-601)
-        // Stripe checkout paths are like /c/pay/cs_xxx or /pay/cs_xxx
-        // We extract ONLY the session ID and reconstruct the URL from scratch
-        const sessionMatch = parsedUrl.pathname.match(/\/(cs_[a-zA-Z0-9_-]+)$/);
-        if (!sessionMatch) {
-          throw new Error("Invalid checkout session ID format");
+        // Validate that the path contains a checkout session ID
+        if (!parsedUrl.pathname.includes("/cs_")) {
+          throw new Error("Invalid checkout session URL");
         }
 
-        // The session ID contains only safe characters (validated by regex)
-        const sessionId = sessionMatch[1];
-
-        // Security: Construct URL from hardcoded origin + path + validated session ID
-        // This completely breaks the taint flow - only the validated session ID is used
-        const safeUrl = `https://checkout.stripe.com/c/pay/${sessionId}`;
-        window.location.href = safeUrl;
+        // Use the validated URL as-is (domain already validated as checkout.stripe.com)
+        window.location.href = data.url;
       } else {
         throw new Error("No checkout URL returned");
       }
