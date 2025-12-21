@@ -114,7 +114,7 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
               {nodeData.label}
             </div>
             <div className="text-xs text-purple-400">
-              Master Trigger
+              Chatbot Trigger
             </div>
           </div>
         </div>
