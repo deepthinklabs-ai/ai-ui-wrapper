@@ -9,7 +9,7 @@
 
 import React from 'react';
 import type { CanvasNodeType } from '../types';
-import { NODE_DEFINITIONS, NODE_CATEGORIES, getNodesByCategory } from '../lib/nodeRegistry';
+import { NODE_DEFINITIONS, getVisibleCategories, getNodesByCategory } from '../lib/nodeRegistry';
 
 interface NodePaletteProps {
   onAddNode: (type: CanvasNodeType) => void;
@@ -29,7 +29,7 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
       {/* Node Categories */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
-          {NODE_CATEGORIES.map(category => {
+          {getVisibleCategories().map(category => {
             const nodes = getNodesByCategory(category.id);
             if (nodes.length === 0) return null;
 
@@ -101,7 +101,7 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
       {/* Footer */}
       <div className="border-t border-slate-800 px-4 py-3">
         <p className="text-xs text-slate-500">
-          {Object.keys(NODE_DEFINITIONS).length} node types available
+          {Object.values(NODE_DEFINITIONS).filter(def => !def.hidden).length} node types available
         </p>
       </div>
     </div>

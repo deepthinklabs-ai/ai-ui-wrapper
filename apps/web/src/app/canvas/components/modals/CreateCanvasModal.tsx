@@ -112,12 +112,12 @@ export default function CreateCanvasModal({
                 />
               </div>
 
-              {/* Mode Selection */}
+              {/* Mode Selection - Currently only Workflow mode is available */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
                   Canvas Mode
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {/* Workflow */}
                   <button
                     type="button"
@@ -138,72 +138,17 @@ export default function CreateCanvasModal({
                     </div>
                   </button>
 
-                  {/* Boardroom */}
-                  <button
-                    type="button"
-                    onClick={() => setMode('boardroom')}
-                    disabled={creating}
-                    className={`rounded-lg border-2 p-4 text-left transition-all ${
-                      mode === 'boardroom'
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-slate-700 bg-slate-800 hover:border-slate-600'
-                    } ${creating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  >
-                    <div className="mb-2 text-2xl">🏛️</div>
-                    <div className="text-sm font-medium text-slate-200">
-                      Boardroom
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      Multi-bot discussion
-                    </div>
-                  </button>
-
-                  {/* Hybrid */}
-                  <button
-                    type="button"
-                    onClick={() => setMode('hybrid')}
-                    disabled={creating}
-                    className={`rounded-lg border-2 p-4 text-left transition-all ${
-                      mode === 'hybrid'
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-slate-700 bg-slate-800 hover:border-slate-600'
-                    } ${creating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  >
-                    <div className="mb-2 text-2xl">🔀</div>
-                    <div className="text-sm font-medium text-slate-200">
-                      Hybrid
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      Mix of both
-                    </div>
-                  </button>
+                  {/* Boardroom - Hidden until implemented */}
+                  {/* Hybrid - Hidden until implemented */}
                 </div>
               </div>
 
               {/* Mode Description */}
               <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
                 <p className="text-sm text-slate-300">
-                  {mode === 'workflow' && (
-                    <>
-                      <strong>Workflow Mode:</strong> Build automated pipelines with
-                      triggers, conditions, and sequential execution. Perfect for
-                      research, content creation, and data processing.
-                    </>
-                  )}
-                  {mode === 'boardroom' && (
-                    <>
-                      <strong>Boardroom Mode:</strong> Facilitate discussions between
-                      multiple Genesis Bots. Great for brainstorming, debate,
-                      consensus-building, and expert panels.
-                    </>
-                  )}
-                  {mode === 'hybrid' && (
-                    <>
-                      <strong>Hybrid Mode:</strong> Combine automated workflows with
-                      collaborative discussions. Use boardrooms within larger workflows
-                      or add automation to discussions.
-                    </>
-                  )}
+                  <strong>Workflow Mode:</strong> Build automated pipelines with
+                  triggers, conditions, and sequential execution. Perfect for
+                  research, content creation, and data processing.
                 </p>
               </div>
             </div>
