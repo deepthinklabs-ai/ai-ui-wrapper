@@ -52,9 +52,10 @@ export async function GET(request: NextRequest) {
     // Generate Google OAuth URL with optional service-specific scopes
     const authUrl = getGoogleAuthUrl(state, service || undefined);
 
-    // Debug: Log the URLs being used
+    // Debug: Log the URLs and config being used
     console.log('[Google OAuth] DEBUG - APP_URL env:', process.env.APP_URL);
     console.log('[Google OAuth] DEBUG - NEXT_PUBLIC_APP_URL env:', process.env.NEXT_PUBLIC_APP_URL);
+    console.log('[Google OAuth] DEBUG - GOOGLE_OAUTH_CLIENT_ID present:', !!process.env.GOOGLE_OAUTH_CLIENT_ID);
     console.log('[Google OAuth] DEBUG - Generated auth URL:', authUrl);
 
     // Redirect to Google's authorization page

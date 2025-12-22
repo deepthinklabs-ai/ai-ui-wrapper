@@ -20,8 +20,9 @@ const getAppUrl = () => {
 export const getRedirectUri = () => `${getAppUrl()}/api/oauth/google/callback`;
 
 export const GOOGLE_OAUTH_CONFIG = {
-  clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
-  clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '',
+  // Use getters to read env vars at runtime, not module load time
+  get clientId() { return process.env.GOOGLE_OAUTH_CLIENT_ID || ''; },
+  get clientSecret() { return process.env.GOOGLE_OAUTH_CLIENT_SECRET || ''; },
   // NOTE: redirectUri is now dynamic - use getRedirectUri() instead of this property
   get redirectUri() { return getRedirectUri(); },
 
