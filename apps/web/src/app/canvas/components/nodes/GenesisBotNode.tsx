@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Genesis Bot Node Component
+ * AI Agent Node Component (internally GENESIS_BOT)
  *
- * Displays a Genesis Bot node in the canvas.
+ * Displays an AI Agent node in the canvas.
  * When clicked, opens a chat modal to interact with the bot.
  */
 

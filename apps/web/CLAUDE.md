@@ -13,6 +13,15 @@
 - Subscription management via Stripe
 - Advanced AI features (web search, voice, MCP tools)
 
+### Naming Conventions (Code vs UI)
+| Code Identifier | UI Label | Description |
+|-----------------|----------|-------------|
+| `GENESIS_BOT` | **AI Agent** | AI agent node in canvas |
+| `MASTER_TRIGGER` | **Chatbot Trigger** | Exposes workflows to Chatbot page |
+| `Chatbot` | **Chatbot** | User-configured AI assistant profiles |
+
+> **Note:** Legacy code references "Genesis Bot" in type names and file names (e.g., `GenesisBotNode.tsx`, `GenesisBotNodeConfig`), but the **user-facing UI** displays "AI Agent" and "Chatbot".
+
 ---
 
 ## Tech Stack
