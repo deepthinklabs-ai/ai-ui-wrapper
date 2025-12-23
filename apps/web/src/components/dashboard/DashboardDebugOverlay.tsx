@@ -41,6 +41,12 @@ export default function DashboardDebugOverlay({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['thread', 'chatbot', 'messages'])
   );
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  // Update timestamp whenever data changes
+  useEffect(() => {
+    setLastUpdated(new Date());
+  }, [currentThread?.id, selectedChatbotId, messages.length, chatbots.length, folderTree.length]);
 
   // Toggle with Ctrl+Shift+D
   useEffect(() => {
@@ -106,6 +112,14 @@ export default function DashboardDebugOverlay({
           <div className="flex items-center gap-2">
             <span className="text-yellow-400 text-lg">🔧</span>
             <h3 className="font-bold text-sm">Admin Debug Panel</h3>
+            {/* Live indicator */}
+            <div className="flex items-center gap-1 bg-green-500/20 px-2 py-0.5 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              <span className="text-[10px] font-medium text-green-400">LIVE</span>
+            </div>
           </div>
           <button
             onClick={() => setIsVisible(false)}
@@ -115,8 +129,11 @@ export default function DashboardDebugOverlay({
           </button>
         </div>
 
-        <div className="text-xs text-slate-500 mb-3 pb-2 border-b border-slate-700">
-          Press <kbd className="bg-slate-800 px-1 rounded">Ctrl+Shift+D</kbd> to toggle
+        <div className="text-xs text-slate-500 mb-3 pb-2 border-b border-slate-700 flex items-center justify-between">
+          <span>Press <kbd className="bg-slate-800 px-1 rounded">Ctrl+Shift+D</kbd> to toggle</span>
+          <span className="text-slate-600">
+            Updated: {lastUpdated.toLocaleTimeString()}
+          </span>
         </div>
 
         {/* Scrollable content */}
