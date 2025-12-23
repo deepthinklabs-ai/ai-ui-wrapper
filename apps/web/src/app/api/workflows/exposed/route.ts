@@ -85,10 +85,14 @@ export async function GET(request: Request) {
           last_triggered_at?: string;
           trigger_count?: number;
         };
-        displayName = config.display_name || displayName;
+        // Use display_name if set, otherwise fall back to canvas name
+        displayName = config.display_name || canvas?.name || displayName;
         description = config.description;
         lastTriggeredAt = config.last_triggered_at;
         triggerCount = config.trigger_count;
+      } else {
+        // Config is encrypted or missing - use canvas name as fallback
+        displayName = canvas?.name || displayName;
       }
 
       exposedWorkflows.push({
