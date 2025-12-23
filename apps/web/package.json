@@ -18,7 +18,7 @@
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@modelcontextprotocol/server-github": "^2025.4.8",
     "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.4.0",
+    "@react-three/fiber": "^9.4.2",
     "@sentry/nextjs": "^10.32.1",
     "@slack/web-api": "^7.13.0",
     "@supabase/supabase-js": "^2.86.0",
