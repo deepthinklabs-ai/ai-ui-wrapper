@@ -12,6 +12,7 @@ import type {
   MasterTriggerOutput,
   TriggerWorkflowResponse,
 } from '@/app/canvas/features/master-trigger/types';
+import { getCSRFToken } from './useCSRF';
 
 export interface UseExposedWorkflowsResult {
   /** List of available exposed workflows */
@@ -113,11 +114,18 @@ export function useExposedWorkflows(userId: string | null): UseExposedWorkflowsR
       setError(null);
 
       try {
+        // Get CSRF token for the request
+        const csrfToken = getCSRFToken();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (csrfToken) {
+          headers['X-CSRF-Token'] = csrfToken;
+        }
+
         const response = await fetch('/api/workflows/trigger', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({
             canvasId: selectedWorkflow.canvasId,
             triggerNodeId: selectedWorkflow.triggerNodeId,
