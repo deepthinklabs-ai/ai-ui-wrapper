@@ -23,6 +23,9 @@ interface DashboardDebugOverlayProps {
   currentThread: Thread | null;
   messages: Message[];
   chatbots: Chatbot[];
+  /** The chatbot currently active for this thread (from composer dropdown) */
+  activeChatbot: Chatbot | null;
+  /** The chatbot selected in the sidebar (for editing) */
   selectedChatbotId: string | null;
   folderTree: FolderWithChildren[];
 }
@@ -33,6 +36,7 @@ export default function DashboardDebugOverlay({
   currentThread,
   messages,
   chatbots,
+  activeChatbot,
   selectedChatbotId,
   folderTree,
 }: DashboardDebugOverlayProps) {
@@ -46,7 +50,7 @@ export default function DashboardDebugOverlay({
   // Update timestamp whenever data changes
   useEffect(() => {
     setLastUpdated(new Date());
-  }, [currentThread?.id, selectedChatbotId, messages.length, chatbots.length, folderTree.length]);
+  }, [currentThread?.id, activeChatbot?.id, selectedChatbotId, messages.length, chatbots.length, folderTree.length]);
 
   // Toggle with Ctrl+Shift+D
   useEffect(() => {
@@ -87,8 +91,6 @@ export default function DashboardDebugOverlay({
   }, []);
 
   if (!isAdmin || !isVisible) return null;
-
-  const selectedChatbot = chatbots.find(c => c.id === selectedChatbotId);
 
   // Flatten folder tree for display
   const flattenFolders = (nodes: FolderWithChildren[], depth = 0): Array<{ folder: FolderWithChildren; depth: number }> => {
@@ -231,7 +233,7 @@ export default function DashboardDebugOverlay({
             )}
           </div>
 
-          {/* Current Chatbot Section */}
+          {/* Active Chatbot Section - The chatbot being used for this thread */}
           <div className="bg-slate-800/50 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleSection('chatbot')}
@@ -239,7 +241,7 @@ export default function DashboardDebugOverlay({
             >
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
-                <span className="text-xs font-bold">Active Chatbot</span>
+                <span className="text-xs font-bold">Active Chatbot (Thread)</span>
               </div>
               <span className="text-slate-400 text-xs">
                 {expandedSections.has('chatbot') ? '▼' : '▶'}
@@ -247,16 +249,16 @@ export default function DashboardDebugOverlay({
             </button>
             {expandedSections.has('chatbot') && (
               <div className="px-2 pb-2">
-                {selectedChatbot ? (
+                {activeChatbot ? (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-400">ID:</span>
                       <div className="flex items-center gap-1">
                         <span className="text-xs font-mono text-purple-300 truncate max-w-[180px]">
-                          {selectedChatbot.id}
+                          {activeChatbot.id}
                         </span>
                         <button
-                          onClick={() => copyToClipboard(selectedChatbot.id, 'chatbot')}
+                          onClick={() => copyToClipboard(activeChatbot.id, 'chatbot')}
                           className="text-slate-400 hover:text-white px-1"
                         >
                           {copiedId === 'chatbot' ? '✓' : '📋'}
@@ -265,17 +267,17 @@ export default function DashboardDebugOverlay({
                     </div>
                     <div className="text-xs">
                       <span className="text-slate-400">Name:</span>{' '}
-                      <span className="text-slate-200">{selectedChatbot.name}</span>
+                      <span className="text-slate-200">{activeChatbot.name}</span>
                     </div>
-                    {selectedChatbot.folder_id && (
+                    {activeChatbot.folder_id && (
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-400">Folder ID:</span>
                         <div className="flex items-center gap-1">
                           <span className="text-xs font-mono text-slate-300 truncate max-w-[140px]">
-                            {selectedChatbot.folder_id}
+                            {activeChatbot.folder_id}
                           </span>
                           <button
-                            onClick={() => copyToClipboard(selectedChatbot.folder_id!, 'chatbot-folder')}
+                            onClick={() => copyToClipboard(activeChatbot.folder_id!, 'chatbot-folder')}
                             className="text-slate-400 hover:text-white px-1"
                           >
                             {copiedId === 'chatbot-folder' ? '✓' : '📋'}
@@ -285,7 +287,10 @@ export default function DashboardDebugOverlay({
                     )}
                   </div>
                 ) : (
-                  <div className="text-xs text-slate-500 italic">No chatbot selected</div>
+                  <div className="text-xs text-amber-400/80 flex items-center gap-1">
+                    <span>⚡</span>
+                    <span>Using Defaults (no chatbot assigned to thread)</span>
+                  </div>
                 )}
               </div>
             )}
@@ -418,7 +423,7 @@ export default function DashboardDebugOverlay({
                       <div
                         key={chatbot.id}
                         className={`flex items-center justify-between py-1 border-b border-slate-700/50 last:border-0 ${
-                          chatbot.id === selectedChatbotId ? 'bg-purple-500/20 rounded' : ''
+                          chatbot.id === activeChatbot?.id ? 'bg-purple-500/20 rounded' : ''
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">

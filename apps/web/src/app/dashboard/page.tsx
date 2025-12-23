@@ -1159,6 +1159,7 @@ export default function DashboardPage() {
         currentThread={currentThread}
         messages={messages}
         chatbots={chatbots}
+        activeChatbot={activeChatbot}
         selectedChatbotId={selectedChatbotId}
         folderTree={folderTree}
       />
