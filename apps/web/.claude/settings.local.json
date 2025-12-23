@@ -94,7 +94,9 @@
       "Bash(coderabbit --version:*)",
       "Bash(wsl --status:*)",
       "Bash(wsl --list:*)",
-      "Bash(wsl --install:*)"
+      "Bash(wsl --install:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []

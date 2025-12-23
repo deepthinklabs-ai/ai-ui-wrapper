@@ -279,7 +279,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
 
   MASTER_TRIGGER: {
     type: 'MASTER_TRIGGER',
-    label: 'Master Trigger',
+    label: 'Chatbot Trigger',
     description: 'Expose workflow to Chatbot page for triggering from chat',
     category: 'trigger',
     icon: '🎯',
