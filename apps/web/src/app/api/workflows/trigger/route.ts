@@ -29,6 +29,7 @@ import { executeSmartRouter } from '@/app/canvas/features/smart-router';
 import { executeResponseCompiler } from '@/app/canvas/features/response-compiler';
 import type { AgentResponse } from '@/app/canvas/features/response-compiler/types';
 import { getInternalBaseUrl } from '@/lib/internalApiUrl';
+import type { NodeExecutionState, ExecutionLogEntry } from '@/app/canvas/types';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -180,6 +181,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const executionId = crypto.randomUUID();
 
+  // Initialize execution tracking at function scope for error handling
+  const nodeStates: Record<string, NodeExecutionState> = {};
+  const executionLog: ExecutionLogEntry[] = [];
+
   try {
     const body: TriggerWorkflowRequest = await request.json();
     const { canvasId, triggerNodeId, input } = body;
@@ -200,6 +205,50 @@ export async function POST(request: NextRequest) {
 
     // Sanitize message
     const sanitizedMessage = sanitizeMessage(input.message);
+
+    // Helper to add log entries
+    const addLog = (level: 'info' | 'warn' | 'error', message: string, nodeId?: string, data?: any) => {
+      executionLog.push({
+        timestamp: new Date().toISOString(),
+        level,
+        node_id: nodeId,
+        message,
+        data,
+      });
+    };
+
+    // Helper to update node state
+    const updateNodeState = (nodeId: string, updates: Partial<NodeExecutionState>) => {
+      if (!nodeStates[nodeId]) {
+        nodeStates[nodeId] = {
+          node_id: nodeId,
+          status: 'pending',
+        };
+      }
+      Object.assign(nodeStates[nodeId], updates);
+    };
+
+    // Insert initial execution record
+    addLog('info', `Workflow triggered with message: "${sanitizedMessage.slice(0, 100)}${sanitizedMessage.length > 100 ? '...' : ''}"`, undefined, {
+      userId: input.userId,
+      hasAttachments: (input.attachments?.length || 0) > 0,
+    });
+
+    const { error: insertError } = await supabase
+      .from('workflow_executions')
+      .insert({
+        id: executionId,
+        canvas_id: canvasId,
+        status: 'running',
+        started_at: new Date().toISOString(),
+        node_states: nodeStates,
+        execution_log: executionLog,
+      });
+
+    if (insertError) {
+      console.error('[POST /api/workflows/trigger] Failed to insert execution record:', insertError);
+      // Continue anyway - execution tracking is non-critical
+    }
 
     // Fetch the trigger node
     const { data: triggerNode, error: triggerError } = await supabase
@@ -231,6 +280,16 @@ export async function POST(request: NextRequest) {
         error: 'This workflow is not exposed',
       }, { status: 403 });
     }
+
+    // Track trigger node
+    updateNodeState(triggerNodeId, {
+      status: 'completed',
+      started_at: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
+      input: { message: sanitizedMessage, userId: input.userId },
+      output: { forwarding: true },
+    });
+    addLog('info', `Trigger node activated: ${triggerConfig.display_name || 'Master Trigger'}`, triggerNodeId);
 
     // Fetch edges from this trigger node
     const { data: edges, error: edgesError } = await supabase
@@ -304,8 +363,16 @@ export async function POST(request: NextRequest) {
     if (smartRouterNode) {
       // === SMART ROUTER WORKFLOW ===
       console.log(`[POST /api/workflows/trigger] Detected Smart Router workflow`);
+      addLog('info', 'Detected Smart Router workflow', smartRouterNode.id);
 
       const routerConfig = smartRouterNode.config as SmartRouterNodeConfig;
+
+      // Track Smart Router starting
+      updateNodeState(smartRouterNode.id, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+        input: { query: sanitizedMessage },
+      });
 
       // Fetch edges from Smart Router to find connected agents
       const { data: routerEdges, error: routerEdgesError } = await supabase
@@ -362,6 +429,21 @@ export async function POST(request: NextRequest) {
       console.log(`  Reasoning: ${routingDecision.reasoning}`);
       console.log(`  Confidence: ${routingDecision.confidence}`);
 
+      // Track Smart Router completion
+      updateNodeState(smartRouterNode.id, {
+        status: 'completed',
+        ended_at: new Date().toISOString(),
+        output: {
+          targetNodeIds: routingDecision.targetNodeIds,
+          reasoning: routingDecision.reasoning,
+          confidence: routingDecision.confidence,
+        },
+      });
+      addLog('info', `Smart Router routed to ${routingDecision.targetNodeIds.length} agent(s)`, smartRouterNode.id, {
+        targets: routingDecision.targetNodeIds,
+        reasoning: routingDecision.reasoning,
+      });
+
       if (routingDecision.targetNodeIds.length === 0) {
         // No routing target - use first agent as fallback
         console.log(`[POST /api/workflows/trigger] No routing targets, using first agent as fallback`);
@@ -375,6 +457,17 @@ export async function POST(request: NextRequest) {
       // Call all target agents in parallel
       const targetAgents = agentNodes.filter((n) => routingDecision.targetNodeIds.includes(n.id));
       console.log(`[POST /api/workflows/trigger] Calling ${targetAgents.length} agents in parallel`);
+
+      // Mark all target agents as running
+      targetAgents.forEach((agentNode) => {
+        const agentConfig = agentNode.config as GenesisBotNodeConfig;
+        updateNodeState(agentNode.id, {
+          status: 'running',
+          started_at: new Date().toISOString(),
+          input: { query: sanitizedMessage },
+        });
+        addLog('info', `Starting agent: ${agentConfig.name || 'AI Agent'}`, agentNode.id);
+      });
 
       const agentPromises = targetAgents.map((agentNode) => {
         const agentConfig = agentNode.config as GenesisBotNodeConfig;
@@ -400,6 +493,17 @@ export async function POST(request: NextRequest) {
       console.log(`[POST /api/workflows/trigger] All agents responded:`);
       agentResponses.forEach((resp) => {
         console.log(`  - ${resp.agentName}: ${resp.success ? 'success' : 'failed'} (${resp.response.length} chars)`);
+        // Track agent completion
+        updateNodeState(resp.nodeId, {
+          status: resp.success ? 'completed' : 'failed',
+          ended_at: new Date().toISOString(),
+          output: resp.success ? { response: resp.response.slice(0, 500) } : undefined,
+          error: resp.error,
+        });
+        addLog(resp.success ? 'info' : 'error', `Agent ${resp.agentName} ${resp.success ? 'completed' : 'failed'}`, resp.nodeId, {
+          responseLength: resp.response.length,
+          error: resp.error,
+        });
       });
 
       // Check if there's a Response Compiler downstream
@@ -422,6 +526,14 @@ export async function POST(request: NextRequest) {
 
         const compilerConfig = responseCompilerNode.config as ResponseCompilerNodeConfig;
 
+        // Track Response Compiler starting
+        updateNodeState(responseCompilerNode.id, {
+          status: 'running',
+          started_at: new Date().toISOString(),
+          input: { agentResponses: agentResponses.map(r => ({ name: r.agentName, success: r.success })) },
+        });
+        addLog('info', 'Starting Response Compiler', responseCompilerNode.id);
+
         // Execute Response Compiler
         const compiledResponse = await executeResponseCompiler(
           compilerConfig,
@@ -433,6 +545,14 @@ export async function POST(request: NextRequest) {
 
         response = compiledResponse;
         console.log(`[POST /api/workflows/trigger] Response compiled (${response.length} chars)`);
+
+        // Track Response Compiler completion
+        updateNodeState(responseCompilerNode.id, {
+          status: 'completed',
+          ended_at: new Date().toISOString(),
+          output: { response: response.slice(0, 500) },
+        });
+        addLog('info', 'Response Compiler completed', responseCompilerNode.id, { responseLength: response.length });
 
         // Update Response Compiler statistics
         await supabase
@@ -492,6 +612,14 @@ export async function POST(request: NextRequest) {
 
       const botConfig = targetBot.config as GenesisBotNodeConfig;
 
+      // Track bot starting
+      updateNodeState(targetBot.id, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+        input: { query: sanitizedMessage },
+      });
+      addLog('info', `Starting bot: ${botConfig.name || 'AI Agent'}`, targetBot.id);
+
       console.log(`[POST /api/workflows/trigger] Executing with bot: ${botConfig.name}`);
       console.log(`  Model: ${botConfig.model_provider}/${botConfig.model_name}`);
       console.log(`  System Prompt (first 100 chars): ${botConfig.system_prompt?.slice(0, 100) || 'UNDEFINED'}`);
@@ -540,6 +668,14 @@ export async function POST(request: NextRequest) {
       response = apiData.answer || '';
 
       console.log(`[POST /api/workflows/trigger] First bot response received (${response.length} chars)`);
+
+      // Track first bot completion
+      updateNodeState(targetBot.id, {
+        status: 'completed',
+        ended_at: new Date().toISOString(),
+        output: { response: response.slice(0, 500) },
+      });
+      addLog('info', `Bot ${botConfig.name || 'AI Agent'} completed`, targetBot.id, { responseLength: response.length });
 
       // === CHAINING: Check if first bot has Ask/Answer connections to other bots ===
       let currentBotId = targetBot.id;
@@ -598,6 +734,14 @@ export async function POST(request: NextRequest) {
 
         chainDepth++;
         console.log(`[POST /api/workflows/trigger] Chain step ${chainDepth}: ${currentBotConfig?.name} → ${nextBotConfig.name} via Ask/Answer`);
+
+        // Track chain bot starting
+        updateNodeState(nextBotId, {
+          status: 'running',
+          started_at: new Date().toISOString(),
+          input: { query: response.slice(0, 200), chainDepth },
+        });
+        addLog('info', `Chain step ${chainDepth}: Starting ${nextBotConfig.name}`, nextBotId);
 
         // Skip chaining if the response from previous bot is empty
         if (!response || response.trim().length === 0) {
@@ -658,6 +802,14 @@ export async function POST(request: NextRequest) {
         response = askAnswerData.answer || response;
         currentBotId = nextBotId;
 
+        // Track chain bot completion
+        updateNodeState(nextBotId, {
+          status: 'completed',
+          ended_at: new Date().toISOString(),
+          output: { response: response.slice(0, 500) },
+        });
+        addLog('info', `Chain step ${chainDepth}: ${nextBotConfig.name} completed`, nextBotId, { responseLength: response.length });
+
         console.log(`[POST /api/workflows/trigger] Chain step ${chainDepth} completed (${response.length} chars)`);
       }
 
@@ -682,6 +834,28 @@ export async function POST(request: NextRequest) {
       .eq('id', triggerNodeId);
 
     console.log(`[POST /api/workflows/trigger] Completed in ${duration_ms}ms`);
+
+    // Add final log entry
+    addLog('info', `Workflow completed successfully in ${duration_ms}ms`);
+
+    // Update execution record with completion
+    const { error: updateError } = await supabase
+      .from('workflow_executions')
+      .update({
+        status: 'completed',
+        ended_at: new Date().toISOString(),
+        node_states: nodeStates,
+        execution_log: executionLog,
+        final_output: {
+          response: response.slice(0, 2000), // Limit size
+          duration_ms,
+        },
+      })
+      .eq('id', executionId);
+
+    if (updateError) {
+      console.error('[POST /api/workflows/trigger] Failed to update execution record:', updateError);
+    }
 
     // Build metadata based on workflow type
     const workflowType = smartRouterNode ? 'smart_router' : 'single_bot';
@@ -719,6 +893,28 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     const duration_ms = Date.now() - startTime;
     console.error('[POST /api/workflows/trigger] Error:', error);
+
+    // Update execution record with failure
+    try {
+      await supabase
+        .from('workflow_executions')
+        .update({
+          status: 'failed',
+          ended_at: new Date().toISOString(),
+          error: error.message || 'Workflow execution failed',
+          execution_log: [
+            ...(executionLog || []),
+            {
+              timestamp: new Date().toISOString(),
+              level: 'error',
+              message: `Workflow failed: ${error.message || 'Unknown error'}`,
+            },
+          ],
+        })
+        .eq('id', executionId);
+    } catch (updateError) {
+      console.error('[POST /api/workflows/trigger] Failed to update execution record on error:', updateError);
+    }
 
     const output: MasterTriggerOutput = {
       success: false,
