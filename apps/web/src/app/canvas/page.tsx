@@ -3,7 +3,7 @@
 /**
  * Canvas Page
  *
- * n8n-style visual workflow builder for orchestrating Genesis Bots,
+ * n8n-style visual workflow builder for orchestrating AI Agents (Chatbots),
  * Training Sessions, Boardrooms, and all app features.
  */
 

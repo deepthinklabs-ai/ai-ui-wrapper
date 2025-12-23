@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Master Trigger Node Component
+ * Chatbot Trigger Node Component
  *
- * Displays a Master Genesis Bot Trigger node in the canvas.
- * This node type allows workflows to be triggered from the main Genesis Bot page.
+ * Displays a Chatbot Trigger node in the canvas.
+ * This node type allows workflows to be triggered from the main Chatbot page.
  */
 
 import React, { useState, useCallback } from 'react';

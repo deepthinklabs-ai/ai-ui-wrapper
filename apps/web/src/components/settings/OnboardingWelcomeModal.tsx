@@ -3,7 +3,7 @@
  *
  * Displayed when new free tier users first arrive at the settings page
  * after selecting the free plan during onboarding. Explains that they need
- * to add an API key before they can use Genesis Bot.
+ * to add an API key before they can use Chatbot.
  */
 
 "use client";

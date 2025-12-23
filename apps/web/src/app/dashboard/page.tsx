@@ -46,6 +46,7 @@ import ContextPanel from "@/components/contextPanel/ContextPanel";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import SplitChatView from "@/components/splitView/SplitChatView";
 import ThreadInfoModal from "@/components/dashboard/ThreadInfoModal";
+import DashboardDebugOverlay from "@/components/dashboard/DashboardDebugOverlay";
 
 export default function DashboardPage() {
   const { user, loadingUser, error: userError, signOut } = useAuthSession();
@@ -56,6 +57,9 @@ export default function DashboardPage() {
 
   // BYOK status - check if user has configured any API keys
   const { hasAnyKey, loading: byokLoading } = useBYOKStatus();
+
+  // Check if user is admin (for debug overlay)
+  const isAdmin = user?.email === 'dave@deepthinklabs.ai';
 
   // Verify subscription on upgrade success redirect
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
@@ -1146,6 +1150,18 @@ export default function DashboardPage() {
         thread={threadInfoId ? (threads.find(t => t.id === threadInfoId) ?? null) : null}
         messages={threadInfoId === selectedThreadId ? messages : []}
         userEmail={user?.email || undefined}
+      />
+
+      {/* Admin Debug Overlay - Toggle with Ctrl+Shift+D */}
+      <DashboardDebugOverlay
+        isAdmin={isAdmin}
+        userId={user?.id}
+        currentThread={currentThread}
+        messages={messages}
+        chatbots={chatbots}
+        activeChatbot={activeChatbot}
+        selectedChatbotId={selectedChatbotId}
+        folderTree={folderTree}
       />
     </div>
   );
