@@ -70,6 +70,11 @@ export function useExposedWorkflows(userId: string | null): UseExposedWorkflowsR
       console.log(`[useExposedWorkflows] Loaded ${data.workflows?.length || 0} workflows`);
       if (data.workflows?.length > 0) {
         console.log('[useExposedWorkflows] Workflows:', JSON.stringify(data.workflows, null, 2));
+      } else {
+        console.log('[useExposedWorkflows] No exposed workflows found. To expose a workflow:');
+        console.log('[useExposedWorkflows] 1. Go to Canvas page');
+        console.log('[useExposedWorkflows] 2. Add a "Chatbot Trigger" node');
+        console.log('[useExposedWorkflows] 3. Click "Exposed: No" to toggle it to "Exposed: Yes"');
       }
     } catch (err: any) {
       console.error('[useExposedWorkflows] Error fetching workflows:', err);
