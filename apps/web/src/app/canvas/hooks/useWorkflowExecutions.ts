@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { WorkflowExecution, CanvasId } from '../types';
+import { supabase } from '@/lib/supabaseClient';
 
 export interface UseWorkflowExecutionsResult {
   /** List of workflow executions */
@@ -52,7 +53,14 @@ export function useWorkflowExecutions(canvasId: CanvasId | null): UseWorkflowExe
     setError(null);
 
     try {
-      const response = await fetch(`/api/canvas/executions?canvasId=${canvasId}&limit=50`);
+      // Get auth session for the request
+      const { data: sessionData } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (sessionData?.session?.access_token) {
+        headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
+      }
+
+      const response = await fetch(`/api/canvas/executions?canvasId=${canvasId}&limit=50`, { headers });
       const data = await response.json();
 
       if (!response.ok) {
