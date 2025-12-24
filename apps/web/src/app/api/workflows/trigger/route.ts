@@ -287,19 +287,20 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Check if trigger is exposed
-    const triggerConfig = triggerNode.config as {
-      is_exposed?: boolean;
-      display_name?: string;
-      trigger_count?: number;
-    };
-
-    if (!triggerConfig.is_exposed) {
+    // Check if trigger is exposed (use the dedicated column, not encrypted config)
+    // The is_exposed column is synced from config on save for efficient querying
+    if (!triggerNode.is_exposed) {
+      console.log('[POST /api/workflows/trigger] Workflow not exposed. is_exposed column:', triggerNode.is_exposed);
       return NextResponse.json({
         success: false,
         error: 'This workflow is not exposed',
       }, { status: 403 });
     }
+
+    // Get config for display name (may be encrypted, so handle gracefully)
+    const triggerConfig = (triggerNode.config && typeof triggerNode.config === 'object')
+      ? triggerNode.config as { display_name?: string; trigger_count?: number; }
+      : { display_name: 'Master Trigger', trigger_count: 0 };
 
     // Track trigger node
     updateNodeState(triggerNodeId, {
