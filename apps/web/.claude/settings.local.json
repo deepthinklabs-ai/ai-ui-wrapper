@@ -96,7 +96,9 @@
       "Bash(wsl --list:*)",
       "Bash(wsl --install:*)",
       "Bash(gh pr view:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": [],
     "ask": []

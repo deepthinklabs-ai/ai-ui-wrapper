@@ -32,8 +32,9 @@ import { getInternalBaseUrl } from '@/lib/internalApiUrl';
 import type { NodeExecutionState, ExecutionLogEntry } from '@/app/canvas/types';
 
 // Lazy Supabase client - created on first use to avoid module-level crashes
+// Note: Returns 'any' to bypass strict typing for tables not in generated types
 let _supabase: ReturnType<typeof createClient> | null = null;
-function getSupabase() {
+function getSupabase(): any {
   if (!_supabase) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -344,7 +345,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get connected node IDs
-    const connectedNodeIds = edges.map((e) => e.to_node_id);
+    const connectedNodeIds = edges.map((e: any) => e.to_node_id);
 
     // Fetch ALL connected nodes (could be Genesis Bot, Smart Router, or other types)
     const { data: connectedNodes, error: nodesError } = await getSupabase()
@@ -388,7 +389,7 @@ export async function POST(request: NextRequest) {
     let response = '';
 
     // Check if the first connected node is a Smart Router
-    const smartRouterNode = connectedNodes.find((n) => n.type === 'SMART_ROUTER');
+    const smartRouterNode = connectedNodes.find((n: any) => n.type === 'SMART_ROUTER');
 
     if (smartRouterNode) {
       // === SMART ROUTER WORKFLOW ===
@@ -420,7 +421,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Fetch agent nodes connected to Smart Router
-      const agentNodeIds = routerEdges.map((e) => e.to_node_id);
+      const agentNodeIds = routerEdges.map((e: any) => e.to_node_id);
       const { data: agentNodes, error: agentNodesError } = await getSupabase()
         .from('canvas_nodes')
         .select('*')
@@ -436,7 +437,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Build ConnectedAgentInfo for all agents
-      const connectedAgents: ConnectedAgentInfo[] = agentNodes.map((node) =>
+      const connectedAgents: ConnectedAgentInfo[] = agentNodes.map((node: any) =>
         buildAgentInfo(node.id, node.config as GenesisBotNodeConfig)
       );
 
@@ -482,14 +483,14 @@ export async function POST(request: NextRequest) {
 
       // Build edge map for quick lookup
       const edgeMap = new Map<string, CanvasEdge>();
-      routerEdges.forEach((e) => edgeMap.set(e.to_node_id, e));
+      routerEdges.forEach((e: any) => edgeMap.set(e.to_node_id, e));
 
       // Call all target agents in parallel
-      const targetAgents = agentNodes.filter((n) => routingDecision.targetNodeIds.includes(n.id));
+      const targetAgents = agentNodes.filter((n: any) => routingDecision.targetNodeIds.includes(n.id));
       console.log(`[POST /api/workflows/trigger] Calling ${targetAgents.length} agents in parallel`);
 
       // Mark all target agents as running
-      targetAgents.forEach((agentNode) => {
+      targetAgents.forEach((agentNode: any) => {
         const agentConfig = agentNode.config as GenesisBotNodeConfig;
         updateNodeState(agentNode.id, {
           status: 'running',
@@ -499,7 +500,7 @@ export async function POST(request: NextRequest) {
         addLog('info', `Starting agent: ${agentConfig.name || 'AI Agent'}`, agentNode.id);
       });
 
-      const agentPromises = targetAgents.map((agentNode) => {
+      const agentPromises = targetAgents.map((agentNode: any) => {
         const agentConfig = agentNode.config as GenesisBotNodeConfig;
         const edge = edgeMap.get(agentNode.id);
 
@@ -606,12 +607,12 @@ export async function POST(request: NextRequest) {
           response = successfulResponses[0].response;
         } else if (successfulResponses.length > 1) {
           response = successfulResponses
-            .map((r) => `**${r.agentName}:**\n${r.response}`)
+            .map((r: any) => `**${r.agentName}:**\n${r.response}`)
             .join('\n\n---\n\n');
         } else {
           // All failed
-          const errors = agentResponses.map((r) => `${r.agentName}: ${r.error}`);
-          response = `I encountered issues processing your request:\n\n${errors.map((e) => `- ${e}`).join('\n')}`;
+          const errors = agentResponses.map((r: any) => `${r.agentName}: ${r.error}`);
+          response = `I encountered issues processing your request:\n\n${errors.map((e: any) => `- ${e}`).join('\n')}`;
         }
       }
 
@@ -631,7 +632,7 @@ export async function POST(request: NextRequest) {
     } else {
       // === LEGACY SINGLE BOT WORKFLOW ===
       // Use the first connected Genesis Bot (original behavior)
-      const targetBot = connectedNodes.find((n) => n.type === 'GENESIS_BOT');
+      const targetBot = connectedNodes.find((n: any) => n.type === 'GENESIS_BOT');
 
       if (!targetBot) {
         console.error('[POST /api/workflows/trigger] No Genesis Bot connected');
@@ -732,7 +733,7 @@ export async function POST(request: NextRequest) {
 
         // Find edges with Ask/Answer enabled
         const enabledEdges = askAnswerEdges.filter(
-          (e) => e.metadata?.askAnswerEnabled === true
+          (e: any) => e.metadata?.askAnswerEnabled === true
         );
 
         if (enabledEdges.length === 0) {
@@ -763,7 +764,7 @@ export async function POST(request: NextRequest) {
           .select('*')
           .eq('id', currentBotId)
           .single()
-          .then(r => r.data);
+          .then((r: any) => r.data);
 
         const currentBotConfig = currentBot?.config as GenesisBotNodeConfig;
 
@@ -909,7 +910,7 @@ export async function POST(request: NextRequest) {
       metadata.model = `${routerConfig.model_provider}/${routerConfig.model_name}`;
       metadata.workflowType = 'smart_router';
     } else {
-      const targetBot = connectedNodes.find((n) => n.type === 'GENESIS_BOT');
+      const targetBot = connectedNodes.find((n: any) => n.type === 'GENESIS_BOT');
       if (targetBot) {
         const botConfig = targetBot.config as GenesisBotNodeConfig;
         metadata.botName = botConfig.name;
