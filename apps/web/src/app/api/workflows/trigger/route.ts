@@ -177,6 +177,17 @@ async function callAgentAskAnswer(
   }
 }
 
+/**
+ * GET handler for debugging - verifies the route is loading correctly
+ */
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    message: 'Workflow trigger route is loaded. Use POST to trigger workflows.',
+    timestamp: new Date().toISOString(),
+  });
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const executionId = crypto.randomUUID();
