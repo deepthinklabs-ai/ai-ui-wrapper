@@ -27,14 +27,16 @@ const ALLOWED_INTERNAL_ENDPOINTS = [
  * @returns Safe base URL for internal calls
  */
 export function getInternalBaseUrl(): string {
-  // Production: Use configured app URL (set in Vercel/deployment)
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL;
-  }
-
-  // Vercel deployment: Use Vercel URL
+  // Vercel preview deployments: Use VERCEL_URL to call the same deployment
+  // This ensures staging/preview branches call themselves, not production
+  // VERCEL_URL is set for ALL Vercel deployments (preview and production)
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
+  }
+
+  // Fallback: Use configured app URL
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
   }
 
   // Development: Use PORT env var or default to 3000
