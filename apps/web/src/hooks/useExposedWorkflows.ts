@@ -13,6 +13,7 @@ import type {
   TriggerWorkflowResponse,
 } from '@/app/canvas/features/master-trigger/types';
 import { getCSRFToken } from './useCSRF';
+import { supabase } from '@/lib/supabaseClient';
 
 export interface UseExposedWorkflowsResult {
   /** List of available exposed workflows */
@@ -114,13 +115,19 @@ export function useExposedWorkflows(userId: string | null): UseExposedWorkflowsR
       setError(null);
 
       try {
-        // Get CSRF token for the request
+        // Get CSRF token and auth token for the request
         const csrfToken = getCSRFToken();
+        const { data: sessionData } = await supabase.auth.getSession();
+
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
         if (csrfToken) {
           headers['X-CSRF-Token'] = csrfToken;
+        }
+        // Include auth token for internal API calls to access user's BYOK keys
+        if (sessionData?.session?.access_token) {
+          headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
         }
 
         const response = await fetch('/api/workflows/trigger', {

@@ -77,6 +77,9 @@ interface QueryRequestBody {
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
+  // Forward auth header for internal API calls
+  const authHeader = request.headers.get('authorization');
+
   try {
     const body: QueryRequestBody = await request.json();
     const {
@@ -427,12 +430,18 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
     // Uses only env vars, never request-derived values
     const apiUrl = buildInternalApiUrl(apiEndpoint);
 
+    // Build headers - include auth if available (for BYOK key access)
+    const apiHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (authHeader) {
+      apiHeaders['Authorization'] = authHeader;
+    }
+
     // Make initial API call
     let apiResponse = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: apiHeaders,
       body: JSON.stringify({
         userId,
         messages,
@@ -662,9 +671,7 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
 
       apiResponse = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: apiHeaders,
         body: JSON.stringify({
           userId,
           messages,

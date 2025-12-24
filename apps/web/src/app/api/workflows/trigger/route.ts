@@ -101,6 +101,7 @@ async function callAgentAskAnswer(
     conversationHistory: Array<{ id: string; query: string; answer: string; timestamp: string }>;
     attachments?: any[];
     internalBaseUrl: string;
+    authHeader?: string | null;
   }
 ): Promise<AgentResponse> {
   const {
@@ -115,6 +116,7 @@ async function callAgentAskAnswer(
     conversationHistory,
     attachments,
     internalBaseUrl,
+    authHeader,
   } = params;
 
   const agentName = toNodeConfig.name || 'AI Agent';
@@ -122,9 +124,13 @@ async function callAgentAskAnswer(
 
   try {
     const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
     const response = await fetch(askAnswerUrl.toString(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         canvasId,
         fromNodeId,
@@ -200,6 +206,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const executionId = crypto.randomUUID();
+
+  // Capture auth header to forward to internal API calls
+  const authHeader = request.headers.get('authorization');
 
   // Initialize execution tracking at function scope for error handling
   const nodeStates: Record<string, NodeExecutionState> = {};
@@ -506,6 +515,7 @@ export async function POST(request: NextRequest) {
           conversationHistory: askAnswerHistory,
           attachments: input.attachments,
           internalBaseUrl,
+          authHeader,
         });
       });
 
@@ -651,9 +661,13 @@ export async function POST(request: NextRequest) {
 
       // Call Ask/Answer API for the first bot - this gives us Gmail tool support
       const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
+      const askAnswerHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (authHeader) {
+        askAnswerHeaders['Authorization'] = authHeader;
+      }
       const apiResponse = await fetch(askAnswerUrl.toString(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: askAnswerHeaders,
         body: JSON.stringify({
           canvasId,
           fromNodeId: triggerNodeId,
@@ -788,9 +802,13 @@ export async function POST(request: NextRequest) {
 
         // Call Ask/Answer API to send response to next bot
         const chainAskAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
+        const chainHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (authHeader) {
+          chainHeaders['Authorization'] = authHeader;
+        }
         const askAnswerResponse = await fetch(chainAskAnswerUrl.toString(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: chainHeaders,
           body: JSON.stringify({
             canvasId,
             fromNodeId: currentBotId,
