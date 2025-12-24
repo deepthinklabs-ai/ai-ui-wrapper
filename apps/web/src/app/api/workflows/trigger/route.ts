@@ -28,7 +28,7 @@ import { validateTriggerInput, sanitizeMessage } from '@/app/canvas/features/mas
 import { executeSmartRouter } from '@/app/canvas/features/smart-router';
 import { executeResponseCompiler } from '@/app/canvas/features/response-compiler';
 import type { AgentResponse } from '@/app/canvas/features/response-compiler/types';
-import { getInternalBaseUrl } from '@/lib/internalApiUrl';
+import { getInternalBaseUrl, getVercelBypassHeaders } from '@/lib/internalApiUrl';
 import type { NodeExecutionState, ExecutionLogEntry } from '@/app/canvas/types';
 
 // Lazy Supabase client - created on first use to avoid module-level crashes
@@ -125,7 +125,10 @@ async function callAgentAskAnswer(
 
   try {
     const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+    };
     if (authHeader) {
       headers['Authorization'] = authHeader;
     }
@@ -669,7 +672,10 @@ export async function POST(request: NextRequest) {
 
       // Call Ask/Answer API for the first bot - this gives us Gmail tool support
       const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
-      const askAnswerHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      const askAnswerHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+      };
       if (authHeader) {
         askAnswerHeaders['Authorization'] = authHeader;
       }
@@ -810,7 +816,10 @@ export async function POST(request: NextRequest) {
 
         // Call Ask/Answer API to send response to next bot
         const chainAskAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
-        const chainHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+        const chainHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+        };
         if (authHeader) {
           chainHeaders['Authorization'] = authHeader;
         }

@@ -12,6 +12,7 @@ import {
   parseAIRoutingResponse,
 } from './routingEngine';
 import { INTERNAL_SERVICE_AUTH_HEADER } from '@/lib/serverAuth';
+import { getVercelBypassHeaders } from '@/lib/internalApiUrl';
 
 /**
  * Execute Smart Router logic
@@ -88,8 +89,11 @@ export async function executeSmartRouter(
         : '/api/pro/grok';
 
     try {
-      // Build headers with internal service auth for server-to-server calls
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      // Build headers with internal service auth and Vercel bypass for server-to-server calls
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+      };
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (serviceKey) {
         headers[INTERNAL_SERVICE_AUTH_HEADER] = serviceKey;

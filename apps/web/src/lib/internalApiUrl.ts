@@ -9,6 +9,24 @@
  */
 
 /**
+ * Vercel Protection Bypass header name
+ * Used to bypass Vercel Deployment Protection for internal server-to-server calls
+ */
+export const VERCEL_PROTECTION_BYPASS_HEADER = 'x-vercel-protection-bypass';
+
+/**
+ * Get headers needed to bypass Vercel Deployment Protection
+ * Returns empty object if bypass secret is not configured
+ */
+export function getVercelBypassHeaders(): Record<string, string> {
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypassSecret) {
+    return { [VERCEL_PROTECTION_BYPASS_HEADER]: bypassSecret };
+  }
+  return {};
+}
+
+/**
  * Allowed internal API endpoints (whitelist)
  */
 const ALLOWED_INTERNAL_ENDPOINTS = [

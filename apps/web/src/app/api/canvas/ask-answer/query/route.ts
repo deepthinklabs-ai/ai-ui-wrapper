@@ -42,7 +42,7 @@ import { executeCalendarToolCallsServer } from '@/app/canvas/features/calendar-o
 // Import OAuth connection lookup for fallback when connectionId not in config
 import { getOAuthConnection } from '@/lib/googleTokenStorage';
 import { getSlackConnection } from '@/lib/slackTokenStorage';
-import { buildInternalApiUrl } from '@/lib/internalApiUrl';
+import { buildInternalApiUrl, getVercelBypassHeaders } from '@/lib/internalApiUrl';
 import { INTERNAL_SERVICE_AUTH_HEADER } from '@/lib/serverAuth';
 
 interface ConversationHistoryEntry {
@@ -432,6 +432,7 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
     // This is more reliable than forwarding user Bearer tokens
     const apiHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
     };
     // Use internal service auth key for server-to-server authentication
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
