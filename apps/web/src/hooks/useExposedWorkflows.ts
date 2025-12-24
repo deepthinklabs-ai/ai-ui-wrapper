@@ -12,6 +12,8 @@ import type {
   MasterTriggerOutput,
   TriggerWorkflowResponse,
 } from '@/app/canvas/features/master-trigger/types';
+import { getCSRFToken } from './useCSRF';
+import { supabase } from '@/lib/supabaseClient';
 
 export interface UseExposedWorkflowsResult {
   /** List of available exposed workflows */
@@ -70,6 +72,11 @@ export function useExposedWorkflows(userId: string | null): UseExposedWorkflowsR
       console.log(`[useExposedWorkflows] Loaded ${data.workflows?.length || 0} workflows`);
       if (data.workflows?.length > 0) {
         console.log('[useExposedWorkflows] Workflows:', JSON.stringify(data.workflows, null, 2));
+      } else {
+        console.log('[useExposedWorkflows] No exposed workflows found. To expose a workflow:');
+        console.log('[useExposedWorkflows] 1. Go to Canvas page');
+        console.log('[useExposedWorkflows] 2. Add a "Chatbot Trigger" node');
+        console.log('[useExposedWorkflows] 3. Click "Exposed: No" to toggle it to "Exposed: Yes"');
       }
     } catch (err: any) {
       console.error('[useExposedWorkflows] Error fetching workflows:', err);
@@ -108,11 +115,24 @@ export function useExposedWorkflows(userId: string | null): UseExposedWorkflowsR
       setError(null);
 
       try {
+        // Get CSRF token and auth token for the request
+        const csrfToken = getCSRFToken();
+        const { data: sessionData } = await supabase.auth.getSession();
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (csrfToken) {
+          headers['X-CSRF-Token'] = csrfToken;
+        }
+        // Include auth token for internal API calls to access user's BYOK keys
+        if (sessionData?.session?.access_token) {
+          headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
+        }
+
         const response = await fetch('/api/workflows/trigger', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({
             canvasId: selectedWorkflow.canvasId,
             triggerNodeId: selectedWorkflow.triggerNodeId,

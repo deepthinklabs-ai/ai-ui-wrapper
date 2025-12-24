@@ -23,6 +23,7 @@ import type {
   NodeId,
   EdgeId,
   CanvasNodeType,
+  WorkflowExecution,
 } from '../types';
 import type { LoadingState, CanvasError } from '../hooks/useCanvasState';
 
@@ -61,11 +62,23 @@ interface StateManagement {
   clearError: () => void;
 }
 
+// Executions operations interface
+export interface ExecutionsOperations {
+  list: WorkflowExecution[];
+  selected: WorkflowExecution | null;
+  select: (execution: WorkflowExecution | null) => void;
+  refresh: () => Promise<void>;
+  loading: boolean;
+  error: string | null;
+  total: number;
+}
+
 // Complete context value
 export interface CanvasStateContextValue {
   canvas: CanvasOperations;
   nodes: NodeOperations;
   edges: EdgeOperations;
+  executions: ExecutionsOperations;
   state: StateManagement;
   // Legacy loading prop for backward compatibility
   loading: boolean;
@@ -126,4 +139,9 @@ export function useEdgeOperations() {
 export function useCanvasLoadingState() {
   const { state } = useCanvasContext();
   return state;
+}
+
+export function useExecutionsOperations() {
+  const { executions } = useCanvasContext();
+  return executions;
 }

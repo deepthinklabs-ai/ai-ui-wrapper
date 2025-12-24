@@ -29,11 +29,22 @@ import { executeSmartRouter } from '@/app/canvas/features/smart-router';
 import { executeResponseCompiler } from '@/app/canvas/features/response-compiler';
 import type { AgentResponse } from '@/app/canvas/features/response-compiler/types';
 import { getInternalBaseUrl } from '@/lib/internalApiUrl';
+import type { NodeExecutionState, ExecutionLogEntry } from '@/app/canvas/types';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy Supabase client - created on first use to avoid module-level crashes
+// Note: Returns 'any' to bypass strict typing for tables not in generated types
+let _supabase: ReturnType<typeof createClient> | null = null;
+function getSupabase(): any {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('Missing Supabase environment variables');
+    }
+    _supabase = createClient(url, key);
+  }
+  return _supabase;
+}
 
 /**
  * Build ConnectedAgentInfo from a Genesis Bot node config
@@ -91,6 +102,7 @@ async function callAgentAskAnswer(
     conversationHistory: Array<{ id: string; query: string; answer: string; timestamp: string }>;
     attachments?: any[];
     internalBaseUrl: string;
+    authHeader?: string | null;
   }
 ): Promise<AgentResponse> {
   const {
@@ -105,6 +117,7 @@ async function callAgentAskAnswer(
     conversationHistory,
     attachments,
     internalBaseUrl,
+    authHeader,
   } = params;
 
   const agentName = toNodeConfig.name || 'AI Agent';
@@ -112,9 +125,13 @@ async function callAgentAskAnswer(
 
   try {
     const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
     const response = await fetch(askAnswerUrl.toString(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         canvasId,
         fromNodeId,
@@ -176,9 +193,27 @@ async function callAgentAskAnswer(
   }
 }
 
+/**
+ * GET handler for debugging - verifies the route is loading correctly
+ */
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    message: 'Workflow trigger route is loaded. Use POST to trigger workflows.',
+    timestamp: new Date().toISOString(),
+  });
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const executionId = crypto.randomUUID();
+
+  // Capture auth header to forward to internal API calls
+  const authHeader = request.headers.get('authorization');
+
+  // Initialize execution tracking at function scope for error handling
+  const nodeStates: Record<string, NodeExecutionState> = {};
+  const executionLog: ExecutionLogEntry[] = [];
 
   try {
     const body: TriggerWorkflowRequest = await request.json();
@@ -201,8 +236,59 @@ export async function POST(request: NextRequest) {
     // Sanitize message
     const sanitizedMessage = sanitizeMessage(input.message);
 
+    // Helper to add log entries
+    const addLog = (level: 'info' | 'warn' | 'error', message: string, nodeId?: string, data?: any) => {
+      executionLog.push({
+        timestamp: new Date().toISOString(),
+        level,
+        node_id: nodeId,
+        message,
+        data,
+      });
+    };
+
+    // Helper to update node state
+    // SECURITY: Validate nodeId to prevent prototype pollution
+    const FORBIDDEN_KEYS = ['__proto__', 'constructor', 'prototype'];
+    const updateNodeState = (nodeId: string, updates: Partial<NodeExecutionState>) => {
+      // Prevent prototype pollution attacks
+      if (FORBIDDEN_KEYS.includes(nodeId)) {
+        console.warn(`[Workflow] Attempted to use forbidden key as nodeId: ${nodeId}`);
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(nodeStates, nodeId)) {
+        nodeStates[nodeId] = {
+          node_id: nodeId,
+          status: 'pending',
+        };
+      }
+      Object.assign(nodeStates[nodeId], updates);
+    };
+
+    // Insert initial execution record
+    addLog('info', `Workflow triggered with message: "${sanitizedMessage.slice(0, 100)}${sanitizedMessage.length > 100 ? '...' : ''}"`, undefined, {
+      userId: input.userId,
+      hasAttachments: (input.attachments?.length || 0) > 0,
+    });
+
+    const { error: insertError } = await getSupabase()
+      .from('workflow_executions')
+      .insert({
+        id: executionId,
+        canvas_id: canvasId,
+        status: 'running',
+        started_at: new Date().toISOString(),
+        node_states: nodeStates,
+        execution_log: executionLog,
+      });
+
+    if (insertError) {
+      console.error('[POST /api/workflows/trigger] Failed to insert execution record:', insertError);
+      // Continue anyway - execution tracking is non-critical
+    }
+
     // Fetch the trigger node
-    const { data: triggerNode, error: triggerError } = await supabase
+    const { data: triggerNode, error: triggerError } = await getSupabase()
       .from('canvas_nodes')
       .select('*')
       .eq('id', triggerNodeId)
@@ -218,22 +304,33 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Check if trigger is exposed
-    const triggerConfig = triggerNode.config as {
-      is_exposed?: boolean;
-      display_name?: string;
-      trigger_count?: number;
-    };
-
-    if (!triggerConfig.is_exposed) {
+    // Check if trigger is exposed (use the dedicated column, not encrypted config)
+    // The is_exposed column is synced from config on save for efficient querying
+    if (!triggerNode.is_exposed) {
+      console.log('[POST /api/workflows/trigger] Workflow not exposed. is_exposed column:', triggerNode.is_exposed);
       return NextResponse.json({
         success: false,
         error: 'This workflow is not exposed',
       }, { status: 403 });
     }
 
+    // Get config for display name (may be encrypted, so handle gracefully)
+    const triggerConfig = (triggerNode.config && typeof triggerNode.config === 'object')
+      ? triggerNode.config as { display_name?: string; trigger_count?: number; }
+      : { display_name: 'Master Trigger', trigger_count: 0 };
+
+    // Track trigger node
+    updateNodeState(triggerNodeId, {
+      status: 'completed',
+      started_at: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
+      input: { message: sanitizedMessage, userId: input.userId },
+      output: { forwarding: true },
+    });
+    addLog('info', `Trigger node activated: ${triggerConfig.display_name || 'Master Trigger'}`, triggerNodeId);
+
     // Fetch edges from this trigger node
-    const { data: edges, error: edgesError } = await supabase
+    const { data: edges, error: edgesError } = await getSupabase()
       .from('canvas_edges')
       .select('*')
       .eq('from_node_id', triggerNodeId)
@@ -255,10 +352,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get connected node IDs
-    const connectedNodeIds = edges.map((e) => e.to_node_id);
+    const connectedNodeIds = edges.map((e: any) => e.to_node_id);
 
     // Fetch ALL connected nodes (could be Genesis Bot, Smart Router, or other types)
-    const { data: connectedNodes, error: nodesError } = await supabase
+    const { data: connectedNodes, error: nodesError } = await getSupabase()
       .from('canvas_nodes')
       .select('*')
       .in('id', connectedNodeIds);
@@ -299,16 +396,24 @@ export async function POST(request: NextRequest) {
     let response = '';
 
     // Check if the first connected node is a Smart Router
-    const smartRouterNode = connectedNodes.find((n) => n.type === 'SMART_ROUTER');
+    const smartRouterNode = connectedNodes.find((n: any) => n.type === 'SMART_ROUTER');
 
     if (smartRouterNode) {
       // === SMART ROUTER WORKFLOW ===
       console.log(`[POST /api/workflows/trigger] Detected Smart Router workflow`);
+      addLog('info', 'Detected Smart Router workflow', smartRouterNode.id);
 
       const routerConfig = smartRouterNode.config as SmartRouterNodeConfig;
 
+      // Track Smart Router starting
+      updateNodeState(smartRouterNode.id, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+        input: { query: sanitizedMessage },
+      });
+
       // Fetch edges from Smart Router to find connected agents
-      const { data: routerEdges, error: routerEdgesError } = await supabase
+      const { data: routerEdges, error: routerEdgesError } = await getSupabase()
         .from('canvas_edges')
         .select('*')
         .eq('from_node_id', smartRouterNode.id)
@@ -323,8 +428,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Fetch agent nodes connected to Smart Router
-      const agentNodeIds = routerEdges.map((e) => e.to_node_id);
-      const { data: agentNodes, error: agentNodesError } = await supabase
+      const agentNodeIds = routerEdges.map((e: any) => e.to_node_id);
+      const { data: agentNodes, error: agentNodesError } = await getSupabase()
         .from('canvas_nodes')
         .select('*')
         .in('id', agentNodeIds)
@@ -339,7 +444,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Build ConnectedAgentInfo for all agents
-      const connectedAgents: ConnectedAgentInfo[] = agentNodes.map((node) =>
+      const connectedAgents: ConnectedAgentInfo[] = agentNodes.map((node: any) =>
         buildAgentInfo(node.id, node.config as GenesisBotNodeConfig)
       );
 
@@ -362,6 +467,21 @@ export async function POST(request: NextRequest) {
       console.log(`  Reasoning: ${routingDecision.reasoning}`);
       console.log(`  Confidence: ${routingDecision.confidence}`);
 
+      // Track Smart Router completion
+      updateNodeState(smartRouterNode.id, {
+        status: 'completed',
+        ended_at: new Date().toISOString(),
+        output: {
+          targetNodeIds: routingDecision.targetNodeIds,
+          reasoning: routingDecision.reasoning,
+          confidence: routingDecision.confidence,
+        },
+      });
+      addLog('info', `Smart Router routed to ${routingDecision.targetNodeIds.length} agent(s)`, smartRouterNode.id, {
+        targets: routingDecision.targetNodeIds,
+        reasoning: routingDecision.reasoning,
+      });
+
       if (routingDecision.targetNodeIds.length === 0) {
         // No routing target - use first agent as fallback
         console.log(`[POST /api/workflows/trigger] No routing targets, using first agent as fallback`);
@@ -370,13 +490,24 @@ export async function POST(request: NextRequest) {
 
       // Build edge map for quick lookup
       const edgeMap = new Map<string, CanvasEdge>();
-      routerEdges.forEach((e) => edgeMap.set(e.to_node_id, e));
+      routerEdges.forEach((e: any) => edgeMap.set(e.to_node_id, e));
 
       // Call all target agents in parallel
-      const targetAgents = agentNodes.filter((n) => routingDecision.targetNodeIds.includes(n.id));
+      const targetAgents = agentNodes.filter((n: any) => routingDecision.targetNodeIds.includes(n.id));
       console.log(`[POST /api/workflows/trigger] Calling ${targetAgents.length} agents in parallel`);
 
-      const agentPromises = targetAgents.map((agentNode) => {
+      // Mark all target agents as running
+      targetAgents.forEach((agentNode: any) => {
+        const agentConfig = agentNode.config as GenesisBotNodeConfig;
+        updateNodeState(agentNode.id, {
+          status: 'running',
+          started_at: new Date().toISOString(),
+          input: { query: sanitizedMessage },
+        });
+        addLog('info', `Starting agent: ${agentConfig.name || 'AI Agent'}`, agentNode.id);
+      });
+
+      const agentPromises = targetAgents.map((agentNode: any) => {
         const agentConfig = agentNode.config as GenesisBotNodeConfig;
         const edge = edgeMap.get(agentNode.id);
 
@@ -392,6 +523,7 @@ export async function POST(request: NextRequest) {
           conversationHistory: askAnswerHistory,
           attachments: input.attachments,
           internalBaseUrl,
+          authHeader,
         });
       });
 
@@ -400,16 +532,27 @@ export async function POST(request: NextRequest) {
       console.log(`[POST /api/workflows/trigger] All agents responded:`);
       agentResponses.forEach((resp) => {
         console.log(`  - ${resp.agentName}: ${resp.success ? 'success' : 'failed'} (${resp.response.length} chars)`);
+        // Track agent completion
+        updateNodeState(resp.nodeId, {
+          status: resp.success ? 'completed' : 'failed',
+          ended_at: new Date().toISOString(),
+          output: resp.success ? { response: resp.response.slice(0, 500) } : undefined,
+          error: resp.error,
+        });
+        addLog(resp.success ? 'info' : 'error', `Agent ${resp.agentName} ${resp.success ? 'completed' : 'failed'}`, resp.nodeId, {
+          responseLength: resp.response.length,
+          error: resp.error,
+        });
       });
 
       // Check if there's a Response Compiler downstream
       // Find edges from agents to Response Compiler
-      const { data: allCanvasEdges } = await supabase
+      const { data: allCanvasEdges } = await getSupabase()
         .from('canvas_edges')
         .select('*')
         .eq('canvas_id', canvasId);
 
-      const { data: allCanvasNodes } = await supabase
+      const { data: allCanvasNodes } = await getSupabase()
         .from('canvas_nodes')
         .select('*')
         .eq('canvas_id', canvasId)
@@ -421,6 +564,14 @@ export async function POST(request: NextRequest) {
         console.log(`[POST /api/workflows/trigger] Found Response Compiler: ${responseCompilerNode.id}`);
 
         const compilerConfig = responseCompilerNode.config as ResponseCompilerNodeConfig;
+
+        // Track Response Compiler starting
+        updateNodeState(responseCompilerNode.id, {
+          status: 'running',
+          started_at: new Date().toISOString(),
+          input: { agentResponses: agentResponses.map(r => ({ name: r.agentName, success: r.success })) },
+        });
+        addLog('info', 'Starting Response Compiler', responseCompilerNode.id);
 
         // Execute Response Compiler
         const compiledResponse = await executeResponseCompiler(
@@ -434,8 +585,16 @@ export async function POST(request: NextRequest) {
         response = compiledResponse;
         console.log(`[POST /api/workflows/trigger] Response compiled (${response.length} chars)`);
 
+        // Track Response Compiler completion
+        updateNodeState(responseCompilerNode.id, {
+          status: 'completed',
+          ended_at: new Date().toISOString(),
+          output: { response: response.slice(0, 500) },
+        });
+        addLog('info', 'Response Compiler completed', responseCompilerNode.id, { responseLength: response.length });
+
         // Update Response Compiler statistics
-        await supabase
+        await getSupabase()
           .from('canvas_nodes')
           .update({
             config: {
@@ -455,17 +614,17 @@ export async function POST(request: NextRequest) {
           response = successfulResponses[0].response;
         } else if (successfulResponses.length > 1) {
           response = successfulResponses
-            .map((r) => `**${r.agentName}:**\n${r.response}`)
+            .map((r: any) => `**${r.agentName}:**\n${r.response}`)
             .join('\n\n---\n\n');
         } else {
           // All failed
-          const errors = agentResponses.map((r) => `${r.agentName}: ${r.error}`);
-          response = `I encountered issues processing your request:\n\n${errors.map((e) => `- ${e}`).join('\n')}`;
+          const errors = agentResponses.map((r: any) => `${r.agentName}: ${r.error}`);
+          response = `I encountered issues processing your request:\n\n${errors.map((e: any) => `- ${e}`).join('\n')}`;
         }
       }
 
       // Update Smart Router statistics
-      await supabase
+      await getSupabase()
         .from('canvas_nodes')
         .update({
           config: {
@@ -480,7 +639,7 @@ export async function POST(request: NextRequest) {
     } else {
       // === LEGACY SINGLE BOT WORKFLOW ===
       // Use the first connected Genesis Bot (original behavior)
-      const targetBot = connectedNodes.find((n) => n.type === 'GENESIS_BOT');
+      const targetBot = connectedNodes.find((n: any) => n.type === 'GENESIS_BOT');
 
       if (!targetBot) {
         console.error('[POST /api/workflows/trigger] No Genesis Bot connected');
@@ -492,6 +651,14 @@ export async function POST(request: NextRequest) {
 
       const botConfig = targetBot.config as GenesisBotNodeConfig;
 
+      // Track bot starting
+      updateNodeState(targetBot.id, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+        input: { query: sanitizedMessage },
+      });
+      addLog('info', `Starting bot: ${botConfig.name || 'AI Agent'}`, targetBot.id);
+
       console.log(`[POST /api/workflows/trigger] Executing with bot: ${botConfig.name}`);
       console.log(`  Model: ${botConfig.model_provider}/${botConfig.model_name}`);
       console.log(`  System Prompt (first 100 chars): ${botConfig.system_prompt?.slice(0, 100) || 'UNDEFINED'}`);
@@ -502,9 +669,13 @@ export async function POST(request: NextRequest) {
 
       // Call Ask/Answer API for the first bot - this gives us Gmail tool support
       const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
+      const askAnswerHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (authHeader) {
+        askAnswerHeaders['Authorization'] = authHeader;
+      }
       const apiResponse = await fetch(askAnswerUrl.toString(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: askAnswerHeaders,
         body: JSON.stringify({
           canvasId,
           fromNodeId: triggerNodeId,
@@ -541,6 +712,14 @@ export async function POST(request: NextRequest) {
 
       console.log(`[POST /api/workflows/trigger] First bot response received (${response.length} chars)`);
 
+      // Track first bot completion
+      updateNodeState(targetBot.id, {
+        status: 'completed',
+        ended_at: new Date().toISOString(),
+        output: { response: response.slice(0, 500) },
+      });
+      addLog('info', `Bot ${botConfig.name || 'AI Agent'} completed`, targetBot.id, { responseLength: response.length });
+
       // === CHAINING: Check if first bot has Ask/Answer connections to other bots ===
       let currentBotId = targetBot.id;
       let chainDepth = 0;
@@ -548,7 +727,7 @@ export async function POST(request: NextRequest) {
 
       while (chainDepth < maxChainDepth) {
         // Fetch edges FROM the current bot that have Ask/Answer enabled
-        const { data: askAnswerEdges, error: aaEdgesError } = await supabase
+        const { data: askAnswerEdges, error: aaEdgesError } = await getSupabase()
           .from('canvas_edges')
           .select('*')
           .eq('from_node_id', currentBotId)
@@ -561,7 +740,7 @@ export async function POST(request: NextRequest) {
 
         // Find edges with Ask/Answer enabled
         const enabledEdges = askAnswerEdges.filter(
-          (e) => e.metadata?.askAnswerEnabled === true
+          (e: any) => e.metadata?.askAnswerEnabled === true
         );
 
         if (enabledEdges.length === 0) {
@@ -574,7 +753,7 @@ export async function POST(request: NextRequest) {
         const nextBotId = nextEdge.to_node_id;
 
         // Fetch the next bot
-        const { data: nextBot, error: nextBotError } = await supabase
+        const { data: nextBot, error: nextBotError } = await getSupabase()
           .from('canvas_nodes')
           .select('*')
           .eq('id', nextBotId)
@@ -587,17 +766,25 @@ export async function POST(request: NextRequest) {
         }
 
         const nextBotConfig = nextBot.config as GenesisBotNodeConfig;
-        const currentBot = chainDepth === 0 ? targetBot : await supabase
+        const currentBot = chainDepth === 0 ? targetBot : await getSupabase()
           .from('canvas_nodes')
           .select('*')
           .eq('id', currentBotId)
           .single()
-          .then(r => r.data);
+          .then((r: any) => r.data);
 
         const currentBotConfig = currentBot?.config as GenesisBotNodeConfig;
 
         chainDepth++;
         console.log(`[POST /api/workflows/trigger] Chain step ${chainDepth}: ${currentBotConfig?.name} → ${nextBotConfig.name} via Ask/Answer`);
+
+        // Track chain bot starting
+        updateNodeState(nextBotId, {
+          status: 'running',
+          started_at: new Date().toISOString(),
+          input: { query: response.slice(0, 200), chainDepth },
+        });
+        addLog('info', `Chain step ${chainDepth}: Starting ${nextBotConfig.name}`, nextBotId);
 
         // Skip chaining if the response from previous bot is empty
         if (!response || response.trim().length === 0) {
@@ -623,9 +810,13 @@ export async function POST(request: NextRequest) {
 
         // Call Ask/Answer API to send response to next bot
         const chainAskAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
+        const chainHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (authHeader) {
+          chainHeaders['Authorization'] = authHeader;
+        }
         const askAnswerResponse = await fetch(chainAskAnswerUrl.toString(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: chainHeaders,
           body: JSON.stringify({
             canvasId,
             fromNodeId: currentBotId,
@@ -658,6 +849,14 @@ export async function POST(request: NextRequest) {
         response = askAnswerData.answer || response;
         currentBotId = nextBotId;
 
+        // Track chain bot completion
+        updateNodeState(nextBotId, {
+          status: 'completed',
+          ended_at: new Date().toISOString(),
+          output: { response: response.slice(0, 500) },
+        });
+        addLog('info', `Chain step ${chainDepth}: ${nextBotConfig.name} completed`, nextBotId, { responseLength: response.length });
+
         console.log(`[POST /api/workflows/trigger] Chain step ${chainDepth} completed (${response.length} chars)`);
       }
 
@@ -669,7 +868,7 @@ export async function POST(request: NextRequest) {
     const duration_ms = Date.now() - startTime;
 
     // Update trigger statistics
-    await supabase
+    await getSupabase()
       .from('canvas_nodes')
       .update({
         config: {
@@ -682,6 +881,28 @@ export async function POST(request: NextRequest) {
       .eq('id', triggerNodeId);
 
     console.log(`[POST /api/workflows/trigger] Completed in ${duration_ms}ms`);
+
+    // Add final log entry
+    addLog('info', `Workflow completed successfully in ${duration_ms}ms`);
+
+    // Update execution record with completion
+    const { error: updateError } = await getSupabase()
+      .from('workflow_executions')
+      .update({
+        status: 'completed',
+        ended_at: new Date().toISOString(),
+        node_states: nodeStates,
+        execution_log: executionLog,
+        final_output: {
+          response: response.slice(0, 2000), // Limit size
+          duration_ms,
+        },
+      })
+      .eq('id', executionId);
+
+    if (updateError) {
+      console.error('[POST /api/workflows/trigger] Failed to update execution record:', updateError);
+    }
 
     // Build metadata based on workflow type
     const workflowType = smartRouterNode ? 'smart_router' : 'single_bot';
@@ -696,7 +917,7 @@ export async function POST(request: NextRequest) {
       metadata.model = `${routerConfig.model_provider}/${routerConfig.model_name}`;
       metadata.workflowType = 'smart_router';
     } else {
-      const targetBot = connectedNodes.find((n) => n.type === 'GENESIS_BOT');
+      const targetBot = connectedNodes.find((n: any) => n.type === 'GENESIS_BOT');
       if (targetBot) {
         const botConfig = targetBot.config as GenesisBotNodeConfig;
         metadata.botName = botConfig.name;
@@ -719,6 +940,28 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     const duration_ms = Date.now() - startTime;
     console.error('[POST /api/workflows/trigger] Error:', error);
+
+    // Update execution record with failure
+    try {
+      await getSupabase()
+        .from('workflow_executions')
+        .update({
+          status: 'failed',
+          ended_at: new Date().toISOString(),
+          error: error.message || 'Workflow execution failed',
+          execution_log: [
+            ...(executionLog || []),
+            {
+              timestamp: new Date().toISOString(),
+              level: 'error',
+              message: `Workflow failed: ${error.message || 'Unknown error'}`,
+            },
+          ],
+        })
+        .eq('id', executionId);
+    } catch (updateError) {
+      console.error('[POST /api/workflows/trigger] Failed to update execution record on error:', updateError);
+    }
 
     const output: MasterTriggerOutput = {
       success: false,

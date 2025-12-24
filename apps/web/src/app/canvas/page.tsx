@@ -14,6 +14,7 @@ import { useCanvas } from './hooks/useCanvas';
 import { useEncryptedCanvasNodes } from './hooks/useEncryptedCanvasNodes';
 import { useEncryptedCanvasEdges } from './hooks/useEncryptedCanvasEdges';
 import { useCanvasState } from './hooks/useCanvasState';
+import { useWorkflowExecutions } from './hooks/useWorkflowExecutions';
 import { useEncryption } from '@/contexts/EncryptionContext';
 import { CanvasStateProvider, type CanvasStateContextValue } from './context/CanvasStateContext';
 import CanvasShell from './components/CanvasShell';
@@ -65,6 +66,17 @@ export default function CanvasPage() {
     refreshEdges,
   } = useEncryptedCanvasEdges(currentCanvas?.id || null);
 
+  // Workflow executions for the Executions tab
+  const {
+    executions,
+    selectedExecution,
+    selectExecution,
+    refreshExecutions,
+    loading: executionsLoading,
+    error: executionsError,
+    total: executionsTotal,
+  } = useWorkflowExecutions(currentCanvas?.id || null);
+
   // Combine encryption errors
   const encryptionError = nodesEncryptionError || edgesEncryptionError;
 
@@ -115,6 +127,15 @@ export default function CanvasPage() {
         update: updateEdge,
         delete: deleteEdge,
       },
+      executions: {
+        list: executions,
+        selected: selectedExecution,
+        select: selectExecution,
+        refresh: refreshExecutions,
+        loading: executionsLoading,
+        error: executionsError,
+        total: executionsTotal,
+      },
       state: {
         loading: canvasState.loading,
         error: canvasState.error,
@@ -139,6 +160,13 @@ export default function CanvasPage() {
       addEdge,
       updateEdge,
       deleteEdge,
+      executions,
+      selectedExecution,
+      selectExecution,
+      refreshExecutions,
+      executionsLoading,
+      executionsError,
+      executionsTotal,
       canvasState.loading,
       canvasState.error,
       canvasState.isLoading,

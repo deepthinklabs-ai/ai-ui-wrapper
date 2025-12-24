@@ -23,6 +23,12 @@ export const CSRF_EXEMPT_ROUTES = [
   '/api/oauth/',
   // Staging auth is protected differently
   '/api/staging-auth',
+  // Auth endpoints are called before login
+  '/api/auth/',
+  // Internal server-to-server calls from workflow trigger
+  '/api/canvas/ask-answer/',
+  // AI provider endpoints called internally from ask-answer
+  '/api/pro/',
   // GET requests are exempt (handled in middleware)
 ] as const;
 

@@ -29,7 +29,7 @@ import {
   getRateLimitHeaders,
 } from '@/lib/rateLimiting';
 import { getProviderKey } from '@/lib/secretManager/getKey';
-import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { getAuthenticatedUserOrService } from '@/lib/serverAuth';
 import { checkAIEnabled } from '@/lib/killSwitches';
 
 // Map our internal model names to Gemini API model names
@@ -47,15 +47,19 @@ export async function POST(req: NextRequest) {
   let userApiKey: string | null = null;
 
   try {
-    // SECURITY: Authenticate user from session token, not from request body
-    const { user, error: authError } = await getAuthenticatedUser(req);
+    // Parse body first to get userId for internal service auth
+    const body = await req.json();
+    const { messages, model = 'gemini-2.0-flash', systemPrompt, userId: bodyUserId } = body;
+
+    // SECURITY: Authenticate user - supports both Bearer token and internal service auth
+    const { user, error: authError } = await getAuthenticatedUserOrService(req, bodyUserId);
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized', message: authError || 'Authentication required' },
         { status: 401 }
       );
     }
-    const userId = user.id; // Use authenticated user ID, never trust client
+    const userId = user.id; // Use authenticated user ID
 
     // KILL SWITCH: Check if AI features are enabled
     const aiCheck = await checkAIEnabled();
@@ -65,9 +69,6 @@ export async function POST(req: NextRequest) {
         { status: aiCheck.error!.status }
       );
     }
-
-    const body = await req.json();
-    const { messages, model = 'gemini-2.0-flash', systemPrompt } = body;
 
     // Validate required fields
     if (!Array.isArray(messages) || messages.length === 0) {

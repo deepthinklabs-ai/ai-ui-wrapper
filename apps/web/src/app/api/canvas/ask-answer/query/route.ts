@@ -43,6 +43,7 @@ import { executeCalendarToolCallsServer } from '@/app/canvas/features/calendar-o
 import { getOAuthConnection } from '@/lib/googleTokenStorage';
 import { getSlackConnection } from '@/lib/slackTokenStorage';
 import { buildInternalApiUrl } from '@/lib/internalApiUrl';
+import { INTERNAL_SERVICE_AUTH_HEADER } from '@/lib/serverAuth';
 
 interface ConversationHistoryEntry {
   id: string;
@@ -427,12 +428,21 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
     // Uses only env vars, never request-derived values
     const apiUrl = buildInternalApiUrl(apiEndpoint);
 
+    // Build headers - use internal service auth for server-to-server calls
+    // This is more reliable than forwarding user Bearer tokens
+    const apiHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    // Use internal service auth key for server-to-server authentication
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (serviceKey) {
+      apiHeaders[INTERNAL_SERVICE_AUTH_HEADER] = serviceKey;
+    }
+
     // Make initial API call
     let apiResponse = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: apiHeaders,
       body: JSON.stringify({
         userId,
         messages,
@@ -662,9 +672,7 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
 
       apiResponse = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: apiHeaders,
         body: JSON.stringify({
           userId,
           messages,

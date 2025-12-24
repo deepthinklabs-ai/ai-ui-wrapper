@@ -12,15 +12,58 @@
  * Server-side Authentication Helper
  *
  * Utilities for verifying Supabase authentication on API routes.
+ * Supports both user Bearer tokens and internal service authentication
+ * for server-to-server calls.
  */
 
 import { createClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 
+// Internal service auth header name
+const INTERNAL_SERVICE_HEADER = "x-internal-service-key";
+
 export type AuthResult = {
   user: User | null;
   error?: string;
+  isInternalCall?: boolean;
 };
+
+/**
+ * Timing-safe string comparison to prevent timing attacks
+ */
+function timingSafeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    let result = 0;
+    const minLen = Math.min(a.length, b.length);
+    for (let i = 0; i < minLen; i++) {
+      result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+/**
+ * Verify internal service authentication
+ * Used for server-to-server calls from trusted routes (workflow trigger, ask-answer)
+ *
+ * SECURITY: Uses SUPABASE_SERVICE_ROLE_KEY as the shared secret.
+ * Only server-side code can access this env var.
+ */
+export function verifyInternalServiceAuth(request: Request): boolean {
+  const serviceKey = request.headers.get(INTERNAL_SERVICE_HEADER);
+  const expectedKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceKey || !expectedKey) {
+    return false;
+  }
+
+  return timingSafeCompare(serviceKey, expectedKey);
+}
 
 /**
  * Get authenticated user from request headers
@@ -111,3 +154,86 @@ export async function getAuthenticatedSupabaseClient(request: Request): Promise<
     user: authResult.user,
   };
 }
+
+/**
+ * Get authenticated user or verify internal service call
+ *
+ * Tries authentication in this order:
+ * 1. User Bearer token (for direct client calls)
+ * 2. Internal service key (for server-to-server calls)
+ *
+ * For internal calls, a synthetic user object is created with the userId from the request body.
+ *
+ * @param request - The incoming request
+ * @param bodyUserId - The userId from the request body (required for internal calls)
+ */
+export async function getAuthenticatedUserOrService(
+  request: Request,
+  bodyUserId?: string
+): Promise<AuthResult> {
+  // First, try user Bearer token authentication
+  const authHeader = request.headers.get("authorization");
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const result = await getAuthenticatedUser(request);
+    if (result.user) {
+      return result;
+    }
+    // If Bearer token failed but we have internal service auth, continue to try that
+  }
+
+  // Second, try internal service authentication
+  if (verifyInternalServiceAuth(request)) {
+    if (!bodyUserId) {
+      return {
+        user: null,
+        error: "Internal service call requires userId in request body",
+      };
+    }
+
+    // Verify the user exists in the database
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: profile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("id, email")
+      .eq("id", bodyUserId)
+      .single();
+
+    if (profileError || !profile) {
+      return {
+        user: null,
+        error: "User not found",
+      };
+    }
+
+    // Return a synthetic user object for internal calls
+    return {
+      user: {
+        id: profile.id,
+        email: profile.email,
+        // Minimal user object for internal calls
+        app_metadata: {},
+        user_metadata: {},
+        aud: "authenticated",
+        created_at: "",
+      } as User,
+      isInternalCall: true,
+    };
+  }
+
+  // Neither auth method worked
+  return {
+    user: null,
+    error: "Missing or invalid authorization",
+  };
+}
+
+/**
+ * Header name for internal service authentication
+ * Export for use in routes making internal calls
+ */
+export const INTERNAL_SERVICE_AUTH_HEADER = INTERNAL_SERVICE_HEADER;

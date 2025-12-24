@@ -472,8 +472,18 @@ export default function DashboardPage() {
 
   // Workflow-aware send handler - routes to workflow or regular chat
   const handleSend = useCallback(async () => {
+    // Debug logging - helps trace message routing
+    console.log('[Dashboard handleSend] Message routing check:', {
+      hasSelectedWorkflow: !!selectedWorkflow,
+      workflowName: selectedWorkflow?.displayName || 'none',
+      hasUserId: !!user?.id,
+      draftLength: draft?.length || 0,
+      attachmentsCount: attachedFiles?.length || 0,
+    });
+
     if (selectedWorkflow && user?.id) {
       // Route through workflow
+      console.log('[Dashboard handleSend] Routing message through workflow:', selectedWorkflow.displayName);
       const content = draft.trim();
       if (!content && attachedFiles.length === 0) return;
 
@@ -571,6 +581,7 @@ export default function DashboardPage() {
       }
     } else {
       // Regular chat flow
+      console.log('[Dashboard handleSend] Using regular chat flow (no workflow selected)');
       await originalHandleSend();
     }
   }, [selectedWorkflow, user?.id, draft, attachedFiles, triggerWorkflow, selectedThreadId, selectedModel, originalHandleSend, setDraft, setAttachedFiles, refreshMessages, messages]);
