@@ -248,8 +248,15 @@ export async function POST(request: NextRequest) {
     };
 
     // Helper to update node state
+    // SECURITY: Validate nodeId to prevent prototype pollution
+    const FORBIDDEN_KEYS = ['__proto__', 'constructor', 'prototype'];
     const updateNodeState = (nodeId: string, updates: Partial<NodeExecutionState>) => {
-      if (!nodeStates[nodeId]) {
+      // Prevent prototype pollution attacks
+      if (FORBIDDEN_KEYS.includes(nodeId)) {
+        console.warn(`[Workflow] Attempted to use forbidden key as nodeId: ${nodeId}`);
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(nodeStates, nodeId)) {
         nodeStates[nodeId] = {
           node_id: nodeId,
           status: 'pending',

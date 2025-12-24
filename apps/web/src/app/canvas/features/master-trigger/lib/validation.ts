@@ -106,24 +106,17 @@ export function validateTriggerInput(
 }
 
 /**
- * Sanitize input message (remove potential XSS, etc.)
- * Uses regex-based HTML stripping for serverless compatibility
+ * Sanitize input message for AI model consumption
+ *
+ * NOTE: We don't need to strip HTML tags because:
+ * 1. Output goes to AI models, not HTML rendering
+ * 2. AI models handle raw text safely
+ * 3. Complex sanitization can introduce security issues (ReDoS, double-escaping)
+ *
+ * We only trim whitespace for clean input.
  */
 export function sanitizeMessage(message: string): string {
-  // SECURITY: Strip HTML tags for plain text messages
-  // This is safe because we're outputting to AI models, not rendering HTML
-  let sanitized = message
-    // Remove HTML tags
-    .replace(/<[^>]*>/g, '')
-    // Decode common HTML entities
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
-
-  return sanitized.trim();
+  return message.trim();
 }
 
 /**
