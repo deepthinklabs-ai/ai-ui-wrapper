@@ -25,6 +25,7 @@ const CSRF_EXEMPT_ROUTES = [
   '/api/oauth/',
   '/api/staging-auth',
   '/api/auth/', // Auth endpoints are called before login, need CSRF exemption
+  '/api/canvas/ask-answer/', // Internal server-to-server calls from workflow trigger
 ] as const;
 
 /**
