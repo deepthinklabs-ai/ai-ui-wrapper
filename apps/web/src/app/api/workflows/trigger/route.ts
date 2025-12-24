@@ -31,10 +31,19 @@ import type { AgentResponse } from '@/app/canvas/features/response-compiler/type
 import { getInternalBaseUrl } from '@/lib/internalApiUrl';
 import type { NodeExecutionState, ExecutionLogEntry } from '@/app/canvas/types';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy Supabase client - created on first use to avoid module-level crashes
+let _supabase: ReturnType<typeof createClient> | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('Missing Supabase environment variables');
+    }
+    _supabase = createClient(url, key);
+  }
+  return _supabase;
+}
 
 /**
  * Build ConnectedAgentInfo from a Genesis Bot node config
@@ -245,7 +254,7 @@ export async function POST(request: NextRequest) {
       hasAttachments: (input.attachments?.length || 0) > 0,
     });
 
-    const { error: insertError } = await supabase
+    const { error: insertError } = await getSupabase()
       .from('workflow_executions')
       .insert({
         id: executionId,
@@ -262,7 +271,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch the trigger node
-    const { data: triggerNode, error: triggerError } = await supabase
+    const { data: triggerNode, error: triggerError } = await getSupabase()
       .from('canvas_nodes')
       .select('*')
       .eq('id', triggerNodeId)
@@ -303,7 +312,7 @@ export async function POST(request: NextRequest) {
     addLog('info', `Trigger node activated: ${triggerConfig.display_name || 'Master Trigger'}`, triggerNodeId);
 
     // Fetch edges from this trigger node
-    const { data: edges, error: edgesError } = await supabase
+    const { data: edges, error: edgesError } = await getSupabase()
       .from('canvas_edges')
       .select('*')
       .eq('from_node_id', triggerNodeId)
@@ -328,7 +337,7 @@ export async function POST(request: NextRequest) {
     const connectedNodeIds = edges.map((e) => e.to_node_id);
 
     // Fetch ALL connected nodes (could be Genesis Bot, Smart Router, or other types)
-    const { data: connectedNodes, error: nodesError } = await supabase
+    const { data: connectedNodes, error: nodesError } = await getSupabase()
       .from('canvas_nodes')
       .select('*')
       .in('id', connectedNodeIds);
@@ -386,7 +395,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Fetch edges from Smart Router to find connected agents
-      const { data: routerEdges, error: routerEdgesError } = await supabase
+      const { data: routerEdges, error: routerEdgesError } = await getSupabase()
         .from('canvas_edges')
         .select('*')
         .eq('from_node_id', smartRouterNode.id)
@@ -402,7 +411,7 @@ export async function POST(request: NextRequest) {
 
       // Fetch agent nodes connected to Smart Router
       const agentNodeIds = routerEdges.map((e) => e.to_node_id);
-      const { data: agentNodes, error: agentNodesError } = await supabase
+      const { data: agentNodes, error: agentNodesError } = await getSupabase()
         .from('canvas_nodes')
         .select('*')
         .in('id', agentNodeIds)
@@ -519,12 +528,12 @@ export async function POST(request: NextRequest) {
 
       // Check if there's a Response Compiler downstream
       // Find edges from agents to Response Compiler
-      const { data: allCanvasEdges } = await supabase
+      const { data: allCanvasEdges } = await getSupabase()
         .from('canvas_edges')
         .select('*')
         .eq('canvas_id', canvasId);
 
-      const { data: allCanvasNodes } = await supabase
+      const { data: allCanvasNodes } = await getSupabase()
         .from('canvas_nodes')
         .select('*')
         .eq('canvas_id', canvasId)
@@ -566,7 +575,7 @@ export async function POST(request: NextRequest) {
         addLog('info', 'Response Compiler completed', responseCompilerNode.id, { responseLength: response.length });
 
         // Update Response Compiler statistics
-        await supabase
+        await getSupabase()
           .from('canvas_nodes')
           .update({
             config: {
@@ -596,7 +605,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Update Smart Router statistics
-      await supabase
+      await getSupabase()
         .from('canvas_nodes')
         .update({
           config: {
@@ -695,7 +704,7 @@ export async function POST(request: NextRequest) {
 
       while (chainDepth < maxChainDepth) {
         // Fetch edges FROM the current bot that have Ask/Answer enabled
-        const { data: askAnswerEdges, error: aaEdgesError } = await supabase
+        const { data: askAnswerEdges, error: aaEdgesError } = await getSupabase()
           .from('canvas_edges')
           .select('*')
           .eq('from_node_id', currentBotId)
@@ -721,7 +730,7 @@ export async function POST(request: NextRequest) {
         const nextBotId = nextEdge.to_node_id;
 
         // Fetch the next bot
-        const { data: nextBot, error: nextBotError } = await supabase
+        const { data: nextBot, error: nextBotError } = await getSupabase()
           .from('canvas_nodes')
           .select('*')
           .eq('id', nextBotId)
@@ -734,7 +743,7 @@ export async function POST(request: NextRequest) {
         }
 
         const nextBotConfig = nextBot.config as GenesisBotNodeConfig;
-        const currentBot = chainDepth === 0 ? targetBot : await supabase
+        const currentBot = chainDepth === 0 ? targetBot : await getSupabase()
           .from('canvas_nodes')
           .select('*')
           .eq('id', currentBotId)
@@ -832,7 +841,7 @@ export async function POST(request: NextRequest) {
     const duration_ms = Date.now() - startTime;
 
     // Update trigger statistics
-    await supabase
+    await getSupabase()
       .from('canvas_nodes')
       .update({
         config: {
@@ -850,7 +859,7 @@ export async function POST(request: NextRequest) {
     addLog('info', `Workflow completed successfully in ${duration_ms}ms`);
 
     // Update execution record with completion
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabase()
       .from('workflow_executions')
       .update({
         status: 'completed',
@@ -907,7 +916,7 @@ export async function POST(request: NextRequest) {
 
     // Update execution record with failure
     try {
-      await supabase
+      await getSupabase()
         .from('workflow_executions')
         .update({
           status: 'failed',
