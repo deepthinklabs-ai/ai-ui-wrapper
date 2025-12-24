@@ -5,7 +5,6 @@
  * Properly segmented to keep validation logic separate from components.
  */
 
-import DOMPurify from 'isomorphic-dompurify';
 import type { CanvasNode, CanvasEdge, NodeId, EdgeId } from '../../../types';
 import type { AskAnswerValidationResult } from '../types';
 import { ASK_ANSWER_CONSTANTS } from '../types';
@@ -184,15 +183,25 @@ export function getAskAnswerEdgesForNode(
 
 /**
  * Sanitize query text for safe processing
- * Uses DOMPurify for robust XSS protection
+ * Uses server-safe HTML stripping (no jsdom dependency)
  */
 export function sanitizeQuery(query: string): string {
-  // SECURITY: Use DOMPurify for proper sanitization
-  // Strip all HTML tags - queries should be plain text
-  const sanitized = DOMPurify.sanitize(query, {
-    ALLOWED_TAGS: [], // No HTML tags allowed
-    ALLOWED_ATTR: [],
-  });
+  // SECURITY: Strip all HTML tags - queries should be plain text
+  // This approach works on both server and client without jsdom
+  const sanitized = query
+    // Remove script tags and their content first
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove style tags and their content
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // Remove all HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Decode common HTML entities
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 
   return sanitized
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters

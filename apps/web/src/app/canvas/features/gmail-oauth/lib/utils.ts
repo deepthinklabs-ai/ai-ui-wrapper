@@ -4,7 +4,6 @@
  * Helper functions for Gmail OAuth feature.
  */
 
-import DOMPurify from 'isomorphic-dompurify';
 import type { EmailMessage } from '../types';
 
 /**
@@ -93,40 +92,62 @@ export function formatEmailList(emails: EmailMessage[]): string {
 
 /**
  * Sanitize email body for safe display
- * Uses DOMPurify for robust XSS protection
+ * Uses server-safe HTML sanitization (no jsdom dependency)
  */
 export function sanitizeEmailBody(body: string): string {
-  // SECURITY: Use DOMPurify for proper HTML sanitization
-  // This removes all scripts, event handlers, and dangerous content
-  return DOMPurify.sanitize(body, {
-    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
-    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
-    ALLOW_DATA_ATTR: false,
-  });
+  // SECURITY: Remove dangerous tags and attributes
+  // This approach works on both server and client without jsdom
+  return body
+    // Remove script tags and their content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove style tags and their content
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // Remove iframe, object, embed, form tags
+    .replace(/<(iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<(iframe|object|embed|form)\b[^>]*\/?>/gi, '')
+    // Remove event handler attributes (on*)
+    .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\s+on\w+\s*=\s*[^\s>]+/gi, '')
+    // Remove javascript: and vbscript: URLs
+    .replace(/\s+href\s*=\s*["']?\s*javascript:[^"'>\s]*/gi, '')
+    .replace(/\s+src\s*=\s*["']?\s*javascript:[^"'>\s]*/gi, '')
+    // Remove data: URLs in src attributes (potential XSS vector)
+    .replace(/\s+src\s*=\s*["']?\s*data:[^"'>\s]*/gi, '');
 }
 
 /**
  * Extract plain text from HTML email body
- * Uses DOMPurify for safe HTML stripping
+ * Uses server-safe HTML stripping (no jsdom dependency)
  */
 export function htmlToPlainText(html: string): string {
-  // SECURITY: Use DOMPurify to safely strip all HTML tags
   // First, convert block elements to newlines for readability
   const withNewlines = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/div>/gi, '\n');
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/tr>/gi, '\n');
 
-  // Strip all HTML using DOMPurify (returns plain text only)
-  const plainText = DOMPurify.sanitize(withNewlines, {
-    ALLOWED_TAGS: [], // No tags allowed - pure text output
-    ALLOWED_ATTR: [],
-    KEEP_CONTENT: true, // Keep the text content
-  });
+  // Strip all HTML tags (server-safe approach)
+  const plainText = withNewlines
+    // Remove script tags and their content first
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove style tags and their content
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // Remove all HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Decode common HTML entities
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)));
 
   // Clean up whitespace
   return plainText
-    .replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
     .trim();
 }
 

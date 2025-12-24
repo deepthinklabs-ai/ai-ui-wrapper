@@ -11,6 +11,7 @@ import {
   evaluateKeywordRules,
   parseAIRoutingResponse,
 } from './routingEngine';
+import { INTERNAL_SERVICE_AUTH_HEADER } from '@/lib/serverAuth';
 
 /**
  * Execute Smart Router logic
@@ -87,9 +88,16 @@ export async function executeSmartRouter(
         : '/api/pro/grok';
 
     try {
+      // Build headers with internal service auth for server-to-server calls
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceKey) {
+        headers[INTERNAL_SERVICE_AUTH_HEADER] = serviceKey;
+      }
+
       const response = await fetch(new URL(apiEndpoint, internalBaseUrl).toString(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           userId,
           messages: [{ role: 'user', content: query }],
