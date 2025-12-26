@@ -20,6 +20,10 @@ export const VERCEL_PROTECTION_BYPASS_HEADER = 'x-vercel-protection-bypass';
  */
 export function getVercelBypassHeaders(): Record<string, string> {
   const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
+  // Debug: Log bypass secret availability (not the actual value for security)
+  console.log(`[getVercelBypassHeaders] VERCEL_AUTOMATION_BYPASS_SECRET is ${bypassSecret ? 'SET' : 'NOT SET'}`);
+
   if (bypassSecret) {
     return { [VERCEL_PROTECTION_BYPASS_HEADER]: bypassSecret };
   }
@@ -49,18 +53,23 @@ export function getInternalBaseUrl(): string {
   // This ensures staging/preview branches call themselves, not production
   // VERCEL_URL is set for ALL Vercel deployments (preview and production)
   if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+    const url = `https://${process.env.VERCEL_URL}`;
+    console.log(`[getInternalBaseUrl] Using VERCEL_URL: ${url}`);
+    return url;
   }
 
   // Fallback: Use configured app URL
   if (process.env.NEXT_PUBLIC_APP_URL) {
+    console.log(`[getInternalBaseUrl] Using NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
     return process.env.NEXT_PUBLIC_APP_URL;
   }
 
   // Development: Use PORT env var or default to 3000
   // SECURITY: Never derive from request.url to prevent SSRF
   const port = process.env.PORT || '3000';
-  return `http://localhost:${port}`;
+  const url = `http://localhost:${port}`;
+  console.log(`[getInternalBaseUrl] Using localhost: ${url}`);
+  return url;
 }
 
 /**

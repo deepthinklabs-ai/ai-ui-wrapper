@@ -6,6 +6,8 @@
 
 import type { ResponseCompilerNodeConfig } from '../../../types';
 import type { AgentResponse } from '../types';
+import { getVercelBypassHeaders } from '@/lib/internalApiUrl';
+import { INTERNAL_SERVICE_AUTH_HEADER } from '@/lib/serverAuth';
 
 /**
  * Build system prompt for the Response Compiler AI
@@ -211,9 +213,19 @@ async function aiSummarize(
       : '/api/pro/grok';
 
   try {
+    // Build headers with internal service auth and Vercel bypass for server-to-server calls
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+    };
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (serviceKey) {
+      headers[INTERNAL_SERVICE_AUTH_HEADER] = serviceKey;
+    }
+
     const response = await fetch(new URL(apiEndpoint, internalBaseUrl).toString(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         userId,
         messages: [{ role: 'user', content: userMessage }],

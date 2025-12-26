@@ -99,7 +99,13 @@ export async function executeSmartRouter(
         headers[INTERNAL_SERVICE_AUTH_HEADER] = serviceKey;
       }
 
-      const response = await fetch(new URL(apiEndpoint, internalBaseUrl).toString(), {
+      // Debug: Log the URL and headers being used
+      const fullUrl = new URL(apiEndpoint, internalBaseUrl).toString();
+      console.log(`[Smart Router] Calling AI API: ${fullUrl}`);
+      console.log(`[Smart Router] Has bypass header: ${!!headers['x-vercel-protection-bypass']}`);
+      console.log(`[Smart Router] Has service auth: ${!!headers[INTERNAL_SERVICE_AUTH_HEADER]}`);
+
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify({

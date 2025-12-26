@@ -29,6 +29,7 @@ import { executeSmartRouter } from '@/app/canvas/features/smart-router';
 import { executeResponseCompiler } from '@/app/canvas/features/response-compiler';
 import type { AgentResponse } from '@/app/canvas/features/response-compiler/types';
 import { getInternalBaseUrl, getVercelBypassHeaders } from '@/lib/internalApiUrl';
+import { INTERNAL_SERVICE_AUTH_HEADER } from '@/lib/serverAuth';
 import type { NodeExecutionState, ExecutionLogEntry } from '@/app/canvas/types';
 
 // Lazy Supabase client - created on first use to avoid module-level crashes
@@ -129,6 +130,11 @@ async function callAgentAskAnswer(
       'Content-Type': 'application/json',
       ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
     };
+    // Add internal service auth for server-to-server calls
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (serviceKey) {
+      headers[INTERNAL_SERVICE_AUTH_HEADER] = serviceKey;
+    }
     if (authHeader) {
       headers['Authorization'] = authHeader;
     }
@@ -676,6 +682,11 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
       };
+      // Add internal service auth for server-to-server calls
+      const legacyServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (legacyServiceKey) {
+        askAnswerHeaders[INTERNAL_SERVICE_AUTH_HEADER] = legacyServiceKey;
+      }
       if (authHeader) {
         askAnswerHeaders['Authorization'] = authHeader;
       }
@@ -820,6 +831,11 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
           ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
         };
+        // Add internal service auth for server-to-server calls
+        const chainServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (chainServiceKey) {
+          chainHeaders[INTERNAL_SERVICE_AUTH_HEADER] = chainServiceKey;
+        }
         if (authHeader) {
           chainHeaders['Authorization'] = authHeader;
         }
