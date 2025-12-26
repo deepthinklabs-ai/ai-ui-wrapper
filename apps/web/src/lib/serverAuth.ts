@@ -197,13 +197,16 @@ export async function getAuthenticatedUserOrService(
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // Note: user_profiles table only has id, tier, created_at, updated_at
+    // Email is in auth.users, but we don't need it for internal service calls
     const { data: profile, error: profileError } = await supabase
       .from("user_profiles")
-      .select("id, email")
+      .select("id")
       .eq("id", bodyUserId)
       .single();
 
     if (profileError || !profile) {
+      console.error(`[serverAuth] User not found: ${bodyUserId}, error:`, profileError?.message);
       return {
         user: null,
         error: "User not found",
@@ -211,10 +214,11 @@ export async function getAuthenticatedUserOrService(
     }
 
     // Return a synthetic user object for internal calls
+    // Email is not available in user_profiles, use empty string
     return {
       user: {
         id: profile.id,
-        email: profile.email,
+        email: "",
         // Minimal user object for internal calls
         app_metadata: {},
         user_metadata: {},
