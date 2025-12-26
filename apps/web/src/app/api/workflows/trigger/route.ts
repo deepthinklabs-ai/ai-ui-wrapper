@@ -453,6 +453,20 @@ export async function POST(request: NextRequest) {
       }
 
       // Build ConnectedAgentInfo for all agents
+      // Debug: Log the raw config to diagnose encryption/undefined issues
+      agentNodes.forEach((node: any) => {
+        console.log(`[POST /api/workflows/trigger] Agent node ${node.id} raw config type: ${typeof node.config}`);
+        if (typeof node.config === 'string') {
+          console.log(`[POST /api/workflows/trigger] Agent config is STRING (encrypted?): ${node.config.substring(0, 50)}...`);
+        } else if (node.config && typeof node.config === 'object') {
+          console.log(`[POST /api/workflows/trigger] Agent config keys: ${Object.keys(node.config).join(', ')}`);
+          console.log(`[POST /api/workflows/trigger] Agent model_provider: ${node.config.model_provider}`);
+          console.log(`[POST /api/workflows/trigger] Agent model_name: ${node.config.model_name}`);
+        } else {
+          console.log(`[POST /api/workflows/trigger] Agent config is null/undefined`);
+        }
+      });
+
       const connectedAgents: ConnectedAgentInfo[] = agentNodes.map((node: any) =>
         buildAgentInfo(node.id, node.config as GenesisBotNodeConfig)
       );

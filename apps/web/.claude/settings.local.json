@@ -98,7 +98,10 @@
       "Bash(gh pr view:*)",
       "Bash(git fetch:*)",
       "Bash(gh pr checks:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh issue list:*)"
     ],
     "deny": [],
     "ask": []
