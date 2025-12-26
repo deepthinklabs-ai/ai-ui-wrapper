@@ -48,6 +48,32 @@ function getSupabase(): any {
 }
 
 /**
+ * Get the effective config for a node, using runtime_config for encrypted configs
+ * runtime_config stores non-sensitive fields unencrypted for server-side access
+ */
+function getEffectiveConfig(node: any): GenesisBotNodeConfig {
+  // If config is an object (not encrypted), use it directly
+  if (node.config && typeof node.config === 'object' && !Array.isArray(node.config)) {
+    return node.config as GenesisBotNodeConfig;
+  }
+
+  // Config is encrypted (string) - use runtime_config for essential fields
+  const runtimeConfig = node.runtime_config || {};
+
+  return {
+    name: runtimeConfig.name || 'AI Agent',
+    model_provider: runtimeConfig.model_provider || 'claude',
+    model_name: runtimeConfig.model_name || 'claude-sonnet-4-5',
+    system_prompt: '', // Can't decrypt, but not needed for routing
+    gmail: { enabled: runtimeConfig.gmail_enabled || false },
+    calendar: { enabled: runtimeConfig.calendar_enabled || false },
+    sheets: { enabled: runtimeConfig.sheets_enabled || false },
+    docs: { enabled: runtimeConfig.docs_enabled || false },
+    slack: { enabled: runtimeConfig.slack_enabled || false },
+  } as GenesisBotNodeConfig;
+}
+
+/**
  * Build ConnectedAgentInfo from a Genesis Bot node config
  */
 function buildAgentInfo(nodeId: string, config: GenesisBotNodeConfig): ConnectedAgentInfo {
@@ -453,22 +479,19 @@ export async function POST(request: NextRequest) {
       }
 
       // Build ConnectedAgentInfo for all agents
-      // Debug: Log the raw config to diagnose encryption/undefined issues
+      // Use getEffectiveConfig to handle encrypted configs by falling back to runtime_config
       agentNodes.forEach((node: any) => {
-        console.log(`[POST /api/workflows/trigger] Agent node ${node.id} raw config type: ${typeof node.config}`);
-        if (typeof node.config === 'string') {
-          console.log(`[POST /api/workflows/trigger] Agent config is STRING (encrypted?): ${node.config.substring(0, 50)}...`);
-        } else if (node.config && typeof node.config === 'object') {
-          console.log(`[POST /api/workflows/trigger] Agent config keys: ${Object.keys(node.config).join(', ')}`);
-          console.log(`[POST /api/workflows/trigger] Agent model_provider: ${node.config.model_provider}`);
-          console.log(`[POST /api/workflows/trigger] Agent model_name: ${node.config.model_name}`);
-        } else {
-          console.log(`[POST /api/workflows/trigger] Agent config is null/undefined`);
-        }
+        const isEncrypted = typeof node.config === 'string';
+        const effectiveConfig = getEffectiveConfig(node);
+        console.log(`[POST /api/workflows/trigger] Agent node ${node.id}:`);
+        console.log(`  - Config encrypted: ${isEncrypted}`);
+        console.log(`  - Has runtime_config: ${!!node.runtime_config}`);
+        console.log(`  - Effective model_provider: ${effectiveConfig.model_provider}`);
+        console.log(`  - Effective model_name: ${effectiveConfig.model_name}`);
       });
 
       const connectedAgents: ConnectedAgentInfo[] = agentNodes.map((node: any) =>
-        buildAgentInfo(node.id, node.config as GenesisBotNodeConfig)
+        buildAgentInfo(node.id, getEffectiveConfig(node))
       );
 
       console.log(`[POST /api/workflows/trigger] Smart Router has ${connectedAgents.length} connected agents`);
@@ -521,7 +544,7 @@ export async function POST(request: NextRequest) {
 
       // Mark all target agents as running
       targetAgents.forEach((agentNode: any) => {
-        const agentConfig = agentNode.config as GenesisBotNodeConfig;
+        const agentConfig = getEffectiveConfig(agentNode);
         updateNodeState(agentNode.id, {
           status: 'running',
           started_at: new Date().toISOString(),
@@ -531,7 +554,7 @@ export async function POST(request: NextRequest) {
       });
 
       const agentPromises = targetAgents.map((agentNode: any) => {
-        const agentConfig = agentNode.config as GenesisBotNodeConfig;
+        const agentConfig = getEffectiveConfig(agentNode);
         const edge = edgeMap.get(agentNode.id);
 
         return callAgentAskAnswer({
@@ -672,7 +695,7 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      const botConfig = targetBot.config as GenesisBotNodeConfig;
+      const botConfig = getEffectiveConfig(targetBot);
 
       // Track bot starting
       updateNodeState(targetBot.id, {
@@ -684,7 +707,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`[POST /api/workflows/trigger] Executing with bot: ${botConfig.name}`);
       console.log(`  Model: ${botConfig.model_provider}/${botConfig.model_name}`);
-      console.log(`  System Prompt (first 100 chars): ${botConfig.system_prompt?.slice(0, 100) || 'UNDEFINED'}`);
+      console.log(`  System Prompt: ${botConfig.system_prompt ? 'SET' : 'NOT SET (encrypted or missing)'}`);
 
       if (askAnswerHistory.length > 0) {
         console.log(`[POST /api/workflows/trigger] Including ${askAnswerHistory.length} conversation history entries`);
@@ -796,7 +819,7 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        const nextBotConfig = nextBot.config as GenesisBotNodeConfig;
+        const nextBotConfig = getEffectiveConfig(nextBot);
         const currentBot = chainDepth === 0 ? targetBot : await getSupabase()
           .from('canvas_nodes')
           .select('*')
@@ -804,7 +827,7 @@ export async function POST(request: NextRequest) {
           .single()
           .then((r: any) => r.data);
 
-        const currentBotConfig = currentBot?.config as GenesisBotNodeConfig;
+        const currentBotConfig = currentBot ? getEffectiveConfig(currentBot) : null;
 
         chainDepth++;
         console.log(`[POST /api/workflows/trigger] Chain step ${chainDepth}: ${currentBotConfig?.name} → ${nextBotConfig.name} via Ask/Answer`);
@@ -958,7 +981,7 @@ export async function POST(request: NextRequest) {
     } else {
       const targetBot = connectedNodes.find((n: any) => n.type === 'GENESIS_BOT');
       if (targetBot) {
-        const botConfig = targetBot.config as GenesisBotNodeConfig;
+        const botConfig = getEffectiveConfig(targetBot);
         metadata.botName = botConfig.name;
         metadata.model = `${botConfig.model_provider}/${botConfig.model_name}`;
       }

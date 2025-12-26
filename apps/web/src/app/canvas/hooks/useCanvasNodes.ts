@@ -117,6 +117,22 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
           newNode.is_exposed = finalConfig.is_exposed;
         }
 
+        // Set runtime_config for GENESIS_BOT nodes (stores non-sensitive fields unencrypted)
+        if (finalConfig && typeof finalConfig === 'object') {
+          if (finalConfig.model_provider || finalConfig.model_name || finalConfig.system_prompt !== undefined) {
+            newNode.runtime_config = {
+              name: finalConfig.name,
+              model_provider: finalConfig.model_provider,
+              model_name: finalConfig.model_name,
+              gmail_enabled: finalConfig.gmail?.enabled || false,
+              calendar_enabled: finalConfig.calendar?.enabled || false,
+              sheets_enabled: finalConfig.sheets?.enabled || false,
+              docs_enabled: finalConfig.docs?.enabled || false,
+              slack_enabled: finalConfig.slack?.enabled || false,
+            };
+          }
+        }
+
         const { data, error } = await supabase
           .from('canvas_nodes')
           .insert(newNode)
@@ -174,6 +190,26 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
         // This allows the API to query exposed workflows without decrypting config
         if (updates.config && typeof updates.config === 'object' && 'is_exposed' in updates.config) {
           dbUpdates.is_exposed = (updates.config as any).is_exposed;
+        }
+
+        // IMPORTANT: Sync runtime_config for GENESIS_BOT nodes
+        // This stores non-sensitive config fields unencrypted for server-side workflow access
+        // (model_provider, model_name, integration flags) - the main config may be encrypted
+        if (updates.config && typeof updates.config === 'object') {
+          const config = updates.config as any;
+          // Check if this looks like a GenesisBotNodeConfig
+          if (config.model_provider || config.model_name || config.system_prompt !== undefined) {
+            dbUpdates.runtime_config = {
+              name: config.name,
+              model_provider: config.model_provider,
+              model_name: config.model_name,
+              gmail_enabled: config.gmail?.enabled || false,
+              calendar_enabled: config.calendar?.enabled || false,
+              sheets_enabled: config.sheets?.enabled || false,
+              docs_enabled: config.docs?.enabled || false,
+              slack_enabled: config.slack?.enabled || false,
+            };
+          }
         }
 
         // Remove fields that shouldn't be updated
