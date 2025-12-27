@@ -74,6 +74,45 @@ function getEffectiveConfig(node: any): GenesisBotNodeConfig {
 }
 
 /**
+ * Get the effective config for a Smart Router node, handling encrypted configs
+ * Unlike GenesisBotNodeConfig, Smart Router doesn't have runtime_config yet,
+ * so we use sensible defaults when config is encrypted
+ */
+function getEffectiveSmartRouterConfig(node: any): SmartRouterNodeConfig {
+  // If config is an object (not encrypted), use it directly
+  if (node.config && typeof node.config === 'object' && !Array.isArray(node.config)) {
+    // Ensure keyword_rules is always an array
+    const config = node.config as SmartRouterNodeConfig;
+    return {
+      ...config,
+      keyword_rules: Array.isArray(config.keyword_rules) ? config.keyword_rules : [],
+    };
+  }
+
+  // Config is encrypted (string) - use defaults
+  // Note: Smart Router doesn't have runtime_config yet, so use sensible defaults
+  console.log(`[getEffectiveSmartRouterConfig] Smart Router config is encrypted, using defaults`);
+
+  return {
+    name: 'Smart Router',
+    description: 'Routes queries to appropriate agents',
+    model_provider: 'claude',
+    model_name: 'claude-sonnet-4-5',
+    routing_strategy: 'keyword_then_ai',
+    keyword_rules: [
+      { id: 'email-rule', keywords: ['email', 'mail', 'send', 'inbox', 'compose', 'reply'], integration_type: 'gmail', priority: 10, enabled: true },
+      { id: 'calendar-rule', keywords: ['schedule', 'calendar', 'meeting', 'appointment', 'event', 'reminder'], integration_type: 'calendar', priority: 10, enabled: true },
+      { id: 'sheets-rule', keywords: ['spreadsheet', 'sheet', 'excel', 'data', 'table', 'csv'], integration_type: 'sheets', priority: 10, enabled: true },
+      { id: 'docs-rule', keywords: ['document', 'doc', 'write', 'draft', 'notes'], integration_type: 'docs', priority: 10, enabled: true },
+      { id: 'slack-rule', keywords: ['slack', 'channel', 'dm', 'workspace'], integration_type: 'slack', priority: 10, enabled: true },
+    ],
+    temperature: 0.3,
+    allow_parallel_routing: true,
+    max_parallel_agents: 5,
+  } as SmartRouterNodeConfig;
+}
+
+/**
  * Build ConnectedAgentInfo from a Genesis Bot node config
  */
 function buildAgentInfo(nodeId: string, config: GenesisBotNodeConfig): ConnectedAgentInfo {
@@ -438,7 +477,7 @@ export async function POST(request: NextRequest) {
       console.log(`[POST /api/workflows/trigger] Detected Smart Router workflow`);
       addLog('info', 'Detected Smart Router workflow', smartRouterNode.id);
 
-      const routerConfig = smartRouterNode.config as SmartRouterNodeConfig;
+      const routerConfig = getEffectiveSmartRouterConfig(smartRouterNode);
 
       // Track Smart Router starting
       updateNodeState(smartRouterNode.id, {
@@ -974,7 +1013,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (smartRouterNode) {
-      const routerConfig = smartRouterNode.config as SmartRouterNodeConfig;
+      const routerConfig = getEffectiveSmartRouterConfig(smartRouterNode);
       metadata.botName = routerConfig.name || 'Smart Router';
       metadata.model = `${routerConfig.model_provider}/${routerConfig.model_name}`;
       metadata.workflowType = 'smart_router';
