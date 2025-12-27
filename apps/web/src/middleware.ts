@@ -38,6 +38,7 @@ const STAGING_EXEMPT_ROUTES = [
   '/api/canvas/smart-router/', // Smart router endpoints
   '/api/stripe/webhook', // Stripe webhooks need to work on staging
   '/api/oauth/', // OAuth callbacks need to work on staging
+  '/api/auth/', // Auth endpoints must work before staging login (user auth != staging auth)
 ] as const;
 
 // Internal service auth header name (must match serverAuth.ts)
