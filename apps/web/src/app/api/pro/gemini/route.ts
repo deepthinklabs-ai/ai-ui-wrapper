@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     const { messages, model = 'gemini-2.0-flash', systemPrompt, userId: bodyUserId } = body;
 
     // SECURITY: Authenticate user - supports both Bearer token and internal service auth
-    const { user, error: authError } = await getAuthenticatedUserOrService(req, bodyUserId);
+    const { user, error: authError, isInternalCall } = await getAuthenticatedUserOrService(req, bodyUserId);
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized', message: authError || 'Authentication required' },
@@ -137,8 +137,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Rate limiting check (uses tier-specific limits)
-    console.log(`[API Gemini] Checking rate limit for user=${userId}, tier=${userTier}, model=${model}`);
-    const rateLimitResult = await checkRateLimit(supabase, userId, userTier, model);
+    // Skip burst limit for internal service calls (workflow execution makes multiple rapid calls)
+    console.log(`[API Gemini] Checking rate limit for user=${userId}, tier=${userTier}, model=${model}, isInternalCall=${!!isInternalCall}`);
+    const rateLimitResult = await checkRateLimit(supabase, userId, userTier, model, {
+      skipBurstLimit: isInternalCall,
+    });
 
     if (!rateLimitResult.allowed) {
       const errorMessage = getRateLimitErrorMessage(rateLimitResult.status);

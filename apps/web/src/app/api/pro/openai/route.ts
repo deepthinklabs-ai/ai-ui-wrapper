@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const { messages, model = 'gpt-4o', enableWebSearch = true, tools, systemPrompt, userId: bodyUserId } = body;
 
     // SECURITY: Authenticate user - supports both Bearer token and internal service auth
-    const { user, error: authError } = await getAuthenticatedUserOrService(req, bodyUserId);
+    const { user, error: authError, isInternalCall } = await getAuthenticatedUserOrService(req, bodyUserId);
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized', message: authError || 'Authentication required' },
@@ -135,8 +135,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Rate limiting check (uses tier-specific limits)
-    console.log(`[API] Checking rate limit for user=${userId}, tier=${userTier}, model=${model}`);
-    const rateLimitResult = await checkRateLimit(supabase, userId, userTier, model);
+    // Skip burst limit for internal service calls (workflow execution makes multiple rapid calls)
+    console.log(`[API OpenAI] Checking rate limit for user=${userId}, tier=${userTier}, model=${model}, isInternalCall=${!!isInternalCall}`);
+    const rateLimitResult = await checkRateLimit(supabase, userId, userTier, model, {
+      skipBurstLimit: isInternalCall,
+    });
     console.log(`[PRO API] Rate limit result: allowed=${rateLimitResult.allowed}, reason=${rateLimitResult.status.block_reason || 'none'}, requests_used=${rateLimitResult.status.daily_requests_used}/${rateLimitResult.status.daily_requests_limit}`);
 
     if (!rateLimitResult.allowed) {
