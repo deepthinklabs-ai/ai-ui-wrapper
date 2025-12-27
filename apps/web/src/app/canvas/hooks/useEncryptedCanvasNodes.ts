@@ -273,6 +273,27 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
           encryptedUpdates.is_exposed = (updates.config as any).is_exposed;
         }
 
+        // IMPORTANT: Build runtime_config BEFORE encrypting config
+        // This stores non-sensitive fields unencrypted for server-side workflow access
+        // (model_provider, model_name, integration flags) - since encrypted config can't be read server-side
+        if (updates.config !== undefined && typeof updates.config === 'object') {
+          const config = updates.config as any;
+          // Check if this looks like a GenesisBotNodeConfig (has model info or integration flags)
+          if (config.model_provider || config.model_name || config.system_prompt !== undefined ||
+              config.gmail || config.calendar || config.sheets || config.docs || config.slack) {
+            encryptedUpdates.runtime_config = {
+              name: config.name,
+              model_provider: config.model_provider,
+              model_name: config.model_name,
+              gmail_enabled: config.gmail?.enabled || false,
+              calendar_enabled: config.calendar?.enabled || false,
+              sheets_enabled: config.sheets?.enabled || false,
+              docs_enabled: config.docs?.enabled || false,
+              slack_enabled: config.slack?.enabled || false,
+            };
+          }
+        }
+
         // Encrypt config if being updated (stored as encrypted string in JSONB)
         if (updates.config !== undefined) {
           encryptedUpdates.config = await encryptObject(updates.config);
