@@ -129,8 +129,9 @@ export function htmlToPlainText(html: string): string {
 
   // STEP 3: Remove script/style content using iterative approach
   // (handles cases like <<script> that single-pass would miss)
-  text = iterativeRemove(text, /<script\b[^]*?<\/script>/gi);
-  text = iterativeRemove(text, /<style\b[^]*?<\/style>/gi);
+  // Note: \s* handles whitespace in closing tags like </script >
+  text = iterativeRemove(text, /<script\b[^]*?<\/script\s*>/gi);
+  text = iterativeRemove(text, /<style\b[^]*?<\/style\s*>/gi);
 
   // STEP 4: Strip all remaining HTML tags iteratively
   text = iterativeRemove(text, /<[^>]*>/g);

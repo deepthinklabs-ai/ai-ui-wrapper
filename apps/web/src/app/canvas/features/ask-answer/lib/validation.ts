@@ -195,8 +195,9 @@ export function sanitizeQuery(query: string): string {
   text = decodeHtmlEntitiesForQuery(text);
 
   // STEP 2: Remove script/style content using iterative approach
-  text = iterativeRemovePattern(text, /<script\b[^]*?<\/script>/gi);
-  text = iterativeRemovePattern(text, /<style\b[^]*?<\/style>/gi);
+  // Note: \s* handles whitespace in closing tags like </script >
+  text = iterativeRemovePattern(text, /<script\b[^]*?<\/script\s*>/gi);
+  text = iterativeRemovePattern(text, /<style\b[^]*?<\/style\s*>/gi);
 
   // STEP 3: Strip all remaining HTML tags iteratively
   text = iterativeRemovePattern(text, /<[^>]*>/g);
