@@ -1,5 +1,49 @@
 # AI UI Wrapper - Codebase Reference
 
+## Getting Started (For New AI Assistants)
+
+When starting a new session, follow these steps to understand the project:
+
+### 1. Review This Documentation
+Read this entire CLAUDE.md file to understand the project architecture, tech stack, and naming conventions.
+
+### 2. Check Git Status & Recent Activity
+```bash
+git status                    # Current branch and changes
+git log --oneline -10         # Recent commits
+git branch -a                 # All branches (main = production, staging = development)
+gh pr list --state all -L 5   # Recent pull requests
+```
+
+### 3. Explore Key Directories
+- `src/app/` - Next.js App Router pages and API routes
+- `src/app/canvas/` - Visual workflow builder (n8n-style)
+- `src/app/dashboard/` - Main chat interface
+- `src/components/` - Reusable React components
+- `src/hooks/` - Custom React hooks
+- `src/lib/` - Utilities, clients, and services
+- `src/types/` - TypeScript type definitions
+- `database-migrations/` - SQL migration files
+
+### 4. Understand the Two Main Features
+1. **Chat Dashboard** (`/dashboard`) - Multi-model AI chat with threading, folders, encryption
+2. **Canvas System** (`/canvas`) - Visual workflow builder for AI agent orchestration
+
+### 5. Key Files to Review
+- `src/lib/unifiedAIClient.ts` - Multi-provider AI abstraction
+- `src/lib/availableModels.ts` - Supported AI models
+- `src/app/canvas/lib/nodeRegistry.ts` - Canvas node definitions
+- `src/hooks/useMessages.ts` - Chat message handling
+- `src/lib/encryption.ts` - Client-side encryption
+
+### 6. GitHub Repository
+- **Repo:** https://github.com/deepthinklabs-ai/ai-ui-wrapper
+- **Main branch:** `main` (production)
+- **Development branch:** `staging`
+- PRs merge to `staging` first, then to `main`
+
+---
+
 ## Project Overview
 
 **AI UI Wrapper** (aiuiw.com) - A multi-provider AI chat platform with an n8n-style visual workflow builder (Canvas system).

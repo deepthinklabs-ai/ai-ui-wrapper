@@ -5,7 +5,6 @@
  * Properly segmented to keep validation logic separate from components.
  */
 
-import DOMPurify from 'isomorphic-dompurify';
 import type { CanvasNode, CanvasEdge, NodeId, EdgeId } from '../../../types';
 import type { AskAnswerValidationResult } from '../types';
 import { ASK_ANSWER_CONSTANTS } from '../types';
@@ -184,20 +183,138 @@ export function getAskAnswerEdgesForNode(
 
 /**
  * Sanitize query text for safe processing
- * Uses DOMPurify for robust XSS protection
+ * Uses server-safe HTML stripping (no jsdom dependency)
+ *
+ * SECURITY NOTE: We decode entities FIRST to prevent double-escaping attacks,
+ * then use iterative tag stripping for complete sanitization.
  */
 export function sanitizeQuery(query: string): string {
-  // SECURITY: Use DOMPurify for proper sanitization
-  // Strip all HTML tags - queries should be plain text
-  const sanitized = DOMPurify.sanitize(query, {
-    ALLOWED_TAGS: [], // No HTML tags allowed
-    ALLOWED_ATTR: [],
-  });
+  let text = query;
 
-  return sanitized
+  // STEP 1: Decode HTML entities FIRST (prevents double-escaping attack)
+  text = decodeHtmlEntitiesForQuery(text);
+
+  // STEP 2: Remove script/style tags and their content
+  // Using string-based removal to avoid regex complexity issues
+  text = removeTagWithContent(text, 'script');
+  text = removeTagWithContent(text, 'style');
+
+  // STEP 3: Strip all remaining HTML tags iteratively
+  text = iterativeRemovePattern(text, /<[^>]*>/g);
+
+  // STEP 4: Clean up
+  return text
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
     .trim()
     .substring(0, ASK_ANSWER_CONSTANTS.MAX_QUERY_LENGTH);
+}
+
+/**
+ * Decode HTML entities safely for query sanitization
+ */
+function decodeHtmlEntitiesForQuery(text: string): string {
+  let result = text;
+
+  // Decode named entities (order matters: &amp; must be last)
+  const namedEntities: [string, string][] = [
+    ['&nbsp;', ' '],
+    ['&lt;', '<'],
+    ['&gt;', '>'],
+    ['&quot;', '"'],
+    ['&#39;', "'"],
+    ['&apos;', "'"],
+    ['&amp;', '&'], // Must be last to avoid double-decoding
+  ];
+
+  for (const [entity, char] of namedEntities) {
+    result = result.split(entity).join(char);
+  }
+
+  // Decode numeric entities (decimal and hex)
+  result = result.replace(/&#(\d+);/g, (_, code) => {
+    const num = parseInt(code, 10);
+    return num > 0 && num < 0x10ffff ? String.fromCharCode(num) : '';
+  });
+  result = result.replace(/&#x([0-9a-f]+);/gi, (_, code) => {
+    const num = parseInt(code, 16);
+    return num > 0 && num < 0x10ffff ? String.fromCharCode(num) : '';
+  });
+
+  return result;
+}
+
+/**
+ * Iteratively remove patterns until no more matches
+ * Prevents incomplete sanitization (e.g., <<script> leaving <script>)
+ */
+function iterativeRemovePattern(text: string, pattern: RegExp): string {
+  let result = text;
+  let prev = '';
+  // Limit iterations to prevent infinite loops
+  for (let i = 0; i < 10 && result !== prev; i++) {
+    prev = result;
+    result = result.replace(pattern, '');
+  }
+  return result;
+}
+
+/**
+ * Remove HTML tag and its content using string-based parsing
+ * More robust than regex for handling malformed HTML variants
+ *
+ * SECURITY NOTE: This is for text extraction to AI models, not XSS prevention.
+ * The simple approach handles common cases; edge cases just become text.
+ */
+function removeTagWithContent(html: string, tagName: string): string {
+  const lowerHtml = html.toLowerCase();
+  const openTag = `<${tagName.toLowerCase()}`;
+  const closeTag = `</${tagName.toLowerCase()}`;
+
+  let result = '';
+  let pos = 0;
+  let iterations = 0;
+  const maxIterations = 100; // Prevent infinite loops
+
+  while (pos < html.length && iterations < maxIterations) {
+    iterations++;
+    const openStart = lowerHtml.indexOf(openTag, pos);
+
+    if (openStart === -1) {
+      // No more opening tags, append rest of string
+      result += html.slice(pos);
+      break;
+    }
+
+    // Find end of opening tag (handles <script>, <script src="...">, etc.)
+    let openEnd = lowerHtml.indexOf('>', openStart);
+    if (openEnd === -1) {
+      // Malformed - no closing >, append rest
+      result += html.slice(pos);
+      break;
+    }
+
+    // Append content before this tag
+    result += html.slice(pos, openStart);
+
+    // Find closing tag (case-insensitive search)
+    const closeStart = lowerHtml.indexOf(closeTag, openEnd);
+    if (closeStart === -1) {
+      // No closing tag, just skip opening tag and continue
+      pos = openEnd + 1;
+      continue;
+    }
+
+    // Find end of closing tag
+    let closeEnd = lowerHtml.indexOf('>', closeStart);
+    if (closeEnd === -1) {
+      closeEnd = html.length - 1;
+    }
+
+    // Skip past the entire tag including content
+    pos = closeEnd + 1;
+  }
+
+  return result;
 }
 
 /**

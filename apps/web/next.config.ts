@@ -78,7 +78,7 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-eval
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live", // Next.js requires unsafe-eval, vercel.live for preview comments
               "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",

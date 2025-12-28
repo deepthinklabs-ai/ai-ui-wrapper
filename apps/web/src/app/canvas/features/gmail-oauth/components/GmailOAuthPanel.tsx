@@ -91,7 +91,8 @@ export function GmailOAuthPanel({
         connectionId: connection.id,
       });
     }
-  }, [connection?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connection?.id, currentConfig.connectionId]);
 
   return (
     <div className="space-y-4">

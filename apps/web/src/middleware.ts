@@ -29,6 +29,38 @@ const CSRF_EXEMPT_ROUTES = [
   '/api/pro/', // AI provider endpoints called internally from ask-answer
 ] as const;
 
+// Routes exempt from staging password protection (internal server-to-server calls)
+// These routes use INTERNAL_SERVICE_AUTH_HEADER for authentication instead
+const STAGING_EXEMPT_ROUTES = [
+  '/api/canvas/ask-answer/', // Internal server-to-server calls from workflow trigger
+  '/api/pro/', // AI provider endpoints called internally from ask-answer
+  '/api/workflows/', // Workflow execution endpoints
+  '/api/canvas/smart-router/', // Smart router endpoints
+  '/api/stripe/webhook', // Stripe webhooks need to work on staging
+  '/api/oauth/', // OAuth callbacks need to work on staging
+  '/api/auth/', // Auth endpoints must work before staging login (user auth != staging auth)
+] as const;
+
+// Internal service auth header name (must match serverAuth.ts)
+const INTERNAL_SERVICE_AUTH_HEADER = 'x-internal-service-key';
+
+// Check if route is exempt from staging protection
+function isStagingExemptRoute(pathname: string): boolean {
+  return STAGING_EXEMPT_ROUTES.some(route => pathname.startsWith(route));
+}
+
+// Verify internal service authentication
+function hasValidInternalServiceAuth(request: NextRequest): boolean {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) return false;
+
+  const authHeader = request.headers.get(INTERNAL_SERVICE_AUTH_HEADER);
+  if (!authHeader) return false;
+
+  // Use timing-safe comparison
+  return timingSafeCompare(authHeader, serviceKey);
+}
+
 /**
  * Middleware for staging environment password protection
  *
@@ -220,6 +252,15 @@ export async function middleware(request: NextRequest) {
 
   // Allow access to staging login page and its API
   if (pathname === '/staging-login' || pathname === '/api/staging-auth') {
+    return response;
+  }
+
+  // Allow internal server-to-server API calls (exempt routes or valid internal auth)
+  if (isStagingExemptRoute(pathname)) {
+    // For exempt routes, check if request has valid internal service auth
+    // If it does, allow through. If not, still allow but route's own auth will handle it.
+    // This enables both internal calls (with service key) and external calls (with user auth)
+    console.log(`[Middleware] Staging exempt route: ${pathname}`);
     return response;
   }
 

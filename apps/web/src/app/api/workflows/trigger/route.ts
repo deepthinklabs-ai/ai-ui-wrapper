@@ -28,7 +28,8 @@ import { validateTriggerInput, sanitizeMessage } from '@/app/canvas/features/mas
 import { executeSmartRouter } from '@/app/canvas/features/smart-router';
 import { executeResponseCompiler } from '@/app/canvas/features/response-compiler';
 import type { AgentResponse } from '@/app/canvas/features/response-compiler/types';
-import { getInternalBaseUrl } from '@/lib/internalApiUrl';
+import { getInternalBaseUrl, getVercelBypassHeaders } from '@/lib/internalApiUrl';
+import { INTERNAL_SERVICE_AUTH_HEADER } from '@/lib/serverAuth';
 import type { NodeExecutionState, ExecutionLogEntry } from '@/app/canvas/types';
 
 // Lazy Supabase client - created on first use to avoid module-level crashes
@@ -44,6 +45,71 @@ function getSupabase(): any {
     _supabase = createClient(url, key);
   }
   return _supabase;
+}
+
+/**
+ * Get the effective config for a node, using runtime_config for encrypted configs
+ * runtime_config stores non-sensitive fields unencrypted for server-side access
+ */
+function getEffectiveConfig(node: any): GenesisBotNodeConfig {
+  // If config is an object (not encrypted), use it directly
+  if (node.config && typeof node.config === 'object' && !Array.isArray(node.config)) {
+    return node.config as GenesisBotNodeConfig;
+  }
+
+  // Config is encrypted (string) - use runtime_config for essential fields
+  const runtimeConfig = node.runtime_config || {};
+
+  return {
+    name: runtimeConfig.name || 'AI Agent',
+    model_provider: runtimeConfig.model_provider || 'claude',
+    model_name: runtimeConfig.model_name || 'claude-sonnet-4-5',
+    system_prompt: '', // Can't decrypt, but not needed for routing
+    gmail: { enabled: runtimeConfig.gmail_enabled || false },
+    calendar: { enabled: runtimeConfig.calendar_enabled || false },
+    sheets: { enabled: runtimeConfig.sheets_enabled || false },
+    docs: { enabled: runtimeConfig.docs_enabled || false },
+    slack: { enabled: runtimeConfig.slack_enabled || false },
+  } as GenesisBotNodeConfig;
+}
+
+/**
+ * Get the effective config for a Smart Router node, handling encrypted configs
+ * Unlike GenesisBotNodeConfig, Smart Router doesn't have runtime_config yet,
+ * so we use sensible defaults when config is encrypted
+ */
+function getEffectiveSmartRouterConfig(node: any): SmartRouterNodeConfig {
+  // If config is an object (not encrypted), use it directly
+  if (node.config && typeof node.config === 'object' && !Array.isArray(node.config)) {
+    // Ensure keyword_rules is always an array
+    const config = node.config as SmartRouterNodeConfig;
+    return {
+      ...config,
+      keyword_rules: Array.isArray(config.keyword_rules) ? config.keyword_rules : [],
+    };
+  }
+
+  // Config is encrypted (string) - use defaults
+  // Note: Smart Router doesn't have runtime_config yet, so use sensible defaults
+  console.log(`[getEffectiveSmartRouterConfig] Smart Router config is encrypted, using defaults`);
+
+  return {
+    name: 'Smart Router',
+    description: 'Routes queries to appropriate agents',
+    model_provider: 'claude',
+    model_name: 'claude-sonnet-4-5',
+    routing_strategy: 'keyword_then_ai',
+    keyword_rules: [
+      { id: 'email-rule', keywords: ['email', 'mail', 'send', 'inbox', 'compose', 'reply'], integration_type: 'gmail', priority: 10, enabled: true },
+      { id: 'calendar-rule', keywords: ['schedule', 'calendar', 'meeting', 'appointment', 'event', 'reminder'], integration_type: 'calendar', priority: 10, enabled: true },
+      { id: 'sheets-rule', keywords: ['spreadsheet', 'sheet', 'excel', 'data', 'table', 'csv'], integration_type: 'sheets', priority: 10, enabled: true },
+      { id: 'docs-rule', keywords: ['document', 'doc', 'write', 'draft', 'notes'], integration_type: 'docs', priority: 10, enabled: true },
+      { id: 'slack-rule', keywords: ['slack', 'channel', 'dm', 'workspace'], integration_type: 'slack', priority: 10, enabled: true },
+    ],
+    temperature: 0.3,
+    allow_parallel_routing: true,
+    max_parallel_agents: 5,
+  } as SmartRouterNodeConfig;
 }
 
 /**
@@ -125,7 +191,15 @@ async function callAgentAskAnswer(
 
   try {
     const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+    };
+    // Add internal service auth for server-to-server calls
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (serviceKey) {
+      headers[INTERNAL_SERVICE_AUTH_HEADER] = serviceKey;
+    }
     if (authHeader) {
       headers['Authorization'] = authHeader;
     }
@@ -403,7 +477,14 @@ export async function POST(request: NextRequest) {
       console.log(`[POST /api/workflows/trigger] Detected Smart Router workflow`);
       addLog('info', 'Detected Smart Router workflow', smartRouterNode.id);
 
-      const routerConfig = smartRouterNode.config as SmartRouterNodeConfig;
+      const routerConfig = getEffectiveSmartRouterConfig(smartRouterNode);
+
+      // Track Smart Router starting
+      updateNodeState(smartRouterNode.id, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+        input: { query: sanitizedMessage },
+      });
 
       // Track Smart Router starting
       updateNodeState(smartRouterNode.id, {
@@ -444,8 +525,19 @@ export async function POST(request: NextRequest) {
       }
 
       // Build ConnectedAgentInfo for all agents
+      // Use getEffectiveConfig to handle encrypted configs by falling back to runtime_config
+      agentNodes.forEach((node: any) => {
+        const isEncrypted = typeof node.config === 'string';
+        const effectiveConfig = getEffectiveConfig(node);
+        console.log(`[POST /api/workflows/trigger] Agent node ${node.id}:`);
+        console.log(`  - Config encrypted: ${isEncrypted}`);
+        console.log(`  - Has runtime_config: ${!!node.runtime_config}`);
+        console.log(`  - Effective model_provider: ${effectiveConfig.model_provider}`);
+        console.log(`  - Effective model_name: ${effectiveConfig.model_name}`);
+      });
+
       const connectedAgents: ConnectedAgentInfo[] = agentNodes.map((node: any) =>
-        buildAgentInfo(node.id, node.config as GenesisBotNodeConfig)
+        buildAgentInfo(node.id, getEffectiveConfig(node))
       );
 
       console.log(`[POST /api/workflows/trigger] Smart Router has ${connectedAgents.length} connected agents`);
@@ -498,7 +590,7 @@ export async function POST(request: NextRequest) {
 
       // Mark all target agents as running
       targetAgents.forEach((agentNode: any) => {
-        const agentConfig = agentNode.config as GenesisBotNodeConfig;
+        const agentConfig = getEffectiveConfig(agentNode);
         updateNodeState(agentNode.id, {
           status: 'running',
           started_at: new Date().toISOString(),
@@ -508,7 +600,7 @@ export async function POST(request: NextRequest) {
       });
 
       const agentPromises = targetAgents.map((agentNode: any) => {
-        const agentConfig = agentNode.config as GenesisBotNodeConfig;
+        const agentConfig = getEffectiveConfig(agentNode);
         const edge = edgeMap.get(agentNode.id);
 
         return callAgentAskAnswer({
@@ -649,7 +741,15 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      const botConfig = targetBot.config as GenesisBotNodeConfig;
+      const botConfig = getEffectiveConfig(targetBot);
+
+      // Track bot starting
+      updateNodeState(targetBot.id, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+        input: { query: sanitizedMessage },
+      });
+      addLog('info', `Starting bot: ${botConfig.name || 'AI Agent'}`, targetBot.id);
 
       // Track bot starting
       updateNodeState(targetBot.id, {
@@ -661,7 +761,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`[POST /api/workflows/trigger] Executing with bot: ${botConfig.name}`);
       console.log(`  Model: ${botConfig.model_provider}/${botConfig.model_name}`);
-      console.log(`  System Prompt (first 100 chars): ${botConfig.system_prompt?.slice(0, 100) || 'UNDEFINED'}`);
+      console.log(`  System Prompt: ${botConfig.system_prompt ? 'SET' : 'NOT SET (encrypted or missing)'}`);
 
       if (askAnswerHistory.length > 0) {
         console.log(`[POST /api/workflows/trigger] Including ${askAnswerHistory.length} conversation history entries`);
@@ -669,7 +769,15 @@ export async function POST(request: NextRequest) {
 
       // Call Ask/Answer API for the first bot - this gives us Gmail tool support
       const askAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
-      const askAnswerHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      const askAnswerHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+      };
+      // Add internal service auth for server-to-server calls
+      const legacyServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (legacyServiceKey) {
+        askAnswerHeaders[INTERNAL_SERVICE_AUTH_HEADER] = legacyServiceKey;
+      }
       if (authHeader) {
         askAnswerHeaders['Authorization'] = authHeader;
       }
@@ -765,7 +873,7 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        const nextBotConfig = nextBot.config as GenesisBotNodeConfig;
+        const nextBotConfig = getEffectiveConfig(nextBot);
         const currentBot = chainDepth === 0 ? targetBot : await getSupabase()
           .from('canvas_nodes')
           .select('*')
@@ -773,7 +881,7 @@ export async function POST(request: NextRequest) {
           .single()
           .then((r: any) => r.data);
 
-        const currentBotConfig = currentBot?.config as GenesisBotNodeConfig;
+        const currentBotConfig = currentBot ? getEffectiveConfig(currentBot) : null;
 
         chainDepth++;
         console.log(`[POST /api/workflows/trigger] Chain step ${chainDepth}: ${currentBotConfig?.name} → ${nextBotConfig.name} via Ask/Answer`);
@@ -810,7 +918,15 @@ export async function POST(request: NextRequest) {
 
         // Call Ask/Answer API to send response to next bot
         const chainAskAnswerUrl = new URL('/api/canvas/ask-answer/query', internalBaseUrl);
-        const chainHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+        const chainHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+        };
+        // Add internal service auth for server-to-server calls
+        const chainServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (chainServiceKey) {
+          chainHeaders[INTERNAL_SERVICE_AUTH_HEADER] = chainServiceKey;
+        }
         if (authHeader) {
           chainHeaders['Authorization'] = authHeader;
         }
@@ -912,14 +1028,14 @@ export async function POST(request: NextRequest) {
     };
 
     if (smartRouterNode) {
-      const routerConfig = smartRouterNode.config as SmartRouterNodeConfig;
+      const routerConfig = getEffectiveSmartRouterConfig(smartRouterNode);
       metadata.botName = routerConfig.name || 'Smart Router';
       metadata.model = `${routerConfig.model_provider}/${routerConfig.model_name}`;
       metadata.workflowType = 'smart_router';
     } else {
       const targetBot = connectedNodes.find((n: any) => n.type === 'GENESIS_BOT');
       if (targetBot) {
-        const botConfig = targetBot.config as GenesisBotNodeConfig;
+        const botConfig = getEffectiveConfig(targetBot);
         metadata.botName = botConfig.name;
         metadata.model = `${botConfig.model_provider}/${botConfig.model_name}`;
       }

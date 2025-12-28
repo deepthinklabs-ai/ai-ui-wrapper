@@ -11,6 +11,8 @@ import {
   evaluateKeywordRules,
   parseAIRoutingResponse,
 } from './routingEngine';
+import { INTERNAL_SERVICE_AUTH_HEADER } from '@/lib/serverAuth';
+import { getVercelBypassHeaders } from '@/lib/internalApiUrl';
 
 /**
  * Execute Smart Router logic
@@ -87,9 +89,25 @@ export async function executeSmartRouter(
         : '/api/pro/grok';
 
     try {
-      const response = await fetch(new URL(apiEndpoint, internalBaseUrl).toString(), {
+      // Build headers with internal service auth and Vercel bypass for server-to-server calls
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getVercelBypassHeaders(), // Bypass Vercel Deployment Protection
+      };
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceKey) {
+        headers[INTERNAL_SERVICE_AUTH_HEADER] = serviceKey;
+      }
+
+      // Debug: Log the URL and headers being used
+      const fullUrl = new URL(apiEndpoint, internalBaseUrl).toString();
+      console.log(`[Smart Router] Calling AI API: ${fullUrl}`);
+      console.log(`[Smart Router] Has bypass header: ${!!headers['x-vercel-protection-bypass']}`);
+      console.log(`[Smart Router] Has service auth: ${!!headers[INTERNAL_SERVICE_AUTH_HEADER]}`);
+
+      const response = await fetch(fullUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           userId,
           messages: [{ role: 'user', content: query }],

@@ -143,6 +143,15 @@ export function getGoogleAuthUrl(state: string, service?: string): string {
  * Exchange authorization code for tokens
  */
 export async function exchangeCodeForTokens(code: string): Promise<GoogleOAuthTokens> {
+  const redirectUri = GOOGLE_OAUTH_CONFIG.redirectUri;
+
+  // Debug: Log what we're sending to Google
+  console.log('[Google OAuth] Token exchange - redirect_uri:', redirectUri);
+  console.log('[Google OAuth] Token exchange - APP_URL:', process.env.APP_URL);
+  console.log('[Google OAuth] Token exchange - NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
+  console.log('[Google OAuth] Token exchange - client_id present:', !!GOOGLE_OAUTH_CONFIG.clientId);
+  console.log('[Google OAuth] Token exchange - client_secret present:', !!GOOGLE_OAUTH_CONFIG.clientSecret);
+
   const response = await fetch(GOOGLE_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',
     headers: {
@@ -152,13 +161,14 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleOAuthTo
       code,
       client_id: GOOGLE_OAUTH_CONFIG.clientId,
       client_secret: GOOGLE_OAUTH_CONFIG.clientSecret,
-      redirect_uri: GOOGLE_OAUTH_CONFIG.redirectUri,
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     }),
   });
 
   if (!response.ok) {
     const error = await response.text();
+    console.error('[Google OAuth] Token exchange failed:', error);
     throw new Error(`Failed to exchange code for tokens: ${error}`);
   }
 

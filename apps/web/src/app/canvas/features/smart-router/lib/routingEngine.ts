@@ -81,6 +81,12 @@ export function evaluateKeywordRules(
   const matchedKeywords: Set<string> = new Set();
   const matchedRules: KeywordRoutingRule[] = [];
 
+  // Defensive check: ensure rules is an array (could be undefined if config is encrypted)
+  if (!rules || !Array.isArray(rules)) {
+    console.warn('[evaluateKeywordRules] rules is not an array, returning empty result');
+    return { matchedNodeIds: [], matchedKeywords: [], matchedRules: [] };
+  }
+
   // Sort rules by priority (higher first)
   const sortedRules = [...rules]
     .filter(r => r.enabled)

@@ -127,7 +127,8 @@ export async function getUsageStatus(
   supabase: SupabaseClient,
   userId: string,
   modelName: string,
-  config: RateLimitConfig
+  config: RateLimitConfig,
+  options?: CheckRateLimitOptions
 ): Promise<UsageStatus> {
   const estDate = getESTDate();
   const minuteBucket = getMinuteBucket();
@@ -170,7 +171,8 @@ export async function getUsageStatus(
   let secondsUntilNextRequest: number | undefined;
 
   // BURST/BOT PROTECTION: Check if last request was too recent
-  if (lastRequestAt) {
+  // Skip for internal service calls (e.g., workflow execution with multiple AI calls)
+  if (lastRequestAt && !options?.skipBurstLimit) {
     const secondsSinceLastRequest = (Date.now() - lastRequestAt.getTime()) / 1000;
     if (secondsSinceLastRequest < MIN_REQUEST_INTERVAL_SECONDS) {
       isBlocked = true;
@@ -219,6 +221,11 @@ export async function getUsageStatus(
   };
 }
 
+interface CheckRateLimitOptions {
+  /** Skip burst limit check (for internal service calls) */
+  skipBurstLimit?: boolean;
+}
+
 /**
  * Check if a request is allowed (pre-request check)
  */
@@ -226,7 +233,8 @@ export async function checkRateLimit(
   supabase: SupabaseClient,
   userId: string,
   tier: string,
-  modelName: string
+  modelName: string,
+  options?: CheckRateLimitOptions
 ): Promise<RateLimitResult> {
   // Get rate limit config
   const config = await getRateLimitConfig(supabase, tier, modelName);
@@ -252,7 +260,7 @@ export async function checkRateLimit(
     };
   }
 
-  const status = await getUsageStatus(supabase, userId, modelName, config);
+  const status = await getUsageStatus(supabase, userId, modelName, config, options);
 
   return {
     allowed: !status.is_blocked,
