@@ -184,29 +184,77 @@ export function getAskAnswerEdgesForNode(
 /**
  * Sanitize query text for safe processing
  * Uses server-safe HTML stripping (no jsdom dependency)
+ *
+ * SECURITY NOTE: We decode entities FIRST to prevent double-escaping attacks,
+ * then use iterative tag stripping for complete sanitization.
  */
 export function sanitizeQuery(query: string): string {
-  // SECURITY: Strip all HTML tags - queries should be plain text
-  // This approach works on both server and client without jsdom
-  const sanitized = query
-    // Remove script tags and their content first
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    // Remove style tags and their content
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    // Remove all HTML tags
-    .replace(/<[^>]*>/g, '')
-    // Decode common HTML entities
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+  let text = query;
 
-  return sanitized
+  // STEP 1: Decode HTML entities FIRST (prevents double-escaping attack)
+  text = decodeHtmlEntitiesForQuery(text);
+
+  // STEP 2: Remove script/style content using iterative approach
+  text = iterativeRemovePattern(text, /<script\b[^]*?<\/script>/gi);
+  text = iterativeRemovePattern(text, /<style\b[^]*?<\/style>/gi);
+
+  // STEP 3: Strip all remaining HTML tags iteratively
+  text = iterativeRemovePattern(text, /<[^>]*>/g);
+
+  // STEP 4: Clean up
+  return text
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
     .trim()
     .substring(0, ASK_ANSWER_CONSTANTS.MAX_QUERY_LENGTH);
+}
+
+/**
+ * Decode HTML entities safely for query sanitization
+ */
+function decodeHtmlEntitiesForQuery(text: string): string {
+  let result = text;
+
+  // Decode named entities (order matters: &amp; must be last)
+  const namedEntities: [string, string][] = [
+    ['&nbsp;', ' '],
+    ['&lt;', '<'],
+    ['&gt;', '>'],
+    ['&quot;', '"'],
+    ['&#39;', "'"],
+    ['&apos;', "'"],
+    ['&amp;', '&'], // Must be last to avoid double-decoding
+  ];
+
+  for (const [entity, char] of namedEntities) {
+    result = result.split(entity).join(char);
+  }
+
+  // Decode numeric entities (decimal and hex)
+  result = result.replace(/&#(\d+);/g, (_, code) => {
+    const num = parseInt(code, 10);
+    return num > 0 && num < 0x10ffff ? String.fromCharCode(num) : '';
+  });
+  result = result.replace(/&#x([0-9a-f]+);/gi, (_, code) => {
+    const num = parseInt(code, 16);
+    return num > 0 && num < 0x10ffff ? String.fromCharCode(num) : '';
+  });
+
+  return result;
+}
+
+/**
+ * Iteratively remove patterns until no more matches
+ * Prevents incomplete sanitization (e.g., <<script> leaving <script>)
+ */
+function iterativeRemovePattern(text: string, pattern: RegExp): string {
+  let result = text;
+  let prev = '';
+  // Limit iterations to prevent infinite loops
+  for (let i = 0; i < 10 && result !== prev; i++) {
+    prev = result;
+    result = result.replace(pattern, '');
+  }
+  return result;
 }
 
 /**

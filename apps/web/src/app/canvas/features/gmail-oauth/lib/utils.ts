@@ -91,64 +91,104 @@ export function formatEmailList(emails: EmailMessage[]): string {
 }
 
 /**
- * Sanitize email body for safe display
- * Uses server-safe HTML sanitization (no jsdom dependency)
+ * Sanitize email body for AI model consumption
+ *
+ * SECURITY NOTE: We use a simple, secure approach rather than complex regex patterns
+ * that are known to be bypassable. Since output goes to AI models (not rendered as HTML),
+ * we just need to extract readable text content.
  */
 export function sanitizeEmailBody(body: string): string {
-  // SECURITY: Remove dangerous tags and attributes
-  // This approach works on both server and client without jsdom
-  return body
-    // Remove script tags and their content
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    // Remove style tags and their content
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    // Remove iframe, object, embed, form tags
-    .replace(/<(iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
-    .replace(/<(iframe|object|embed|form)\b[^>]*\/?>/gi, '')
-    // Remove event handler attributes (on*)
-    .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/\s+on\w+\s*=\s*[^\s>]+/gi, '')
-    // Remove javascript: and vbscript: URLs
-    .replace(/\s+href\s*=\s*["']?\s*javascript:[^"'>\s]*/gi, '')
-    .replace(/\s+src\s*=\s*["']?\s*javascript:[^"'>\s]*/gi, '')
-    // Remove data: URLs in src attributes (potential XSS vector)
-    .replace(/\s+src\s*=\s*["']?\s*data:[^"'>\s]*/gi, '');
+  // Simply convert to plain text - AI models don't execute HTML
+  // This is safer than attempting regex-based HTML sanitization
+  return htmlToPlainText(body);
 }
 
 /**
  * Extract plain text from HTML email body
  * Uses server-safe HTML stripping (no jsdom dependency)
+ *
+ * SECURITY NOTE: Output goes to AI models, not rendered as HTML.
+ * We decode entities FIRST to prevent double-escaping attacks,
+ * then use iterative tag stripping for complete sanitization.
  */
 export function htmlToPlainText(html: string): string {
-  // First, convert block elements to newlines for readability
-  const withNewlines = html
+  let text = html;
+
+  // STEP 1: Decode HTML entities FIRST (prevents double-escaping attack)
+  // e.g., &lt;script&gt; becomes <script> which is then stripped
+  // If we decoded AFTER stripping, &lt;script&gt; would survive as <script>
+  text = decodeHtmlEntities(text);
+
+  // STEP 2: Convert block elements to newlines for readability
+  text = text
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/li>/gi, '\n')
     .replace(/<\/tr>/gi, '\n');
 
-  // Strip all HTML tags (server-safe approach)
-  const plainText = withNewlines
-    // Remove script tags and their content first
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    // Remove style tags and their content
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    // Remove all HTML tags
-    .replace(/<[^>]*>/g, '')
-    // Decode common HTML entities
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)));
+  // STEP 3: Remove script/style content using iterative approach
+  // (handles cases like <<script> that single-pass would miss)
+  text = iterativeRemove(text, /<script\b[^]*?<\/script>/gi);
+  text = iterativeRemove(text, /<style\b[^]*?<\/style>/gi);
 
-  // Clean up whitespace
-  return plainText
-    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+  // STEP 4: Strip all remaining HTML tags iteratively
+  text = iterativeRemove(text, /<[^>]*>/g);
+
+  // STEP 5: Clean up whitespace
+  return text
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+/**
+ * Decode HTML entities safely
+ * Handles named entities and numeric entities (decimal and hex)
+ */
+function decodeHtmlEntities(text: string): string {
+  let result = text;
+
+  // Decode named entities (order matters: &amp; must be last)
+  const namedEntities: [string, string][] = [
+    ['&nbsp;', ' '],
+    ['&lt;', '<'],
+    ['&gt;', '>'],
+    ['&quot;', '"'],
+    ['&#39;', "'"],
+    ['&apos;', "'"],
+    ['&amp;', '&'], // Must be last to avoid double-decoding
+  ];
+
+  for (const [entity, char] of namedEntities) {
+    result = result.split(entity).join(char);
+  }
+
+  // Decode numeric entities (decimal: &#65; and hex: &#x41;)
+  result = result.replace(/&#(\d+);/g, (_, code) => {
+    const num = parseInt(code, 10);
+    return num > 0 && num < 0x10ffff ? String.fromCharCode(num) : '';
+  });
+  result = result.replace(/&#x([0-9a-f]+);/gi, (_, code) => {
+    const num = parseInt(code, 16);
+    return num > 0 && num < 0x10ffff ? String.fromCharCode(num) : '';
+  });
+
+  return result;
+}
+
+/**
+ * Iteratively remove patterns until no more matches
+ * Prevents incomplete sanitization (e.g., <<script> leaving <script>)
+ */
+function iterativeRemove(text: string, pattern: RegExp): string {
+  let result = text;
+  let prev = '';
+  // Limit iterations to prevent infinite loops on pathological input
+  for (let i = 0; i < 10 && result !== prev; i++) {
+    prev = result;
+    result = result.replace(pattern, '');
+  }
+  return result;
 }
 
 /**

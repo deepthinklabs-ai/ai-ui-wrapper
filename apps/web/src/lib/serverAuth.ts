@@ -206,7 +206,8 @@ export async function getAuthenticatedUserOrService(
       .single();
 
     if (profileError || !profile) {
-      console.error(`[serverAuth] User not found: ${bodyUserId}, error:`, profileError?.message);
+      // SECURITY: Use structured logging to avoid tainted format string vulnerability
+      console.error("[serverAuth] User not found:", { userId: bodyUserId, error: profileError?.message });
       return {
         user: null,
         error: "User not found",
