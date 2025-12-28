@@ -486,6 +486,13 @@ export async function POST(request: NextRequest) {
         input: { query: sanitizedMessage },
       });
 
+      // Track Smart Router starting
+      updateNodeState(smartRouterNode.id, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+        input: { query: sanitizedMessage },
+      });
+
       // Fetch edges from Smart Router to find connected agents
       const { data: routerEdges, error: routerEdgesError } = await getSupabase()
         .from('canvas_edges')
@@ -735,6 +742,14 @@ export async function POST(request: NextRequest) {
       }
 
       const botConfig = getEffectiveConfig(targetBot);
+
+      // Track bot starting
+      updateNodeState(targetBot.id, {
+        status: 'running',
+        started_at: new Date().toISOString(),
+        input: { query: sanitizedMessage },
+      });
+      addLog('info', `Starting bot: ${botConfig.name || 'AI Agent'}`, targetBot.id);
 
       // Track bot starting
       updateNodeState(targetBot.id, {
