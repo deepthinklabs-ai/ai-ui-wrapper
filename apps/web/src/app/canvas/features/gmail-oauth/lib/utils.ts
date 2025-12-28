@@ -127,11 +127,10 @@ export function htmlToPlainText(html: string): string {
     .replace(/<\/li>/gi, '\n')
     .replace(/<\/tr>/gi, '\n');
 
-  // STEP 3: Remove script/style content using iterative approach
-  // (handles cases like <<script> that single-pass would miss)
-  // Note: \s* handles whitespace in closing tags like </script >
-  text = iterativeRemove(text, /<script\b[^]*?<\/script\s*>/gi);
-  text = iterativeRemove(text, /<style\b[^]*?<\/style\s*>/gi);
+  // STEP 3: Remove script/style tags and their content
+  // Using string-based removal to avoid regex complexity issues
+  text = removeTagWithContent(text, 'script');
+  text = removeTagWithContent(text, 'style');
 
   // STEP 4: Strip all remaining HTML tags iteratively
   text = iterativeRemove(text, /<[^>]*>/g);
@@ -189,6 +188,65 @@ function iterativeRemove(text: string, pattern: RegExp): string {
     prev = result;
     result = result.replace(pattern, '');
   }
+  return result;
+}
+
+/**
+ * Remove HTML tag and its content using string-based parsing
+ * More robust than regex for handling malformed HTML variants
+ *
+ * SECURITY NOTE: This is for text extraction to AI models, not XSS prevention.
+ * The simple approach handles common cases; edge cases just become text.
+ */
+function removeTagWithContent(html: string, tagName: string): string {
+  const lowerHtml = html.toLowerCase();
+  const openTag = `<${tagName.toLowerCase()}`;
+  const closeTag = `</${tagName.toLowerCase()}`;
+
+  let result = '';
+  let pos = 0;
+  let iterations = 0;
+  const maxIterations = 100; // Prevent infinite loops
+
+  while (pos < html.length && iterations < maxIterations) {
+    iterations++;
+    const openStart = lowerHtml.indexOf(openTag, pos);
+
+    if (openStart === -1) {
+      // No more opening tags, append rest of string
+      result += html.slice(pos);
+      break;
+    }
+
+    // Find end of opening tag (handles <script>, <script src="...">, etc.)
+    let openEnd = lowerHtml.indexOf('>', openStart);
+    if (openEnd === -1) {
+      // Malformed - no closing >, append rest
+      result += html.slice(pos);
+      break;
+    }
+
+    // Append content before this tag
+    result += html.slice(pos, openStart);
+
+    // Find closing tag (case-insensitive search)
+    const closeStart = lowerHtml.indexOf(closeTag, openEnd);
+    if (closeStart === -1) {
+      // No closing tag, just skip opening tag and continue
+      pos = openEnd + 1;
+      continue;
+    }
+
+    // Find end of closing tag
+    let closeEnd = lowerHtml.indexOf('>', closeStart);
+    if (closeEnd === -1) {
+      closeEnd = html.length - 1;
+    }
+
+    // Skip past the entire tag including content
+    pos = closeEnd + 1;
+  }
+
   return result;
 }
 
