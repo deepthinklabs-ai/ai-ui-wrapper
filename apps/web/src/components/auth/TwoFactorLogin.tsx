@@ -169,13 +169,13 @@ export default function TwoFactorLogin({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 mb-4">
-          <svg className="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky/30 mb-4">
+          <svg className="h-6 w-6 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-slate-100">Two-Factor Authentication</h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <h2 className="text-xl font-semibold text-foreground">Two-Factor Authentication</h2>
+        <p className="mt-2 text-sm text-foreground/60">
           Enter the code sent to {maskedEmail}
         </p>
       </div>
@@ -194,7 +194,7 @@ export default function TwoFactorLogin({
             onKeyDown={e => handleKeyDown(index, e)}
             onPaste={index === 0 ? handlePaste : undefined}
             disabled={isLoading}
-            className="w-10 h-12 text-center text-xl font-bold rounded-md border border-slate-700 bg-slate-900 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            className="w-10 h-12 text-center text-xl font-bold rounded-md border border-foreground/20 bg-gradient-to-br from-butter/40 via-mint/30 to-sky/40 text-foreground focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky disabled:opacity-50"
             autoFocus={index === 0}
           />
         ))}
@@ -218,7 +218,7 @@ export default function TwoFactorLogin({
       <button
         onClick={() => verifyCode()}
         disabled={isLoading || code.some(d => d === '')}
-        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-full bg-white/60 border border-foreground/30 px-4 py-2 text-sm font-semibold text-foreground hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? 'Verifying...' : 'Verify'}
       </button>
@@ -228,13 +228,13 @@ export default function TwoFactorLogin({
         <button
           onClick={sendVerificationCode}
           disabled={isSending || resendCooldown > 0}
-          className="text-blue-400 hover:text-blue-300 disabled:text-slate-500 disabled:cursor-not-allowed"
+          className="text-foreground hover:text-foreground/80 disabled:text-foreground/40 disabled:cursor-not-allowed"
         >
           {isSending ? 'Sending...' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
         </button>
         <button
           onClick={onCancel}
-          className="text-slate-400 hover:text-slate-300"
+          className="text-foreground/60 hover:text-foreground/80"
         >
           Cancel
         </button>
