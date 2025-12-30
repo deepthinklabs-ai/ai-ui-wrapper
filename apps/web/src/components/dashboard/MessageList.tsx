@@ -38,9 +38,9 @@ const MessageList: React.FC<MessageListProps> = ({
   }, [messages.length, thinking]);
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-slate-950">
+    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
       {loading && (
-        <div className="text-xs text-slate-500">Loading messages…</div>
+        <div className="text-xs text-foreground/60">Loading messages…</div>
       )}
 
       {messages.map((m, index) => (
@@ -62,12 +62,12 @@ const MessageList: React.FC<MessageListProps> = ({
       {/* Typing / thinking indicator */}
       {thinking && (
         <div className="flex w-full justify-start">
-          <div className="max-w-[50%] rounded-lg px-3 py-2 text-sm bg-slate-900 text-slate-100 border border-slate-800">
+          <div className="max-w-[50%] rounded-lg px-3 py-2 text-sm bg-white/60 text-foreground border border-white/40 shadow-sm backdrop-blur-md">
             <div className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
               Assistant
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="h-2 w-2 rounded-full bg-slate-500 animate-pulse" />
+            <div className="flex items-center gap-2 text-xs text-foreground/60">
+              <span className="h-2 w-2 rounded-full bg-sky animate-pulse" />
               <span className="animate-pulse">Thinking…</span>
             </div>
           </div>
@@ -75,7 +75,7 @@ const MessageList: React.FC<MessageListProps> = ({
       )}
 
       {!loading && messages.length === 0 && !thinking && (
-        <div className="text-xs text-slate-500">
+        <div className="text-sm text-foreground">
           Start the conversation by sending a message.
         </div>
       )}
