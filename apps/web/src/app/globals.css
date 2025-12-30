@@ -62,24 +62,24 @@ body {
   box-shadow: 0 4px 15px rgba(205, 236, 208, 0.4);
 }
 
-/* Rainbow gradient for primary buttons (New thread, Send, etc.) */
+/* Rainbow gradient for primary buttons (New thread, Send, etc.) - muted pastels */
 .rainbow-gradient {
-  background: linear-gradient(90deg, #F9E8AA, #B8E8D0, #A8D8EA, #D4B8E8, #F5C6D6);
+  background: linear-gradient(90deg, #FBF3D5, #DFF2E8, #D8EDF5, #E8DFF2, #F9E4EC);
   color: var(--text-main);
   font-weight: 600;
   border: none;
-  box-shadow: 0 4px 15px rgba(168, 216, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(168, 216, 234, 0.15);
   transition: all 0.2s ease;
 }
 
 .rainbow-gradient:hover {
-  box-shadow: 0 6px 20px rgba(168, 216, 234, 0.5);
+  box-shadow: 0 4px 12px rgba(168, 216, 234, 0.25);
   transform: translateY(-1px);
 }
 
-/* Rainbow gradient for user message bubbles */
+/* Rainbow gradient for user message bubbles - muted pastels */
 .rainbow-message {
-  background: linear-gradient(135deg, #F9E8AA 0%, #B8E8D0 25%, #A8D8EA 50%, #D4B8E8 75%, #F5C6D6 100%);
+  background: linear-gradient(135deg, #FBF3D5 0%, #DFF2E8 25%, #D8EDF5 50%, #E8DFF2 75%, #F9E4EC 100%);
   color: var(--text-main);
   border: none;
 }
