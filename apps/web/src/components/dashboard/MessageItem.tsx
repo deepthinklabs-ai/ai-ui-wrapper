@@ -100,7 +100,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
         <div
           className={`rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap shadow-sm ${
             isUser
-              ? "rainbow-message"
+              ? "bg-gray-100/80 text-foreground border border-gray-200/60 backdrop-blur-md"
               : isSummary
               ? "bg-secondary-mint/60 text-emerald-900 border border-secondary-mint backdrop-blur-md"
               : "bg-white/60 text-foreground border border-white/40 backdrop-blur-md"

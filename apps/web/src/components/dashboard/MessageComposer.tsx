@@ -564,7 +564,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
             </button>
           )}
           <button
-            className="rounded-full rainbow-gradient px-5 py-2 text-sm font-medium disabled:opacity-60"
+            className="rounded-full rainbow-gradient border border-foreground/30 px-5 py-2 text-sm font-medium disabled:opacity-60"
             onClick={onSend}
             disabled={disabled || (!value.trim() && attachedFiles.length === 0)}
           >
