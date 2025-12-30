@@ -98,12 +98,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
         {/* Message Content */}
         <div
-          className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+          className={`rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap shadow-sm ${
             isUser
-              ? "bg-sky-600 text-white"
+              ? "bg-gray-100/80 text-foreground border border-gray-200/60 backdrop-blur-md"
               : isSummary
-              ? "bg-emerald-900/60 text-emerald-50 border border-emerald-700/70"
-              : "bg-slate-900 text-slate-100 border border-slate-800"
+              ? "bg-secondary-mint/60 text-emerald-900 border border-secondary-mint backdrop-blur-md"
+              : "bg-white/60 text-foreground border border-white/40 backdrop-blur-md"
           }`}
         >
           <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide opacity-70">
@@ -115,7 +115,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             )}
           </div>
 
-          <div className="prose prose-invert prose-sm max-w-none">
+          <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -158,8 +158,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
           {/* Show citations if present */}
           {m.citations && m.citations.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-slate-700/50">
-              <div className="text-xs text-slate-400 mb-2">Sources:</div>
+            <div className="mt-3 pt-3 border-t border-foreground-secondary/10">
+              <div className="text-xs text-foreground-secondary/60 mb-2">Sources:</div>
               <div className="flex flex-col gap-1">
                 {m.citations.map((citation, idx) => (
                   <a
@@ -167,7 +167,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                     href={citation.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:text-blue-300 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors flex items-start gap-1"
+                    className="text-xs text-blue-600 hover:text-blue-500 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors flex items-start gap-1"
                   >
                     <span className="opacity-60">[{idx + 1}]</span>
                     <span className="flex-1 break-all">{citation.title || citation.url}</span>

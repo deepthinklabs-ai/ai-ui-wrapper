@@ -32,7 +32,7 @@ export default function MicrophoneButton({
     return (
       <button
         disabled
-        className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-500 cursor-not-allowed"
+        className="flex items-center gap-2 rounded-md border border-foreground/20 bg-white/40 px-3 py-1.5 text-xs text-foreground/40 cursor-not-allowed"
         title="Speech recognition not supported in this browser"
       >
         <svg
@@ -57,18 +57,18 @@ export default function MicrophoneButton({
   // Determine button styling based on mode and state
   const getButtonClass = () => {
     if (pushToTalkMode && isPushing) {
-      return 'border-green-500 bg-green-500/20 text-green-400 animate-pulse';
+      return 'border-mint/50 bg-mint/40 text-emerald-700 animate-pulse';
     }
     if (pushToTalkMode && !isListening) {
-      return 'border-blue-500 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30';
+      return 'border-sky/50 bg-sky/30 text-blue-700 hover:bg-sky/40';
     }
     if (autoVoiceMode && !isListening) {
-      return 'border-purple-500 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30';
+      return 'border-lavender/50 bg-lavender/30 text-purple-700 hover:bg-lavender/40';
     }
     if (isListening) {
-      return 'border-red-500 bg-red-500/20 text-red-400 animate-pulse';
+      return 'border-pink/50 bg-pink/30 text-red-600 animate-pulse';
     }
-    return 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700';
+    return 'border-foreground/30 bg-white/60 text-foreground hover:bg-white/80';
   };
 
   const getTitle = () => {

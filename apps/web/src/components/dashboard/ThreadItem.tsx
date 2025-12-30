@@ -139,17 +139,17 @@ export function ThreadItem({
   const getSelectionClasses = () => {
     if (isInContext) {
       // Thread is added to context panel
-      return "bg-purple-600/20 text-slate-50 ring-1 ring-purple-500/50";
+      return "bg-lavender/30 text-foreground ring-1 ring-lavender/50";
     }
     if (isMultiSelected) {
-      // Multi-selected threads get a distinct blue highlight
-      return "bg-blue-600/30 text-slate-50 ring-1 ring-blue-500/50";
+      // Multi-selected threads get a distinct highlight
+      return "bg-sky/30 text-foreground ring-1 ring-sky/50";
     }
     if (isSelected) {
       // Currently active thread (for viewing)
-      return "bg-slate-800 text-slate-50";
+      return "bg-white/60 text-foreground font-medium";
     }
-    return "text-slate-200 hover:bg-slate-800/50";
+    return "text-foreground hover:bg-white/40";
   };
 
   return (
@@ -176,7 +176,7 @@ export function ThreadItem({
           </svg>
         ) : (
           <svg
-            className="h-4 w-4 flex-shrink-0 mr-2 text-slate-500"
+            className="h-4 w-4 flex-shrink-0 mr-2 text-foreground/50"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -201,13 +201,13 @@ export function ThreadItem({
               onKeyDown={handleKeyDown}
               onBlur={handleSaveEdit}
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+              className="flex-1 rounded border border-white/40 bg-white/60 px-1.5 py-0.5 text-sm text-foreground focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
             />
-            <span className="text-xs text-slate-500">.thread</span>
+            <span className="text-xs text-foreground/50">.thread</span>
           </div>
         ) : (
           <span className="flex-1 truncate text-sm">
-            {thread.title || "Untitled"}<span className="text-slate-500">.thread</span>
+            {thread.title || "Untitled"}<span className="text-foreground/50">.thread</span>
           </span>
         )}
 
@@ -219,10 +219,10 @@ export function ThreadItem({
               <button
                 type="button"
                 onClick={handleAddToContext}
-                className={`rounded p-1 hover:bg-slate-700 ${
+                className={`rounded p-1 hover:bg-white/40 ${
                   isInContext
-                    ? "text-purple-400 hover:text-purple-300"
-                    : "text-slate-400 hover:text-purple-400"
+                    ? "text-lavender hover:text-lavender"
+                    : "text-foreground/40 hover:text-lavender"
                 }`}
                 title={isInContext ? "Already in context" : "Add to context"}
               >
@@ -240,7 +240,7 @@ export function ThreadItem({
               <button
                 type="button"
                 onClick={handleExport}
-                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-green-400"
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-mint"
                 title="Export thread"
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -257,7 +257,7 @@ export function ThreadItem({
               <button
                 type="button"
                 onClick={handleShowInfo}
-                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-cyan-400"
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-sky"
                 title="Thread properties"
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -272,7 +272,7 @@ export function ThreadItem({
             <button
               type="button"
               onClick={handleStartEdit}
-              className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-blue-400"
+              className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-sky"
               title="Rename thread"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -282,7 +282,7 @@ export function ThreadItem({
             <button
               type="button"
               onClick={handleDelete}
-              className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-red-400"
+              className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-red-400"
               title="Delete thread"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">

@@ -154,7 +154,7 @@ export function ChatbotItem({
     grok: "bg-blue-500",
     gemini: "bg-purple-500",
   };
-  const dotColor = providerColors[provider] || "bg-slate-500";
+  const dotColor = providerColors[provider] || "bg-foreground/50";
 
   const paddingLeft = depth * 12 + 24; // Extra indent for chatbots within folders
 
@@ -170,9 +170,9 @@ export function ChatbotItem({
             onKeyDown={handleKeyDown}
             onBlur={handleSaveName}
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="flex-1 rounded border border-white/40 bg-white/60 px-2 py-1 text-sm text-foreground focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
           />
-          <span className="text-xs text-slate-500">.chatbot</span>
+          <span className="text-xs text-foreground/50">.chatbot</span>
         </div>
       ) : (
         <div
@@ -182,8 +182,8 @@ export function ChatbotItem({
             isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
           } ${
             isSelected
-              ? "bg-slate-800 text-slate-50"
-              : "text-slate-200 hover:bg-slate-800/50"
+              ? "bg-white/60 text-foreground font-medium"
+              : "text-foreground hover:bg-white/40"
           }`}
           style={{ paddingLeft }}
         >
@@ -192,7 +192,7 @@ export function ChatbotItem({
 
           {/* Name with .chatbot extension */}
           <span className="flex-1 truncate text-sm">
-            {chatbot.name}<span className="text-slate-500">.chatbot</span>
+            {chatbot.name}<span className="text-foreground/50">.chatbot</span>
           </span>
 
           {/* Quick Actions (visible on hover) - horizontal layout like ThreadItem */}
@@ -202,7 +202,7 @@ export function ChatbotItem({
               <button
                 type="button"
                 onClick={handleStartThread}
-                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-cyan-400"
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-sky"
                 title="Start new thread with this chatbot"
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,7 +215,7 @@ export function ChatbotItem({
               <button
                 type="button"
                 onClick={handleEdit}
-                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-yellow-400"
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-butter"
                 title="Edit chatbot settings"
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +229,7 @@ export function ChatbotItem({
               <button
                 type="button"
                 onClick={handleDuplicate}
-                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-purple-400"
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-lavender"
                 title="Duplicate chatbot"
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,7 +242,7 @@ export function ChatbotItem({
               <button
                 type="button"
                 onClick={handleExport}
-                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-green-400"
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-mint"
                 title="Export chatbot"
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -259,7 +259,7 @@ export function ChatbotItem({
               <button
                 type="button"
                 onClick={handleStartEdit}
-                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-blue-400"
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-sky"
                 title="Rename chatbot"
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -272,7 +272,7 @@ export function ChatbotItem({
               <button
                 type="button"
                 onClick={handleDelete}
-                className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-red-400"
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-red-400"
                 title="Delete chatbot"
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">

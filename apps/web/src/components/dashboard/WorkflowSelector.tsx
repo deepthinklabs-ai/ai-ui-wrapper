@@ -58,16 +58,16 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
         disabled={disabled || isLoading}
         className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-colors ${
           selectedWorkflow
-            ? "border-purple-500/50 bg-purple-900/30 text-purple-200 hover:bg-purple-900/50"
-            : "border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+            ? "border-lavender/50 bg-lavender/30 text-foreground hover:bg-lavender/40"
+            : "border-foreground/30 bg-white/60 text-foreground hover:bg-white/80"
         } disabled:opacity-60`}
         title={selectedWorkflow ? `Canvas: ${selectedWorkflow.displayName}` : "Select a canvas"}
       >
         {/* Canvas Icon */}
         <span className={`flex h-4 w-4 items-center justify-center rounded text-[10px] ${
           selectedWorkflow
-            ? "bg-purple-500/30 text-purple-300"
-            : "bg-slate-600/50 text-slate-400"
+            ? "bg-lavender/50 text-purple-700"
+            : "bg-foreground/10 text-foreground/60"
         }`}>
           {isLoading ? (
             <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
@@ -119,43 +119,43 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-72 rounded-lg border border-slate-700 bg-slate-900 shadow-xl z-50 max-h-80 overflow-y-auto">
+        <div className="absolute bottom-full left-0 mb-2 w-72 rounded-lg border border-foreground/20 bg-white/90 backdrop-blur-md shadow-xl z-50 max-h-80 overflow-y-auto">
           <div className="p-2">
             {/* Default Chat Option */}
             <button
               onClick={() => handleWorkflowSelect(null)}
               className={`w-full rounded-md px-3 py-2 text-left transition-colors mb-2 ${
                 !selectedWorkflow
-                  ? "bg-slate-700/50 border border-slate-600"
-                  : "hover:bg-slate-800 border border-transparent"
+                  ? "bg-white/60 border border-foreground/20"
+                  : "hover:bg-white/60 border border-transparent"
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <span className="flex h-5 w-5 items-center justify-center rounded bg-slate-600/50 text-slate-300 text-xs">
+                <span className="flex h-5 w-5 items-center justify-center rounded bg-foreground/10 text-foreground/60 text-xs">
                   D
                 </span>
-                <span className="text-xs font-medium text-slate-100">
+                <span className="text-xs font-medium text-foreground">
                   Default Chat
                 </span>
                 {!selectedWorkflow && (
-                  <span className="rounded-full bg-slate-600/30 px-1.5 py-0.5 text-[9px] text-slate-300">
+                  <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] text-foreground/60">
                     Active
                   </span>
                 )}
               </div>
-              <div className="text-[10px] text-slate-400 leading-tight pl-7">
+              <div className="text-[10px] text-foreground/50 leading-tight pl-7">
                 Standard chat - messages sent directly to AI
               </div>
             </button>
 
             {/* Divider */}
             {workflows.length > 0 && (
-              <div className="border-t border-slate-700 my-2" />
+              <div className="border-t border-foreground/10 my-2" />
             )}
 
             {/* Canvases Header */}
             {workflows.length > 0 && (
-              <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-foreground/50">
                 Connected Canvases ({workflows.length})
               </div>
             )}
@@ -168,29 +168,29 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
                   onClick={() => handleWorkflowSelect(workflow)}
                   className={`w-full rounded-md px-3 py-2 text-left transition-colors ${
                     selectedWorkflow?.triggerNodeId === workflow.triggerNodeId
-                      ? "bg-purple-600/20 border border-purple-500/30"
-                      : "hover:bg-slate-800 border border-transparent"
+                      ? "bg-lavender/30 border border-lavender/50"
+                      : "hover:bg-white/60 border border-transparent"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="flex h-5 w-5 items-center justify-center rounded bg-purple-500/20 text-purple-300 text-xs">
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-lavender/30 text-purple-700 text-xs">
                       C
                     </span>
-                    <span className="text-xs font-medium text-slate-100 truncate flex-1">
+                    <span className="text-xs font-medium text-foreground truncate flex-1">
                       {workflow.displayName}
                     </span>
                     {selectedWorkflow?.triggerNodeId === workflow.triggerNodeId && (
-                      <span className="rounded-full bg-purple-500/20 px-1.5 py-0.5 text-[9px] text-purple-300">
+                      <span className="rounded-full bg-lavender/30 px-1.5 py-0.5 text-[9px] text-purple-700">
                         Active
                       </span>
                     )}
                   </div>
                   {workflow.description && (
-                    <div className="text-[10px] text-slate-400 leading-tight pl-7 truncate">
+                    <div className="text-[10px] text-foreground/50 leading-tight pl-7 truncate">
                       {workflow.description}
                     </div>
                   )}
-                  <div className="flex items-center gap-3 mt-1 pl-7 text-[9px] text-slate-500">
+                  <div className="flex items-center gap-3 mt-1 pl-7 text-[9px] text-foreground/40">
                     <span>Canvas: {workflow.canvasName}</span>
                     {workflow.triggerCount !== undefined && workflow.triggerCount > 0 && (
                       <span>Used {workflow.triggerCount}x</span>
@@ -202,7 +202,7 @@ const WorkflowSelector: React.FC<WorkflowSelectorProps> = ({
 
             {/* Empty State */}
             {workflows.length === 0 && !isLoading && (
-              <div className="text-center py-4 text-xs text-slate-500">
+              <div className="text-center py-4 text-xs text-foreground/50">
                 No canvases available.
                 <br />
                 <span className="text-[10px]">

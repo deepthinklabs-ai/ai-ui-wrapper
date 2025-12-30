@@ -26,7 +26,7 @@ const StepByStepToggle: React.FC<StepByStepToggleProps> = ({
 }) => {
   return (
     <div className="flex items-center gap-2 mb-2">
-      <span className="text-xs text-slate-400 font-medium">Step Mode:</span>
+      <span className="text-xs text-foreground/60 font-medium">Step Mode:</span>
 
       {/* Step-by-Step WITH Explanation Toggle */}
       <button
@@ -34,8 +34,8 @@ const StepByStepToggle: React.FC<StepByStepToggleProps> = ({
         disabled={disabled}
         className={`group relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
           isWithExplanationEnabled
-            ? "bg-blue-600 text-white shadow-md"
-            : "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+            ? "bg-sky/60 text-foreground shadow-md border border-sky/50"
+            : "bg-white/60 text-foreground hover:bg-white/80 border border-foreground/30"
         }`}
         title="Toggle step-by-step mode with detailed explanations"
       >
@@ -64,8 +64,8 @@ const StepByStepToggle: React.FC<StepByStepToggleProps> = ({
         disabled={disabled}
         className={`group relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
           isNoExplanationEnabled
-            ? "bg-purple-600 text-white shadow-md"
-            : "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+            ? "bg-lavender/60 text-foreground shadow-md border border-lavender/50"
+            : "bg-white/60 text-foreground hover:bg-white/80 border border-foreground/30"
         }`}
         title="Toggle step-by-step mode with no explanations (just the step)"
       >
@@ -90,7 +90,7 @@ const StepByStepToggle: React.FC<StepByStepToggleProps> = ({
 
       {/* Active indicator text */}
       {(isWithExplanationEnabled || isNoExplanationEnabled) && (
-        <span className="text-xs text-green-400 font-medium flex items-center gap-1">
+        <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
           <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"

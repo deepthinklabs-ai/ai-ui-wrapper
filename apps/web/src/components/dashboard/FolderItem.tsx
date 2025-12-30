@@ -186,7 +186,7 @@ export function FolderItem({
       <div
         onContextMenu={handleContextMenu}
         className={`group flex items-center gap-1 rounded-md px-2 py-1.5 transition-colors cursor-grab active:cursor-grabbing ${
-          showDropHighlight ? "bg-blue-500/20 ring-2 ring-blue-500/50" : "hover:bg-slate-800/50"
+          showDropHighlight ? "bg-sky/20 ring-2 ring-sky/50" : "hover:bg-white/40"
         } ${isDragging ? "z-50" : ""}`}
         style={{ paddingLeft }}
         {...attributes}
@@ -199,7 +199,7 @@ export function FolderItem({
             e.stopPropagation();
             onToggleFolderCollapse(folder.id);
           }}
-          className="flex-shrink-0 p-0.5 text-slate-400 hover:text-slate-200"
+          className="flex-shrink-0 p-0.5 text-foreground/50 hover:text-foreground"
         >
           <svg
             className={`h-3 w-3 transition-transform ${folder.is_collapsed ? "" : "rotate-90"}`}
@@ -236,11 +236,11 @@ export function FolderItem({
             onKeyDown={handleKeyDown}
             onBlur={handleSaveEdit}
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="flex-1 rounded border border-white/40 bg-white/60 px-1.5 py-0.5 text-sm text-foreground focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
           />
         ) : (
           <span
-            className="flex-1 truncate text-sm text-slate-200"
+            className="flex-1 truncate text-sm text-foreground"
             onDoubleClick={handleStartEdit}
           >
             {folder.name}
@@ -253,7 +253,7 @@ export function FolderItem({
             <button
               type="button"
               onClick={handleCreateSubfolder}
-              className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-slate-200"
+              className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-foreground"
               title="Create subdirectory"
             >
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -268,7 +268,7 @@ export function FolderItem({
             <button
               type="button"
               onClick={handleStartEdit}
-              className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-blue-400"
+              className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-sky"
               title="Rename directory"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -278,7 +278,7 @@ export function FolderItem({
             <button
               type="button"
               onClick={handleDelete}
-              className="rounded p-1 hover:bg-slate-700 text-slate-400 hover:text-red-400"
+              className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-red-400"
               title="Delete directory"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -294,7 +294,7 @@ export function FolderItem({
 
         {/* Thread count badge */}
         {folder.threads.length > 0 && (
-          <span className="text-xs text-slate-500 tabular-nums">
+          <span className="text-xs text-foreground/50 tabular-nums">
             {folder.threads.length}
           </span>
         )}
@@ -304,12 +304,12 @@ export function FolderItem({
       {showContextMenu && (
         <div
           ref={contextMenuRef}
-          className="fixed z-50 rounded-md border border-slate-700 bg-slate-800 shadow-lg py-1 min-w-[160px]"
+          className="fixed z-50 rounded-md border border-white/40 bg-white/80 backdrop-blur-md shadow-lg py-1 min-w-[160px]"
           style={{ left: contextMenuPos.x, top: contextMenuPos.y }}
         >
           <button
             onClick={handleCreateSubfolder}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-white/60"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -318,17 +318,17 @@ export function FolderItem({
           </button>
           <button
             onClick={handleStartEdit}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-white/60"
           >
             <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
             </svg>
             Rename
           </button>
-          <div className="my-1 border-t border-slate-700" />
+          <div className="my-1 border-t border-white/40" />
           <button
             onClick={handleDelete}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-slate-700"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-white/60"
           >
             <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path
@@ -351,7 +351,7 @@ export function FolderItem({
               className="flex items-center gap-1 px-2 py-1"
               style={{ paddingLeft: paddingLeft + 24 }}
             >
-              <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -367,7 +367,7 @@ export function FolderItem({
                 onKeyDown={onNewFolderKeyDown}
                 onBlur={onNewFolderBlur}
                 placeholder="Directory name"
-                className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                className="flex-1 rounded border border-white/40 bg-white/60 px-2 py-1 text-sm text-foreground focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
               />
             </div>
           )}

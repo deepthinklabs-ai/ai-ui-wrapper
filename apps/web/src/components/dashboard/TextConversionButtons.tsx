@@ -39,14 +39,14 @@ const TextConversionButtons: React.FC<TextConversionButtonsProps> = ({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-slate-400 font-medium">Convert Draft To:</span>
+      <span className="text-xs text-foreground/60 font-medium">Convert Draft To:</span>
 
       {/* Convert to Markdown - only show if enabled */}
       {showMarkdownButton && (
         <button
         onClick={onConvertToMarkdown}
         disabled={isDisabled || convertingToMarkdown}
-        className="flex items-center gap-1.5 rounded-md border border-blue-600 bg-blue-600/10 px-3 py-1 text-[11px] text-blue-400 hover:bg-blue-600/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+        className="flex items-center gap-1.5 rounded-md border border-foreground/30 bg-white/60 px-3 py-1 text-[11px] text-foreground hover:bg-white/80 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
         title="Convert your text to Markdown format"
       >
         {convertingToMarkdown ? (
@@ -99,7 +99,7 @@ const TextConversionButtons: React.FC<TextConversionButtonsProps> = ({
         <button
         onClick={onConvertToJson}
         disabled={isDisabled || convertingToJson}
-        className="flex items-center gap-1.5 rounded-md border border-teal-600 bg-teal-600/10 px-3 py-1 text-[11px] text-teal-400 hover:bg-teal-600/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+        className="flex items-center gap-1.5 rounded-md border border-foreground/30 bg-white/60 px-3 py-1 text-[11px] text-foreground hover:bg-white/80 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
         title="Convert your text to JSON format"
       >
         {convertingToJson ? (
