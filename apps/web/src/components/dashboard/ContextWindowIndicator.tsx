@@ -34,12 +34,12 @@ const ContextWindowIndicator: React.FC<ContextWindowIndicatorProps> = ({
   const bgColorClass = getUsageBackgroundColor(percentage);
 
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+    <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-3">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <svg
-            className={`h-4 w-4 ${colorClass}`}
+            className="h-4 w-4 text-foreground/70"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -51,27 +51,27 @@ const ContextWindowIndicator: React.FC<ContextWindowIndicatorProps> = ({
               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
             />
           </svg>
-          <span className="text-xs font-medium text-slate-300">Context Window</span>
+          <span className="text-xs font-medium text-foreground/70">Context Window</span>
         </div>
-        <span className={`text-xs font-bold ${colorClass}`}>
+        <span className="text-xs font-bold text-foreground/80">
           {percentage.toFixed(1)}%
         </span>
       </div>
 
       {/* Progress Bar */}
-      <div className="mb-2 h-2 w-full rounded-full bg-slate-800">
+      <div className="mb-2 h-2 w-full rounded-full bg-white/40">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${bgColorClass}`}
+          className="h-full rounded-full transition-all duration-300 rainbow-progress"
           style={{ width: `${Math.min(100, percentage)}%` }}
         />
       </div>
 
       {/* Token Count */}
-      <div className="flex items-center justify-between text-[10px] text-slate-500">
+      <div className="flex items-center justify-between text-[10px] text-foreground/50">
         <span>
           {formatTokenCount(totalTokens)} / {formatTokenCount(maxTokens)} tokens
         </span>
-        <span className="text-slate-600">{modelLabel}</span>
+        <span className="text-foreground/40">{modelLabel}</span>
       </div>
 
       {/* Warning Messages */}

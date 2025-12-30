@@ -257,7 +257,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   const fileWarning = selectedModel ? getFileUploadWarning(selectedModel, attachedFiles) : null;
 
   return (
-    <div className="border-t border-slate-800 bg-slate-950 px-4 py-3">
+    <div className="border-t border-white/30 bg-white/40 backdrop-blur-md px-4 py-3">
       {/* File Upload Warning */}
       {fileWarning && (
         <div className="mb-3 rounded-md border border-amber-600 bg-amber-600/10 px-3 py-2 text-xs text-amber-400">
@@ -286,12 +286,12 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           {attachedFiles.map((file, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-xs"
+              className="flex items-center gap-2 rounded-md border border-white/40 bg-white/60 px-3 py-2 text-xs"
             >
               <div className="flex items-center gap-2">
                 {file.type.startsWith("image/") ? (
                   <svg
-                    className="h-4 w-4 text-purple-400"
+                    className="h-4 w-4 text-purple-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -305,7 +305,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                   </svg>
                 ) : (
                   <svg
-                    className="h-4 w-4 text-blue-400"
+                    className="h-4 w-4 text-blue-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -319,13 +319,13 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                   </svg>
                 )}
                 <div className="flex flex-col">
-                  <span className="text-slate-200 font-medium">{file.name}</span>
-                  <span className="text-slate-500">{formatFileSize(file.size)}</span>
+                  <span className="text-foreground font-medium">{file.name}</span>
+                  <span className="text-foreground-secondary/60">{formatFileSize(file.size)}</span>
                 </div>
               </div>
               <button
                 onClick={() => handleRemoveFile(index)}
-                className="ml-2 rounded-md p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                className="ml-2 rounded-md p-1 text-foreground-secondary/40 hover:bg-white/40 hover:text-foreground"
                 title="Remove file"
               >
                 <svg
@@ -366,7 +366,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           </div>
 
           <textarea
-            className="resize-none rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-600"
+            className="resize-none rounded-md border border-white/40 bg-white/60 px-3 py-2 text-sm text-foreground placeholder:text-foreground-secondary/50 focus:outline-none focus:ring-1 focus:ring-secondary-sky shadow-inner"
             style={{ height: `${height}px` }}
             placeholder="Send a message… (Shift+Enter for new line)"
             value={value}
@@ -423,7 +423,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={disabled}
-                  className="flex items-center gap-2 rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-md border border-white/40 bg-white/60 px-3 py-1.5 text-xs text-foreground-secondary/70 hover:bg-white/80 disabled:opacity-60 transition-colors"
                   title="Attach files or images"
                 >
                   <svg
@@ -465,8 +465,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 disabled={disabled}
                 className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-all ${
                   enableWebSearch
-                    ? "border-emerald-600 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30"
-                    : "border-slate-600 bg-slate-800 text-slate-400 hover:bg-slate-700"
+                    ? "border-secondary-mint bg-secondary-mint/40 text-emerald-700 hover:bg-secondary-mint/60"
+                    : "border-white/40 bg-white/60 text-foreground-secondary/60 hover:bg-white/80"
                 } disabled:opacity-60`}
                 title={enableWebSearch ? "Web search enabled - AI can search the web for current information" : "Web search disabled - AI will only use its training data"}
               >
@@ -517,7 +517,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           {/* Summarize Thread button - only show if feature is enabled */}
           {summarizeThreadEnabled && onSummarize && (
             <button
-              className="rounded-md border border-slate-600 px-3 py-1 text-[11px] text-slate-200 hover:bg-slate-800 disabled:opacity-60"
+              className="rounded-md border border-white/40 px-3 py-1 text-[11px] text-foreground-secondary/70 hover:bg-white/40 disabled:opacity-60"
               onClick={onSummarize}
               disabled={!canSummarize || summarizing}
               title="Summarize this thread and add summary as a message"
@@ -528,7 +528,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           {/* Summarize & Continue button - only show if feature is enabled */}
           {summarizeAndContinueEnabled && onSummarizeAndContinue && (
             <button
-              className="rounded-md border border-emerald-600 bg-emerald-600/10 px-3 py-1 text-[11px] text-emerald-400 hover:bg-emerald-600/20 disabled:opacity-60 transition-all"
+              className="rounded-md border border-secondary-mint bg-secondary-mint/20 px-3 py-1 text-[11px] text-emerald-700 hover:bg-secondary-mint/40 disabled:opacity-60 transition-all"
               onClick={onSummarizeAndContinue}
               disabled={!canSummarize || summarizing || summarizingAndContinuing}
               title="Summarize this thread and start a new thread with the summary as context"
@@ -549,7 +549,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           {/* Fork Thread button - only show if feature is enabled */}
           {forkThreadEnabled && onFork && (
             <button
-              className="rounded-md border border-purple-600 bg-purple-600/10 px-3 py-1 text-[11px] text-purple-400 hover:bg-purple-600/20 disabled:opacity-60 transition-all"
+              className="rounded-md border border-secondary-pink bg-secondary-pink/20 px-3 py-1 text-[11px] text-pink-700 hover:bg-secondary-pink/40 disabled:opacity-60 transition-all"
               onClick={onFork}
               disabled={!canSummarize || forking}
               title="Fork this thread - create a duplicate with all messages to explore different paths"
@@ -568,7 +568,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
             </button>
           )}
           <button
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-60"
+            className="rounded-full rainbow-gradient px-5 py-2 text-sm font-medium disabled:opacity-60"
             onClick={onSend}
             disabled={disabled || (!value.trim() && attachedFiles.length === 0)}
           >

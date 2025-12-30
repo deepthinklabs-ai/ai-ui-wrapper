@@ -1,28 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* New Aiuiw Pastel Palette */
+  --cream: #FDFDF9;
+  --butter: #F3EAC2;
+  --mint: #CDECD0;
+  --sky: #BCDFF5;
+  --lavender: #D8C6EA;
+
+  --text-main: #2D2D34; /* Soft Charcoal */
+
+  /* Font Families */
+  --font-sans: 'Quicksand', 'Nunito', sans-serif;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-cream: var(--cream);
+  --color-butter: var(--butter);
+  --color-mint: var(--mint);
+  --color-sky: var(--sky);
+  --color-lavender: var(--lavender);
+  --color-foreground: var(--text-main);
+
+  --font-sans: var(--font-sans);
+
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Force Light Mode Aesthetics */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--cream);
+  background-image:
+    radial-gradient(at 10% 10%, var(--butter) 0px, transparent 50%),
+    radial-gradient(at 90% 0%, var(--sky) 0px, transparent 50%),
+    radial-gradient(at 10% 90%, var(--lavender) 0px, transparent 50%),
+    radial-gradient(at 90% 90%, var(--mint) 0px, transparent 50%);
+  background-attachment: fixed;
+  background-size: 100% 100%;
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+/* Updated Glass Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px 0 rgba(188, 223, 245, 0.15);
+  border-radius: 24px;
+}
+
+/* For active states or highlights */
+.gradient-pill {
+  background: linear-gradient(90deg, var(--butter), var(--mint));
+  color: var(--text-main);
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(205, 236, 208, 0.4);
+}
+
+/* Rainbow gradient for primary buttons (New thread, Send, etc.) */
+.rainbow-gradient {
+  background: linear-gradient(90deg, #F9E8AA, #B8E8D0, #A8D8EA, #D4B8E8, #F5C6D6);
+  color: var(--text-main);
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 4px 15px rgba(168, 216, 234, 0.3);
+  transition: all 0.2s ease;
+}
+
+.rainbow-gradient:hover {
+  box-shadow: 0 6px 20px rgba(168, 216, 234, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Rainbow gradient for user message bubbles */
+.rainbow-message {
+  background: linear-gradient(135deg, #F9E8AA 0%, #B8E8D0 25%, #A8D8EA 50%, #D4B8E8 75%, #F5C6D6 100%);
+  color: var(--text-main);
+  border: none;
+}
+
+/* Rainbow progress bar gradient */
+.rainbow-progress {
+  background: linear-gradient(90deg, #F9E8AA, #F5C6D6, #D4B8E8);
+}
+
+/* Glass panel hover effect */
+.glass-panel-hover:hover {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.8);
 }
 
 @keyframes pulse-slow {

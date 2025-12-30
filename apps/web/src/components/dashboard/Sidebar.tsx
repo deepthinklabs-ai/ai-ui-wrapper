@@ -444,10 +444,10 @@ export default function Sidebar({
             type="button"
             onClick={handleOpenNewThreadModal}
             disabled={!canCreateThread}
-            className={`flex-1 rounded-md border px-2 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary-sky focus:ring-offset-2 focus:ring-offset-white ${
+            className={`flex-1 rounded-full px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky/50 focus:ring-offset-2 focus:ring-offset-white ${
               canCreateThread
-                ? "border-white/50 bg-white/60 text-foreground hover:bg-white/80 shadow-sm"
-                : "border-white/30 bg-white/20 text-foreground-secondary/50 cursor-not-allowed"
+                ? "rainbow-gradient"
+                : "border border-white/30 bg-white/20 text-foreground-secondary/50 cursor-not-allowed"
             }`}
             title={!canCreateThread ? "Thread limit reached. Subscribe to Pro for unlimited threads." : "Create a new .thread file"}
           >
