@@ -463,11 +463,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
               <button
                 onClick={onToggleWebSearch}
                 disabled={disabled}
-                className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-all ${
-                  enableWebSearch
-                    ? "border-mint/50 bg-mint/40 text-emerald-700 hover:bg-mint/50"
-                    : "border-foreground/30 bg-white/60 text-foreground hover:bg-white/80"
-                } disabled:opacity-60`}
+                className={`flex items-center gap-2 rounded-md border border-foreground/30 bg-white/60 px-3 py-1.5 text-xs text-foreground hover:bg-white/80 disabled:opacity-60 transition-all`}
                 title={enableWebSearch ? "Web search enabled - AI can search the web for current information" : "Web search disabled - AI will only use its training data"}
               >
                 <svg
