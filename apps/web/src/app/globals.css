@@ -67,7 +67,6 @@ body {
   background: linear-gradient(90deg, #FBF3D5, #DFF2E8, #D8EDF5, #E8DFF2, #F9E4EC);
   color: var(--text-main);
   font-weight: 600;
-  border: none;
   box-shadow: 0 2px 8px rgba(168, 216, 234, 0.15);
   transition: all 0.2s ease;
 }
