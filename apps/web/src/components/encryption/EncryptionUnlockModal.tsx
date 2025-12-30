@@ -124,12 +124,12 @@ export default function EncryptionUnlockModal({
 
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40" />
+      {/* Backdrop - softer to match pastel theme */}
+      <div className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-40" />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-md rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md shadow-2xl">
+        <div className="relative w-full max-w-md rounded-2xl border border-white/40 bg-white/80 backdrop-blur-xl shadow-2xl">
           {/* Header */}
           <div className="border-b border-foreground/10 px-6 py-5">
             <div className="flex items-center gap-3">
