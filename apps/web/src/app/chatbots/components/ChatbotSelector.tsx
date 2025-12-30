@@ -87,10 +87,10 @@ export function ChatbotSelector({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled || loading}
-        className={`flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${buttonClasses}`}
+        className={`flex items-center gap-2 rounded-md border border-foreground/30 bg-white/60 text-foreground hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-sky/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${buttonClasses}`}
       >
         {/* Icon */}
-        <svg className="h-4 w-4 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="h-4 w-4 flex-shrink-0 text-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -112,7 +112,7 @@ export function ChatbotSelector({
 
         {/* Dropdown arrow */}
         <svg
-          className={`h-4 w-4 flex-shrink-0 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`h-4 w-4 flex-shrink-0 text-foreground/60 transition-transform ${isOpen ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -123,17 +123,17 @@ export function ChatbotSelector({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 bottom-full mb-1 w-64 rounded-md border border-slate-700 bg-slate-800 shadow-lg z-50">
+        <div className="absolute left-0 bottom-full mb-1 w-64 rounded-md border border-foreground/20 bg-white/90 backdrop-blur-md shadow-lg z-50">
           {/* Search Input */}
           {chatbots.length > 5 && (
-            <div className="p-2 border-b border-slate-700">
+            <div className="p-2 border-b border-foreground/10">
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search chatbots..."
-                className="w-full rounded-md border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-slate-200 placeholder-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                className="w-full rounded-md border border-foreground/20 bg-white/60 px-2 py-1.5 text-sm text-foreground placeholder-foreground/40 focus:border-sky/50 focus:outline-none focus:ring-1 focus:ring-sky/50"
               />
             </div>
           )}
@@ -144,19 +144,19 @@ export function ChatbotSelector({
             <button
               type="button"
               onClick={() => handleSelect(null)}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-700 transition-colors ${
-                !selectedChatbot ? "bg-slate-700/50 text-slate-100" : "text-slate-300"
+              className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/60 transition-colors ${
+                !selectedChatbot ? "bg-white/60 text-foreground" : "text-foreground"
               }`}
             >
-              <div className="h-6 w-6 flex items-center justify-center rounded-full bg-slate-600 text-xs font-medium text-slate-300">
+              <div className="h-6 w-6 flex items-center justify-center rounded-full bg-foreground/10 text-xs font-medium text-foreground/60">
                 D
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">Default Settings</div>
-                <div className="text-xs text-slate-500 truncate">Use global defaults</div>
+                <div className="text-xs text-foreground/50 truncate">Use global defaults</div>
               </div>
               {!selectedChatbot && (
-                <svg className="h-4 w-4 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-4 w-4 text-emerald-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               )}
@@ -164,18 +164,18 @@ export function ChatbotSelector({
 
             {/* Divider */}
             {filteredChatbots.length > 0 && (
-              <div className="my-1 border-t border-slate-700" />
+              <div className="my-1 border-t border-foreground/10" />
             )}
 
             {/* Chatbot options */}
             {filteredChatbots.length === 0 && searchTerm && (
-              <div className="px-3 py-2 text-sm text-slate-500">
+              <div className="px-3 py-2 text-sm text-foreground/50">
                 No chatbots found
               </div>
             )}
 
             {filteredChatbots.length === 0 && !searchTerm && chatbots.length === 0 && (
-              <div className="px-3 py-2 text-sm text-slate-500">
+              <div className="px-3 py-2 text-sm text-foreground/50">
                 No chatbots yet. Create one in the sidebar.
               </div>
             )}
@@ -185,19 +185,19 @@ export function ChatbotSelector({
               const initial = chatbot.name.charAt(0).toUpperCase();
               const provider = chatbot.config.model?.provider || "ai";
               const providerColor = {
-                openai: "bg-green-600",
-                claude: "bg-orange-600",
-                grok: "bg-blue-600",
-                gemini: "bg-purple-600",
-              }[provider] || "bg-slate-600";
+                openai: "bg-green-500",
+                claude: "bg-orange-500",
+                grok: "bg-blue-500",
+                gemini: "bg-purple-500",
+              }[provider] || "bg-foreground/30";
 
               return (
                 <button
                   key={chatbot.id}
                   type="button"
                   onClick={() => handleSelect(chatbot)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-700 transition-colors ${
-                    isSelected ? "bg-slate-700/50 text-slate-100" : "text-slate-300"
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/60 transition-colors ${
+                    isSelected ? "bg-white/60 text-foreground" : "text-foreground"
                   }`}
                 >
                   <div className={`h-6 w-6 flex items-center justify-center rounded-full ${providerColor} text-xs font-medium text-white`}>
@@ -206,11 +206,11 @@ export function ChatbotSelector({
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{chatbot.name}</div>
                     {chatbot.description && (
-                      <div className="text-xs text-slate-500 truncate">{chatbot.description}</div>
+                      <div className="text-xs text-foreground/50 truncate">{chatbot.description}</div>
                     )}
                   </div>
                   {isSelected && (
-                    <svg className="h-4 w-4 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-4 w-4 text-emerald-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   )}

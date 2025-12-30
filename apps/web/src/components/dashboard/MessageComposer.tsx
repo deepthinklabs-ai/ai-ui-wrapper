@@ -352,16 +352,16 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           {/* Drag Handle Bar */}
           <div
             onMouseDown={handleDragStart}
-            className={`group flex items-center justify-center h-2 cursor-ns-resize hover:bg-slate-800/50 rounded-t transition-colors ${
-              isDragging ? 'bg-slate-700/70' : ''
+            className={`group flex items-center justify-center h-2 cursor-ns-resize hover:bg-white/60 rounded-t transition-colors ${
+              isDragging ? 'bg-white/80' : ''
             }`}
             title="Drag to resize"
           >
             {/* Visual indicator (three horizontal dots) */}
             <div className="flex gap-1 opacity-40 group-hover:opacity-70 transition-opacity">
-              <div className="w-1 h-1 rounded-full bg-slate-400"></div>
-              <div className="w-1 h-1 rounded-full bg-slate-400"></div>
-              <div className="w-1 h-1 rounded-full bg-slate-400"></div>
+              <div className="w-1 h-1 rounded-full bg-foreground/40"></div>
+              <div className="w-1 h-1 rounded-full bg-foreground/40"></div>
+              <div className="w-1 h-1 rounded-full bg-foreground/40"></div>
             </div>
           </div>
 
@@ -465,8 +465,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 disabled={disabled}
                 className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-all ${
                   enableWebSearch
-                    ? "border-secondary-mint bg-secondary-mint/40 text-emerald-700 hover:bg-secondary-mint/60"
-                    : "border-white/40 bg-white/60 text-foreground-secondary/60 hover:bg-white/80"
+                    ? "border-mint/50 bg-mint/40 text-emerald-700 hover:bg-mint/50"
+                    : "border-foreground/30 bg-white/60 text-foreground/60 hover:bg-white/80"
                 } disabled:opacity-60`}
                 title={enableWebSearch ? "Web search enabled - AI can search the web for current information" : "Web search disabled - AI will only use its training data"}
               >
