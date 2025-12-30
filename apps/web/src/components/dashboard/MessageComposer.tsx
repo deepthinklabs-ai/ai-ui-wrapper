@@ -423,7 +423,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={disabled}
-                  className="flex items-center gap-2 rounded-md border border-white/40 bg-white/60 px-3 py-1.5 text-xs text-foreground-secondary/70 hover:bg-white/80 disabled:opacity-60 transition-colors"
+                  className="flex items-center gap-2 rounded-md border border-foreground/30 bg-white/60 px-3 py-1.5 text-xs text-foreground hover:bg-white/80 disabled:opacity-60 transition-colors"
                   title="Attach files or images"
                 >
                   <svg
@@ -466,7 +466,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-all ${
                   enableWebSearch
                     ? "border-mint/50 bg-mint/40 text-emerald-700 hover:bg-mint/50"
-                    : "border-foreground/30 bg-white/60 text-foreground/60 hover:bg-white/80"
+                    : "border-foreground/30 bg-white/60 text-foreground hover:bg-white/80"
                 } disabled:opacity-60`}
                 title={enableWebSearch ? "Web search enabled - AI can search the web for current information" : "Web search disabled - AI will only use its training data"}
               >
@@ -517,7 +517,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           {/* Summarize Thread button - only show if feature is enabled */}
           {summarizeThreadEnabled && onSummarize && (
             <button
-              className="rounded-md border border-white/40 px-3 py-1 text-[11px] text-foreground-secondary/70 hover:bg-white/40 disabled:opacity-60"
+              className="rounded-md border border-foreground/30 bg-white/60 px-3 py-1 text-[11px] text-foreground hover:bg-white/80 disabled:opacity-60 transition-colors"
               onClick={onSummarize}
               disabled={!canSummarize || summarizing}
               title="Summarize this thread and add summary as a message"
