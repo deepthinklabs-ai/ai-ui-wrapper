@@ -345,33 +345,38 @@ export default function Sidebar({
   };
 
   return (
-    <div className="flex h-full flex-col bg-slate-950 text-slate-100">
+    <div className="flex h-full flex-col bg-white/40 border-r border-white/40 text-foreground backdrop-blur-md">
       {/* Top: app + user info + new thread */}
-      <div className="border-b border-slate-800 px-3 py-4">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-          AI UI Wrapper
+      <div className="border-b border-white/30 px-3 py-4">
+        {/* Logo */}
+        <div className="mb-3 px-1">
+          <img
+            src="/logo.png"
+            alt="aiuiw"
+            className="h-12 w-auto"
+          />
         </div>
 
         {/* User Menu Button */}
         <div className="relative mt-1" ref={menuRef}>
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="w-full flex items-center justify-between rounded-md px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-900 transition-colors"
+            className="w-full flex items-center justify-between rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-white/40 transition-colors"
           >
             <div className="flex items-center gap-2 truncate">
               <span className="truncate">{userEmail ?? "Signed in"}</span>
               {userTier === "pro" && (
-                <span className="inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                <span className="inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-600 ring-1 ring-inset ring-purple-500/20">
                   Pro
                 </span>
               )}
               {userTier === "trial" && (
-                <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">
+                <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 ring-1 ring-inset ring-amber-500/20">
                   Trial
                 </span>
               )}
               {userTier === "expired" && (
-                <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">
+                <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 ring-1 ring-inset ring-red-500/20">
                   Expired
                 </span>
               )}
@@ -388,13 +393,13 @@ export default function Sidebar({
 
           {/* Dropdown Menu */}
           {isUserMenuOpen && (
-            <div className="absolute left-0 right-0 mt-1 rounded-md border border-slate-700 bg-slate-800 shadow-lg z-10">
+            <div className="absolute left-0 right-0 mt-1 rounded-md border border-white/50 bg-white/80 backdrop-blur-md shadow-lg z-10">
               <button
                 onClick={() => {
                   setIsUserMenuOpen(false);
                   router.push("/settings");
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors rounded-t-md"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-white/60 transition-colors rounded-t-md"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -417,7 +422,7 @@ export default function Sidebar({
                   setIsUserMenuOpen(false);
                   onSignOut();
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors rounded-b-md"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-white/60 transition-colors rounded-b-md"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -439,10 +444,10 @@ export default function Sidebar({
             type="button"
             onClick={handleOpenNewThreadModal}
             disabled={!canCreateThread}
-            className={`flex-1 rounded-md border px-2 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${
+            className={`flex-1 rounded-md border px-2 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary-sky focus:ring-offset-2 focus:ring-offset-white ${
               canCreateThread
-                ? "border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800"
-                : "border-slate-800 bg-slate-900/50 text-slate-500 cursor-not-allowed"
+                ? "border-white/50 bg-white/60 text-foreground hover:bg-white/80 shadow-sm"
+                : "border-white/30 bg-white/20 text-foreground-secondary/50 cursor-not-allowed"
             }`}
             title={!canCreateThread ? "Thread limit reached. Subscribe to Pro for unlimited threads." : "Create a new .thread file"}
           >
@@ -455,7 +460,7 @@ export default function Sidebar({
               onImportComplete={onThreadImported}
               encryptForStorage={encryptForStorage}
               compact
-              className="border border-slate-700 bg-slate-900 hover:bg-slate-800"
+              className="border border-white/50 bg-white/60 text-foreground hover:bg-white/80 shadow-sm"
             />
           )}
         </div>
@@ -478,12 +483,12 @@ export default function Sidebar({
       </div>
 
       {/* Navigation: Chatbot & Canvas */}
-      <div className="border-b border-slate-800 px-3 py-3">
+      <div className="border-b border-white/30 px-3 py-3">
         <div className="space-y-2">
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-white/40 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -498,7 +503,7 @@ export default function Sidebar({
           <button
             type="button"
             onClick={() => router.push("/canvas")}
-            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-white/40 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -513,7 +518,7 @@ export default function Sidebar({
           <button
             type="button"
             onClick={() => router.push("/exchange")}
-            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+            className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-white/40 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -531,7 +536,7 @@ export default function Sidebar({
       {/* Chatbots Section - above Threads */}
       {onCreateChatbot && (
         <div
-          className="flex flex-col border-b border-slate-800"
+          className="flex flex-col border-b border-white/30"
           style={{ height: isChatbotsCollapsed ? 'auto' : chatbotsHeight }}
         >
           {/* Section Header */}
@@ -539,7 +544,7 @@ export default function Sidebar({
             <button
               type="button"
               onClick={() => setIsChatbotsCollapsed(!isChatbotsCollapsed)}
-              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-400"
+              className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-foreground-secondary/70 hover:text-foreground"
             >
               <svg
                 className={`h-3 w-3 transition-transform ${isChatbotsCollapsed ? "-rotate-90" : ""}`}
@@ -555,7 +560,7 @@ export default function Sidebar({
               <button
                 type="button"
                 onClick={() => setIsNewChatbotModalOpen(true)}
-                className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                className="rounded p-1 text-foreground-secondary/70 hover:bg-white/40 hover:text-foreground"
                 title="New chatbot"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -566,7 +571,7 @@ export default function Sidebar({
                 onImport={onCreateChatbot}
                 folderId={chatbotDefaultFolderId}
                 compact
-                className="text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                className="text-foreground-secondary/70 hover:bg-white/40 hover:text-foreground"
               />
             </div>
           </div>
@@ -600,8 +605,8 @@ export default function Sidebar({
       {/* Resizable Divider */}
       {onCreateChatbot && !isChatbotsCollapsed && (
         <div
-          className={`h-1 flex-shrink-0 cursor-ns-resize bg-slate-800 hover:bg-slate-600 transition-colors ${
-            isResizing ? "bg-slate-600" : ""
+          className={`h-1 flex-shrink-0 cursor-ns-resize bg-white/30 hover:bg-secondary-sky/50 transition-colors ${
+            isResizing ? "bg-secondary-sky/50" : ""
           }`}
           onMouseDown={handleResizeStart}
           title="Drag to resize"
@@ -610,7 +615,7 @@ export default function Sidebar({
 
       {/* Threads section */}
       <div className="flex-1 overflow-y-auto px-2 py-3 min-h-0">
-        <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-foreground-secondary/70">
           Threads
         </div>
 
@@ -639,7 +644,7 @@ export default function Sidebar({
           <>
             {/* Legacy thread list (fallback when folders not enabled) */}
             {threads.length === 0 && (
-              <div className="px-2 py-1 text-xs text-slate-500">
+              <div className="px-2 py-1 text-xs text-foreground-secondary/60">
                 No threads yet. Create one to get started.
               </div>
             )}
@@ -659,7 +664,7 @@ export default function Sidebar({
                           onChange={(e) => setEditedTitle(e.target.value)}
                           onKeyDown={(e) => handleKeyDown(e, thread.id)}
                           onBlur={() => saveTitle(thread.id)}
-                          className="flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-100 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                          className="flex-1 rounded border border-white/40 bg-white/60 px-2 py-1 text-sm text-foreground focus:border-secondary-sky focus:outline-none focus:ring-1 focus:ring-secondary-sky"
                         />
                       </div>
                     ) : (
@@ -669,8 +674,8 @@ export default function Sidebar({
                           onClick={() => onSelectThread(thread.id)}
                           className={`w-full rounded-md px-2 py-1.5 pr-16 text-left text-sm transition-colors ${
                             isActive
-                              ? "bg-slate-800 text-slate-50"
-                              : "text-slate-200 hover:bg-slate-900"
+                              ? "bg-white/60 text-foreground shadow-sm font-medium"
+                              : "text-foreground-secondary/80 hover:bg-white/30"
                           }`}
                         >
                           <span className="block truncate">
@@ -681,7 +686,7 @@ export default function Sidebar({
                           <button
                             type="button"
                             onClick={(e) => startEditing(e, thread.id, thread.title || "New thread")}
-                            className="rounded p-1 hover:bg-blue-600/20 text-slate-400 hover:text-blue-400"
+                            className="rounded p-1 hover:bg-blue-600/20 text-foreground-secondary/50 hover:text-blue-600"
                             title="Edit thread name"
                           >
                             <svg
@@ -696,7 +701,7 @@ export default function Sidebar({
                           <button
                             type="button"
                             onClick={(e) => handleDelete(e, thread.id, thread.title || "New thread")}
-                            className="rounded p-1 hover:bg-red-600/20 text-slate-400 hover:text-red-400"
+                            className="rounded p-1 hover:bg-red-600/20 text-foreground-secondary/50 hover:text-red-600"
                             title="Delete thread"
                           >
                             <svg
