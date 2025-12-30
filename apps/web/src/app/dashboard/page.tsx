@@ -767,13 +767,13 @@ export default function DashboardPage() {
 
   if (loadingUser || onboardingLoading || tierLoading || isFromSuccessfulCheckout) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-200">
+      <div className="flex h-screen items-center justify-center text-foreground">
         <div className="text-center">
           {isFromSuccessfulCheckout ? (
             <>
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent mb-4"></div>
-              <p className="text-lg font-medium text-slate-100">Activating your subscription...</p>
-              <p className="text-sm text-slate-400 mt-2">Please wait while we confirm your payment.</p>
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-lavender border-r-transparent mb-4"></div>
+              <p className="text-lg font-medium text-foreground">Activating your subscription...</p>
+              <p className="text-sm text-foreground/60 mt-2">Please wait while we confirm your payment.</p>
             </>
           ) : (
             'Loading…'
@@ -785,7 +785,7 @@ export default function DashboardPage() {
 
   if (userError) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950 text-red-400">
+      <div className="flex h-screen items-center justify-center text-red-500">
         Error: {userError}
       </div>
     );
@@ -803,10 +803,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-row h-screen bg-slate-950 text-slate-50">
+    <div className="flex flex-row h-screen text-foreground">
       {/* LEFT: sidebar column */}
       <aside
-        className="h-screen flex-shrink-0 border-r border-slate-800 bg-slate-950 relative"
+        className="h-screen flex-shrink-0 relative"
         style={sidebarStyle}
       >
         <Sidebar
@@ -874,8 +874,8 @@ export default function DashboardPage() {
         {/* Resize handle */}
         <div
           onMouseDown={handleSidebarResize}
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500/50 transition-colors ${
-            isResizing ? "bg-blue-500/50" : "bg-transparent"
+          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-sky/50 transition-colors ${
+            isResizing ? "bg-sky/50" : "bg-transparent"
           }`}
           title="Drag to resize sidebar"
         />
@@ -936,7 +936,7 @@ export default function DashboardPage() {
                   {selectedThreadId && (
                     <button
                       onClick={() => activateSplitView(selectedThreadId, null)}
-                      className="flex-shrink-0 rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors flex items-center gap-2"
+                      className="flex-shrink-0 rounded-full border border-white/40 bg-white/60 px-3 py-2 text-sm font-medium text-foreground hover:bg-white/80 transition-colors flex items-center gap-2 backdrop-blur-md"
                       title="Open split view"
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1032,19 +1032,19 @@ export default function DashboardPage() {
             )}
 
             {(loadingThreads || threadsError || messagesError) && (
-              <div className="rounded-md border border-slate-700 bg-slate-900/70 px-4 py-2 text-xs text-slate-300">
+              <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md px-4 py-2 text-xs text-foreground/70">
                 {loadingThreads && <span>Loading threads… </span>}
                 {threadsError && (
-                  <span className="text-red-400">{threadsError} </span>
+                  <span className="text-red-500">{threadsError} </span>
                 )}
                 {messagesError && (
-                  <span className="text-red-400">{messagesError}</span>
+                  <span className="text-red-500">{messagesError}</span>
                 )}
               </div>
             )}
 
             {/* Chat card: messages + composer, very clearly separate from sidebar */}
-            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-lg">
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/40 bg-white/40 backdrop-blur-md shadow-lg">
               {/* Messages list (scrolls) */}
               <div
                 ref={messagesContainerRef}
@@ -1064,7 +1064,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Undo buttons - only one can show at a time */}
-              <div className="border-t border-slate-800/50">
+              <div className="border-t border-white/30">
                 <RevertUndoButton
                   canUndo={canUndoRevert}
                   undoInFlight={undoRevertInFlight}
@@ -1078,7 +1078,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Composer stuck to bottom of card */}
-              <div className="border-t border-slate-800 px-4 py-3">
+              <div className="border-t border-white/30 px-4 py-3">
                 <MessageComposer
                   value={draft}
                   onChange={setDraft}
