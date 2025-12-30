@@ -329,7 +329,7 @@ function AuthPageContent() {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-sky hover:text-sky/80"
+                    className="text-sm text-foreground hover:text-foreground/80"
                   >
                     Forgot password?
                   </button>
@@ -384,7 +384,7 @@ function AuthPageContent() {
                 setError(null);
                 setMessage(null);
               }}
-              className="text-sky hover:text-sky/80"
+              className="text-foreground hover:text-foreground/80"
             >
               {isSignUp
                 ? "Already have an account? Sign in"
