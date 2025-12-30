@@ -446,7 +446,7 @@ export default function Sidebar({
             disabled={!canCreateThread}
             className={`flex-1 rounded-full px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky/50 focus:ring-offset-2 focus:ring-offset-white ${
               canCreateThread
-                ? "rainbow-gradient"
+                ? "rainbow-gradient border border-foreground/30"
                 : "border border-white/30 bg-white/20 text-foreground-secondary/50 cursor-not-allowed"
             }`}
             title={!canCreateThread ? "Thread limit reached. Subscribe to Pro for unlimited threads." : "Create a new .thread file"}
