@@ -97,7 +97,7 @@ const MessageActions: React.FC<MessageActionsProps> = ({
           <button
             onClick={() => onForkFrom(messageId)}
             disabled={disabled}
-            className="rounded-md bg-purple-600/90 hover:bg-purple-500 px-2 py-1 text-[10px] font-medium text-white shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            className="rounded-md border border-foreground/30 bg-white/60 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-white/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
             title="Fork thread from this message - create a new thread with messages up to this point"
           >
             <svg
@@ -122,7 +122,7 @@ const MessageActions: React.FC<MessageActionsProps> = ({
           <button
             onClick={handleRevertClick}
             disabled={disabled}
-            className="rounded-md bg-amber-600/90 hover:bg-amber-500 px-2 py-1 text-[10px] font-medium text-white shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            className="rounded-md border border-foreground/30 bg-white/60 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-white/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
             title="Revert to this message - delete all messages after this point"
           >
             <svg
@@ -147,7 +147,7 @@ const MessageActions: React.FC<MessageActionsProps> = ({
           <button
             onClick={handleRevertWithDraftClick}
             disabled={disabled}
-            className="rounded-md bg-emerald-600/90 hover:bg-emerald-500 px-2 py-1 text-[10px] font-medium text-white shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            className="rounded-md border border-foreground/30 bg-white/60 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-white/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
             title="Revert and pre-populate message composer with the AI response as a draft"
           >
             <svg
