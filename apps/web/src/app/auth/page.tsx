@@ -19,10 +19,10 @@ const SESSION_TIMEOUT_MESSAGES: Record<string, string> = {
 // Loading fallback for Suspense
 function AuthPageLoading() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-100">AI Chat Platform</h1>
-        <div className="animate-pulse text-slate-400">Loading...</div>
+        <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto" />
+        <div className="animate-pulse text-foreground/60">Loading...</div>
       </div>
     </div>
   );
@@ -189,15 +189,13 @@ function AuthPageContent() {
   // Show 2FA screen if needed
   if (show2FA && pending2FAUserId && pending2FAEmail) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+      <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-slate-100">
-              AI Chat Platform
-            </h1>
+            <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto" />
           </div>
 
-          <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+          <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <TwoFactorLogin
               userId={pending2FAUserId}
               userEmail={pending2FAEmail}
@@ -213,18 +211,16 @@ function AuthPageContent() {
   // Show forgot password screen if needed
   if (showForgotPassword) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+      <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-slate-100">
-              AI Chat Platform
-            </h1>
-            <p className="mt-2 text-sm text-slate-400">
+            <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto" />
+            <p className="mt-4 text-sm text-foreground/60">
               Reset your password
             </p>
           </div>
 
-          <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+          <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <ForgotPasswordForm
               onBack={() => setShowForgotPassword(false)}
               initialEmail={email}
@@ -236,13 +232,11 @@ function AuthPageContent() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-100">
-            AI Chat Platform
-          </h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto" />
+          <p className="mt-4 text-sm text-foreground/60">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>
         </div>
@@ -258,11 +252,11 @@ function AuthPageContent() {
             </div>
           )}
 
-          <div className="space-y-4 rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+          <div className="space-y-4 rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-slate-300"
+                className="block text-sm font-medium text-foreground"
               >
                 Email address
               </label>
@@ -272,7 +266,7 @@ function AuthPageContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                 placeholder="you@example.com"
               />
             </div>
@@ -280,7 +274,7 @@ function AuthPageContent() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-slate-300"
+                className="block text-sm font-medium text-foreground"
               >
                 Password
               </label>
@@ -291,14 +285,14 @@ function AuthPageContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 pr-10 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 pr-10 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                   placeholder="••••••••"
                   minLength={8}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/60"
                   tabIndex={-1}
                 >
                   {showPassword ? (
@@ -314,7 +308,7 @@ function AuthPageContent() {
                 </button>
               </div>
               {isSignUp && (
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-foreground/50">
                   Must be at least 8 characters
                 </p>
               )}
@@ -335,7 +329,7 @@ function AuthPageContent() {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-blue-400 hover:text-blue-300"
+                    className="text-sm text-sky hover:text-sky/80"
                   >
                     Forgot password?
                   </button>
@@ -344,7 +338,7 @@ function AuthPageContent() {
             </div>
 
             {error && (
-              <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+              <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-600">
                 <p>{error}</p>
                 {error.includes("already registered") && (
                   <button
@@ -353,7 +347,7 @@ function AuthPageContent() {
                       setIsSignUp(false);
                       setError(null);
                     }}
-                    className="mt-2 text-blue-400 hover:text-blue-300 underline"
+                    className="mt-2 text-sky hover:text-sky/80 underline"
                   >
                     Go to Sign In
                   </button>
@@ -362,7 +356,7 @@ function AuthPageContent() {
             )}
 
             {message && (
-              <div className="rounded-md bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-400">
+              <div className="rounded-md bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-emerald-600">
                 {message}
               </div>
             )}
@@ -370,7 +364,7 @@ function AuthPageContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-full rainbow-gradient border border-foreground/30 px-4 py-2 text-sm font-semibold text-foreground hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading
                 ? isSignUp
@@ -390,7 +384,7 @@ function AuthPageContent() {
                 setError(null);
                 setMessage(null);
               }}
-              className="text-blue-400 hover:text-blue-300"
+              className="text-sky hover:text-sky/80"
             >
               {isSignUp
                 ? "Already have an account? Sign in"
