@@ -61,19 +61,19 @@ export default function CreateCanvasModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+        <div className="relative w-full max-w-lg rounded-2xl border border-white/40 bg-white/80 backdrop-blur-md shadow-2xl">
           {/* Header */}
-          <div className="border-b border-slate-800 px-6 py-5">
-            <h2 className="text-xl font-bold text-slate-100">
+          <div className="border-b border-white/40 px-6 py-5">
+            <h2 className="text-xl font-bold text-foreground">
               Create New Canvas
             </h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-foreground/60">
               Build visual workflows to orchestrate your AI features
             </p>
           </div>
@@ -83,15 +83,15 @@ export default function CreateCanvasModal({
             <div className="space-y-5">
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-slate-300">
-                  Canvas Name <span className="text-red-400">*</span>
+                <label className="block text-sm font-medium text-foreground">
+                  Canvas Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Research Workflow, Content Creation Pipeline"
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  className="mt-1 w-full rounded-lg border border-foreground/20 bg-white/80 px-4 py-2 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/50"
                   autoFocus
                   disabled={creating}
                 />
@@ -99,7 +99,7 @@ export default function CreateCanvasModal({
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-slate-300">
+                <label className="block text-sm font-medium text-foreground">
                   Description (Optional)
                 </label>
                 <textarea
@@ -107,14 +107,14 @@ export default function CreateCanvasModal({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="What does this canvas do?"
                   rows={3}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  className="mt-1 w-full rounded-lg border border-foreground/20 bg-white/80 px-4 py-2 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/50"
                   disabled={creating}
                 />
               </div>
 
               {/* Mode Selection - Currently only Workflow mode is available */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Canvas Mode
                 </label>
                 <div className="grid grid-cols-1 gap-3">
@@ -125,15 +125,15 @@ export default function CreateCanvasModal({
                     disabled={creating}
                     className={`rounded-lg border-2 p-4 text-left transition-all ${
                       mode === 'workflow'
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-slate-700 bg-slate-800 hover:border-slate-600'
+                        ? 'border-sky bg-sky/10'
+                        : 'border-white/40 bg-white/60 hover:border-foreground/30'
                     } ${creating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     <div className="mb-2 text-2xl">⚙️</div>
-                    <div className="text-sm font-medium text-slate-200">
+                    <div className="text-sm font-medium text-foreground">
                       Workflow
                     </div>
-                    <div className="mt-1 text-xs text-slate-400">
+                    <div className="mt-1 text-xs text-foreground/60">
                       Automated execution
                     </div>
                   </button>
@@ -144,9 +144,9 @@ export default function CreateCanvasModal({
               </div>
 
               {/* Mode Description */}
-              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                <p className="text-sm text-slate-300">
-                  <strong>Workflow Mode:</strong> Build automated pipelines with
+              <div className="rounded-lg border border-white/40 bg-white/60 p-4">
+                <p className="text-sm text-foreground/60">
+                  <strong className="text-foreground">Workflow Mode:</strong> Build automated pipelines with
                   triggers, conditions, and sequential execution. Perfect for
                   research, content creation, and data processing.
                 </p>
@@ -159,14 +159,14 @@ export default function CreateCanvasModal({
                 type="button"
                 onClick={onClose}
                 disabled={creating}
-                className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg border border-foreground/30 bg-white/60 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={creating || !name.trim()}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="rounded-lg bg-sky px-4 py-2 text-sm font-medium text-white hover:bg-sky/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {creating ? (
                   <>

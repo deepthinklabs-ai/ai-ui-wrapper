@@ -82,7 +82,7 @@ export default function WorkflowControls({
         {/* Back to Dashboard Button */}
         <Link
           href="/dashboard"
-          className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 hover:bg-slate-750 hover:text-slate-100 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg border border-foreground/30 bg-white/60 px-3 py-2 text-sm text-foreground/60 hover:bg-white/80 hover:text-foreground transition-colors"
           title="Back to Dashboard"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,17 +95,17 @@ export default function WorkflowControls({
         <div className="relative">
           <button
             onClick={() => setShowCanvasMenu(!showCanvasMenu)}
-            className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-750 transition-colors"
+            className="flex items-center gap-2 rounded-lg border border-foreground/30 bg-white/60 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/80 transition-colors"
           >
             {currentCanvas ? (
               <>
                 <span className="max-w-xs truncate">{currentCanvas.name}</span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-foreground/50">
                   ({currentCanvas.mode})
                 </span>
               </>
             ) : (
-              <span className="text-slate-400">Select Canvas</span>
+              <span className="text-foreground/60">Select Canvas</span>
             )}
             <svg
               className={`h-4 w-4 transition-transform ${showCanvasMenu ? 'rotate-180' : ''}`}
@@ -124,7 +124,7 @@ export default function WorkflowControls({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowCanvasMenu(false)}
               />
-              <div className="absolute left-0 top-full z-20 mt-2 w-80 rounded-lg border border-slate-700 bg-slate-800 shadow-xl">
+              <div className="absolute left-0 top-full z-20 mt-2 w-80 rounded-lg border border-white/40 bg-white/80 backdrop-blur-md shadow-xl">
                 {/* Canvas List */}
                 <div className="max-h-64 overflow-y-auto p-2">
                   {canvases.length > 0 ? (
@@ -137,8 +137,8 @@ export default function WorkflowControls({
                         }}
                         className={`w-full rounded-lg px-3 py-2 text-left transition-colors ${
                           currentCanvas?.id === canvas.id
-                            ? 'bg-blue-600 text-white'
-                            : 'text-slate-200 hover:bg-slate-700'
+                            ? 'bg-sky text-white'
+                            : 'text-foreground hover:bg-white/60'
                         }`}
                       >
                         <div className="font-medium">{canvas.name}</div>
@@ -148,20 +148,20 @@ export default function WorkflowControls({
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-6 text-center text-sm text-slate-400">
+                    <div className="px-3 py-6 text-center text-sm text-foreground/60">
                       No canvases yet
                     </div>
                   )}
                 </div>
 
                 {/* Create New */}
-                <div className="border-t border-slate-700 p-2">
+                <div className="border-t border-white/40 p-2">
                   <button
                     onClick={() => {
                       onCreateCanvas();
                       setShowCanvasMenu(false);
                     }}
-                    className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors"
+                    className="w-full rounded-lg bg-sky px-3 py-2 text-sm font-medium text-white hover:bg-sky/80 transition-colors"
                   >
                     + Create New Canvas
                   </button>
@@ -179,7 +179,7 @@ export default function WorkflowControls({
               className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 showDeleteConfirm
                   ? 'bg-red-600 text-white hover:bg-red-500'
-                  : 'border border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-red-400'
+                  : 'border border-foreground/30 bg-white/60 text-foreground/60 hover:bg-white/80 hover:text-red-500'
               }`}
             >
               {showDeleteConfirm ? 'Confirm Delete?' : '🗑️'}
@@ -219,8 +219,8 @@ export default function WorkflowControls({
             onClick={onToggleWorkflowMode}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               workflowMode
-                ? 'bg-blue-600 text-white'
-                : 'border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                ? 'bg-sky text-white'
+                : 'border border-foreground/30 bg-white/60 text-foreground/60 hover:bg-white/80'
             }`}
           >
             {workflowMode ? '⚡ Workflow Mode' : '✏️ Edit Mode'}
@@ -235,8 +235,8 @@ export default function WorkflowControls({
           onClick={onToggleNodePalette}
           className={`rounded-lg px-3 py-2 text-sm transition-colors ${
             showNodePalette
-              ? 'bg-slate-700 text-slate-200'
-              : 'border border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700'
+              ? 'bg-sky/20 text-foreground border border-sky/30'
+              : 'border border-foreground/30 bg-white/60 text-foreground/60 hover:bg-white/80'
           }`}
           title="Toggle Node Palette"
         >
@@ -248,8 +248,8 @@ export default function WorkflowControls({
           onClick={onToggleInspector}
           className={`rounded-lg px-3 py-2 text-sm transition-colors ${
             showInspector
-              ? 'bg-slate-700 text-slate-200'
-              : 'border border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700'
+              ? 'bg-sky/20 text-foreground border border-sky/30'
+              : 'border border-foreground/30 bg-white/60 text-foreground/60 hover:bg-white/80'
           }`}
           title="Toggle Node Inspector"
         >
@@ -259,7 +259,7 @@ export default function WorkflowControls({
         {/* Help */}
         <button
           onClick={() => alert('Canvas Help:\n\n1. Click nodes in the palette to add them\n2. Drag nodes to position them\n3. Connect nodes by dragging from output to input\n4. Click a node to configure it\n5. Click Run to execute the workflow')}
-          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-400 hover:bg-slate-700 transition-colors"
+          className="rounded-lg border border-foreground/30 bg-white/60 px-3 py-2 text-sm text-foreground/60 hover:bg-white/80 transition-colors"
           title="Help"
         >
           ?

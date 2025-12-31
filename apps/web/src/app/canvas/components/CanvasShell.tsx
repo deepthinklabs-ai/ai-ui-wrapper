@@ -62,9 +62,9 @@ export default function CanvasShell() {
     : null;
 
   return (
-    <div className="flex h-screen flex-col bg-slate-950">
+    <div className="flex h-screen flex-col">
       {/* Top Toolbar */}
-      <div className="border-b border-slate-800 bg-slate-900 px-4 py-3">
+      <div className="border-b border-white/40 bg-white/40 backdrop-blur-md px-4 py-3">
         <div className="flex items-center gap-4">
           {/* Main Controls */}
           <div className="flex-1">
@@ -85,14 +85,14 @@ export default function CanvasShell() {
           </div>
 
           {/* Tab Buttons */}
-          <div className="flex items-center rounded-lg border border-slate-700 bg-slate-800 p-0.5">
+          <div className="flex items-center rounded-lg border border-white/40 bg-white/60 p-0.5">
             <button
               onClick={() => setActiveTab('canvas')}
               className={`
                 px-4 py-1.5 text-sm font-medium rounded-md transition-colors
                 ${activeTab === 'canvas'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-sky text-white'
+                  : 'text-foreground/60 hover:text-foreground'
                 }
               `}
             >
@@ -103,8 +103,8 @@ export default function CanvasShell() {
               className={`
                 px-4 py-1.5 text-sm font-medium rounded-md transition-colors
                 ${activeTab === 'executions'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-sky text-white'
+                  : 'text-foreground/60 hover:text-foreground'
                 }
               `}
             >
@@ -120,7 +120,7 @@ export default function CanvasShell() {
           <>
             {/* Left Sidebar - Node Palette */}
             {showNodePalette && (
-              <div className="w-64 flex-shrink-0 border-r border-slate-800 bg-slate-900">
+              <div className="w-64 flex-shrink-0 border-r border-white/40 bg-white/40 backdrop-blur-md">
                 <NodePalette onAddNode={handleAddNodeFromPalette} />
               </div>
             )}
@@ -159,17 +159,17 @@ export default function CanvasShell() {
                 </CanvasProvider>
               ) : (
                 <div className="flex h-full items-center justify-center">
-                  <p className="text-slate-400">No canvas selected</p>
+                  <p className="text-foreground/60">No canvas selected</p>
                 </div>
               )}
 
               {/* Loading Overlay */}
               {state.isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
-                  <div className="rounded-lg border border-slate-700 bg-slate-900 px-6 py-4">
+                <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm">
+                  <div className="rounded-xl border border-white/40 bg-white/80 px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                      <span className="text-slate-200">Loading canvas...</span>
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
+                      <span className="text-foreground">Loading canvas...</span>
                     </div>
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export default function CanvasShell() {
 
             {/* Right Sidebar - Node Inspector */}
             {showInspector && (
-              <div className="w-80 flex-shrink-0 border-l border-slate-800 bg-slate-900">
+              <div className="w-80 flex-shrink-0 border-l border-white/40 bg-white/40 backdrop-blur-md">
                 <NodeInspector
                   node={selectedNode}
                   onUpdateNode={handleUpdateSelectedNode}
@@ -198,13 +198,13 @@ export default function CanvasShell() {
       {/* Duplicate Edge Toast Notification */}
       {showDuplicateToast && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[10000] animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="flex items-center gap-3 rounded-lg border border-yellow-600/50 bg-yellow-500/10 px-4 py-3 shadow-lg backdrop-blur-sm">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500/20">
+          <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 shadow-lg backdrop-blur-md">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20">
               <span className="text-lg">⚠️</span>
             </div>
             <div>
-              <p className="text-sm font-medium text-yellow-200">Connection Already Exists</p>
-              <p className="text-xs text-yellow-300/80">These nodes are already connected</p>
+              <p className="text-sm font-medium text-amber-700">Connection Already Exists</p>
+              <p className="text-xs text-amber-600">These nodes are already connected</p>
             </div>
           </div>
         </div>
