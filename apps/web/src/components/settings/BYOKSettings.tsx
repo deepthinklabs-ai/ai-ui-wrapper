@@ -146,13 +146,13 @@ export default function BYOKSettings() {
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+      <div className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
         <div className="animate-pulse">
-          <div className="h-6 w-32 bg-slate-700 rounded mb-2"></div>
-          <div className="h-4 w-64 bg-slate-800 rounded mb-6"></div>
+          <div className="h-6 w-32 bg-foreground/10 rounded mb-2"></div>
+          <div className="h-4 w-64 bg-foreground/5 rounded mb-6"></div>
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-16 bg-slate-800 rounded"></div>
+              <div key={i} className="h-16 bg-foreground/5 rounded"></div>
             ))}
           </div>
         </div>
@@ -161,10 +161,10 @@ export default function BYOKSettings() {
   }
 
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+    <div className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-slate-100">API Keys</h3>
-        <p className="text-sm text-slate-400 mt-1">
+        <h3 className="text-lg font-semibold text-foreground">API Keys</h3>
+        <p className="text-sm text-foreground/60 mt-1">
           Configure your AI provider API keys. Keys are stored securely and never
           visible after saving.
         </p>
@@ -183,19 +183,19 @@ export default function BYOKSettings() {
           return (
             <div
               key={provider}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 p-4"
+              className="rounded-lg border border-white/30 bg-white/40 p-4"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <span className="font-medium text-slate-200">
+                  <span className="font-medium text-foreground">
                     {getProviderDisplayName(provider)}
                   </span>
                   {isConfigured ? (
-                    <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
+                    <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 ring-1 ring-inset ring-green-500/30">
                       Configured
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-0.5 text-xs font-medium text-slate-400 ring-1 ring-inset ring-slate-500/20">
+                    <span className="inline-flex items-center rounded-full bg-foreground/5 px-2 py-0.5 text-xs font-medium text-foreground/60 ring-1 ring-inset ring-foreground/10">
                       Not configured
                     </span>
                   )}
@@ -204,7 +204,7 @@ export default function BYOKSettings() {
                   href={getProviderKeyUrl(provider)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-blue-400 hover:text-blue-300"
+                  className="text-xs text-sky hover:text-sky/80"
                 >
                   Get API key
                 </a>
@@ -222,7 +222,7 @@ export default function BYOKSettings() {
                       }))
                     }
                     placeholder={isConfigured ? "Enter new key to update" : placeholder}
-                    className="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 text-sm text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                     disabled={isSaving || isDeleting}
                   />
                   <button
@@ -233,7 +233,7 @@ export default function BYOKSettings() {
                         [provider]: !prev[provider],
                       }))
                     }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/60"
                   >
                     {showKey ? (
                       <svg
@@ -276,7 +276,7 @@ export default function BYOKSettings() {
                 <button
                   onClick={() => handleSaveKey(provider)}
                   disabled={isSaving || isDeleting || !inputValue.trim()}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-md bg-sky px-4 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSaving ? "Testing..." : "Test & Save"}
                 </button>
@@ -285,7 +285,7 @@ export default function BYOKSettings() {
                   <button
                     onClick={() => handleDeleteKey(provider)}
                     disabled={isSaving || isDeleting}
-                    className="rounded-md border border-red-600 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-md border border-red-500/50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {isDeleting ? "..." : "Remove"}
                   </button>
@@ -294,12 +294,12 @@ export default function BYOKSettings() {
 
               {/* Error message */}
               {error && (
-                <p className="mt-2 text-sm text-red-400">{error}</p>
+                <p className="mt-2 text-sm text-red-600">{error}</p>
               )}
 
               {/* Success message */}
               {success && (
-                <p className="mt-2 text-sm text-green-400">
+                <p className="mt-2 text-sm text-green-600">
                   API key saved successfully!
                 </p>
               )}
@@ -309,16 +309,16 @@ export default function BYOKSettings() {
       </div>
 
       {/* Summary */}
-      <div className="mt-6 pt-4 border-t border-slate-700">
-        <p className="text-sm text-slate-400">
+      <div className="mt-6 pt-4 border-t border-white/30">
+        <p className="text-sm text-foreground/60">
           {status.hasAnyKey ? (
             <>
-              <span className="text-green-400">Ready to chat!</span> You have at
+              <span className="text-green-600">Ready to chat!</span> You have at
               least one API key configured.
             </>
           ) : (
             <>
-              <span className="text-amber-400">Configure at least one API key</span>{" "}
+              <span className="text-amber-600">Configure at least one API key</span>{" "}
               to start chatting with AI models.
             </>
           )}

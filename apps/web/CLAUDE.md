@@ -91,6 +91,8 @@ gh pr list --state all -L 5   # Recent pull requests
 - **xAI (Grok):** Grok 4 Fast, Grok 4.1 Fast (with reasoning)
 - **Model Context Protocol (MCP):** SDK 1.22.0 for tool integration
 
+> **Maintenance Note:** AI models are frequently updated. When adding or removing models in `src/lib/availableModels.ts`, remember to update this documentation to reflect the current supported models.
+
 ### Third-Party Services
 - **Payments:** Stripe - subscriptions & checkout
 - **Email:** Resend - transactional emails

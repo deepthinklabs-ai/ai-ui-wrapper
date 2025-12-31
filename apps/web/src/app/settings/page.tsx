@@ -63,7 +63,7 @@ function SettingsPageContent() {
   }, [searchParams, user?.id, refreshTier]);
 
   return (
-    <div className="flex h-screen flex-col bg-slate-950 text-slate-50 overflow-hidden">
+    <div className="flex h-screen flex-col text-foreground overflow-hidden">
       {/* Onboarding Welcome Modal */}
       <OnboardingWelcomeModal
         isOpen={showOnboardingModal}
@@ -71,19 +71,19 @@ function SettingsPageContent() {
       />
 
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 px-6 py-4">
+      <header className="flex-shrink-0 border-b border-white/30 bg-white/40 backdrop-blur-md px-6 py-4">
         <div className="mx-auto flex max-w-4xl items-center">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
-              className="rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+              className="rounded-md p-2 text-foreground/60 hover:bg-white/40 hover:text-foreground transition-colors"
               title="Back to dashboard"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-2xl font-semibold">Account Settings</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Account Settings</h1>
           </div>
         </div>
       </header>
@@ -94,25 +94,25 @@ function SettingsPageContent() {
 
           {/* Upgrade Success Banner */}
           {showUpgradeSuccess && (
-            <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-6">
+            <div className="rounded-xl border border-green-500/30 bg-green-500/10 backdrop-blur-md p-6">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0">
-                  <svg className="h-8 w-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-green-300">Welcome to AI Chat Platform!</h3>
-                  <p className="mt-2 text-sm text-green-400/90">
+                  <h3 className="text-lg font-semibold text-green-700">Welcome to AI Chat Platform!</h3>
+                  <p className="mt-2 text-sm text-green-600">
                     Your subscription is now active. To start chatting with AI models, configure at least one API key below.
                   </p>
-                  <p className="mt-2 text-sm text-slate-400">
+                  <p className="mt-2 text-sm text-foreground/60">
                     You can use your own API keys from OpenAI, Claude (Anthropic), Grok (xAI), or Gemini (Google).
                   </p>
                 </div>
                 <button
                   onClick={() => setShowUpgradeSuccess(false)}
-                  className="flex-shrink-0 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="flex-shrink-0 text-foreground/40 hover:text-foreground/60 transition-colors"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -134,24 +134,24 @@ function SettingsPageContent() {
           />
 
           {/* Account Status Section */}
-          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+          <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <div className="mb-4">
-              <h2 className="text-xl font-semibold text-slate-100">Account Status</h2>
-              <p className="mt-2 text-sm text-slate-400">
+              <h2 className="text-xl font-semibold text-foreground">Account Status</h2>
+              <p className="mt-2 text-sm text-foreground/60">
                 Your subscription status and usage tier.
               </p>
             </div>
 
             {/* Trial tier status */}
             {tier === 'trial' && (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
                 <div className="flex items-center gap-3">
-                  <svg className="h-6 w-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="h-6 w-6 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                   </svg>
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-amber-300">7-Day Free Trial</div>
-                    <div className="text-xs text-amber-400/80 mt-1">
+                    <div className="text-sm font-semibold text-amber-700">7-Day Free Trial</div>
+                    <div className="text-xs text-amber-600 mt-1">
                       {daysRemaining > 0
                         ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining. Configure your API keys above to start chatting.`
                         : 'Your trial has expired. Subscribe to continue using the service.'
@@ -159,7 +159,7 @@ function SettingsPageContent() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 text-xs text-slate-400">
+                <div className="mt-3 text-xs text-foreground/60">
                   Use your own API keys from: OpenAI, Claude, Grok, Gemini
                 </div>
               </div>
@@ -167,19 +167,19 @@ function SettingsPageContent() {
 
             {/* Pro tier status */}
             {tier === 'pro' && (
-              <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+              <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
                 <div className="flex items-center gap-3">
-                  <svg className="h-6 w-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="h-6 w-6 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-green-300">Pro Subscription Active</div>
-                    <div className="text-xs text-green-400/80 mt-1">
+                    <div className="text-sm font-semibold text-green-700">Pro Subscription Active</div>
+                    <div className="text-xs text-green-600 mt-1">
                       You have full access to all features with higher rate limits.
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 text-xs text-slate-400">
+                <div className="mt-3 text-xs text-foreground/60">
                   Use your own API keys from: OpenAI, Claude, Grok, Gemini
                 </div>
               </div>
@@ -187,14 +187,14 @@ function SettingsPageContent() {
 
             {/* Expired tier status */}
             {tier === 'expired' && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                 <div className="flex items-center gap-3">
-                  <svg className="h-6 w-6 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="h-6 w-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-red-300">Trial Expired</div>
-                    <div className="text-xs text-red-400/80 mt-1">
+                    <div className="text-sm font-semibold text-red-700">Trial Expired</div>
+                    <div className="text-xs text-red-600 mt-1">
                       Your free trial has ended. Subscribe to Pro to continue using all features.
                     </div>
                   </div>
@@ -218,12 +218,12 @@ function SettingsPageContent() {
           <EncryptionSettings userEmail={user?.email} />
 
           {/* Push-to-Talk Settings Section */}
-          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+          <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <PushToTalkSettings />
           </section>
 
           {/* MCP Servers Section */}
-          <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+          <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <MCPServerSettings />
           </section>
 
@@ -235,9 +235,9 @@ function SettingsPageContent() {
 
 function SettingsPageLoading() {
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-slate-950 text-slate-50">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-      <p className="mt-4 text-slate-400">Loading settings...</p>
+    <div className="flex h-screen flex-col items-center justify-center text-foreground">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lavender"></div>
+      <p className="mt-4 text-foreground/60">Loading settings...</p>
     </div>
   );
 }
