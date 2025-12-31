@@ -276,7 +276,7 @@ export default function BYOKSettings() {
                 <button
                   onClick={() => handleSaveKey(provider)}
                   disabled={isSaving || isDeleting || !inputValue.trim()}
-                  className="rounded-md bg-sky px-4 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="rounded-md border border-white/40 bg-white/60 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSaving ? "Testing..." : "Test & Save"}
                 </button>
@@ -285,7 +285,7 @@ export default function BYOKSettings() {
                   <button
                     onClick={() => handleDeleteKey(provider)}
                     disabled={isSaving || isDeleting}
-                    className="rounded-md border border-red-500/50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-md border border-white/40 bg-white/60 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {isDeleting ? "..." : "Remove"}
                   </button>
