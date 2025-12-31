@@ -15,7 +15,7 @@ export default function CanvasHelpTooltip() {
     return (
       <button
         onClick={() => setIsVisible(true)}
-        className="fixed bottom-4 right-4 z-50 bg-blue-600 hover:bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-colors"
+        className="fixed bottom-4 right-4 z-50 bg-sky hover:bg-sky/80 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-colors"
         title="Show help"
       >
         ?
@@ -24,33 +24,33 @@ export default function CanvasHelpTooltip() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 bg-slate-900/95 text-white p-4 rounded-lg shadow-2xl border border-slate-700 max-w-xs">
+    <div className="fixed bottom-4 right-4 z-50 bg-white/90 backdrop-blur-md text-foreground p-4 rounded-lg shadow-2xl border border-white/40 max-w-xs">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-sm">Canvas Controls</h3>
+        <h3 className="font-bold text-sm text-foreground">Canvas Controls</h3>
         <button
           onClick={() => setIsVisible(false)}
-          className="text-slate-400 hover:text-white"
+          className="text-foreground/40 hover:text-foreground"
         >
           ✕
         </button>
       </div>
 
-      <div className="space-y-2 text-xs">
+      <div className="space-y-2 text-xs text-foreground/80">
         <div className="flex items-start gap-2">
-          <span className="text-blue-400 font-bold">→</span>
-          <span><strong>Click edge</strong> → Press <kbd className="bg-slate-800 px-1 rounded">Delete</kbd> to remove connection</span>
+          <span className="text-sky font-bold">→</span>
+          <span><strong className="text-foreground">Click edge</strong> → Press <kbd className="bg-foreground/10 px-1 rounded text-foreground">Delete</kbd> to remove connection</span>
         </div>
         <div className="flex items-start gap-2">
-          <span className="text-green-400 font-bold">→</span>
-          <span><strong>Drag</strong> from green/blue circles to connect nodes</span>
+          <span className="text-green-600 font-bold">→</span>
+          <span><strong className="text-foreground">Drag</strong> from green/blue circles to connect nodes</span>
         </div>
         <div className="flex items-start gap-2">
-          <span className="text-yellow-400 font-bold">→</span>
-          <span><strong>Click node</strong> to expand/chat</span>
+          <span className="text-amber-500 font-bold">→</span>
+          <span><strong className="text-foreground">Click node</strong> to expand/chat</span>
         </div>
         <div className="flex items-start gap-2">
-          <span className="text-purple-400 font-bold">→</span>
-          <span><strong>Ctrl+Shift+D</strong> for debug labels (admin)</span>
+          <span className="text-purple-600 font-bold">→</span>
+          <span><strong className="text-foreground">Ctrl+Shift+D</strong> for debug labels (admin)</span>
         </div>
       </div>
     </div>
