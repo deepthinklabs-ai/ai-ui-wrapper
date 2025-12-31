@@ -31,9 +31,9 @@ export default function GenesisBotNode({ id, data, selected }: NodeProps<any>) {
       <div
         data-node-id={id}
         className={`
-          rounded-lg border-2 bg-slate-800 shadow-lg
+          rounded-lg border-2 bg-white/85 backdrop-blur-md shadow-lg
           transition-all
-          ${selected ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-slate-600'}
+          ${selected ? 'border-sky ring-2 ring-sky/50' : 'border-foreground/20'}
           ${isExpanded ? 'w-[700px]' : 'min-w-[200px]'}
         `}
       >
@@ -42,7 +42,7 @@ export default function GenesisBotNode({ id, data, selected }: NodeProps<any>) {
           type="target"
           position={Position.Left}
           id="input"
-          className="!bg-green-500 !border-2 !border-slate-900"
+          className="!bg-green-500 !border-2 !border-white"
         />
 
         {isExpanded ? (
@@ -62,10 +62,10 @@ export default function GenesisBotNode({ id, data, selected }: NodeProps<any>) {
             <div className="flex items-center gap-3 mb-3">
               <div className="text-3xl">🤖</div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-slate-100 text-sm truncate">
+                <div className="font-semibold text-foreground text-sm truncate">
                   {nodeData.label}
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-foreground/60">
                   {nodeData.config.model_name}
                 </div>
               </div>
@@ -73,21 +73,21 @@ export default function GenesisBotNode({ id, data, selected }: NodeProps<any>) {
 
             {/* Node Info */}
             <div className="space-y-1 text-xs">
-              <div className="flex items-center justify-between text-slate-500">
+              <div className="flex items-center justify-between text-foreground/50">
                 <span>Provider:</span>
-                <span className="text-slate-300 capitalize">{nodeData.config.model_provider}</span>
+                <span className="text-foreground/70 capitalize">{nodeData.config.model_provider}</span>
               </div>
               {nodeData.config.temperature !== undefined && (
-                <div className="flex items-center justify-between text-slate-500">
+                <div className="flex items-center justify-between text-foreground/50">
                   <span>Temperature:</span>
-                  <span className="text-slate-300">{nodeData.config.temperature}</span>
+                  <span className="text-foreground/70">{nodeData.config.temperature}</span>
                 </div>
               )}
             </div>
 
             {/* Click Hint */}
-            <div className="mt-3 pt-3 border-t border-slate-700">
-              <div className="text-xs text-slate-400 text-center">
+            <div className="mt-3 pt-3 border-t border-foreground/10">
+              <div className="text-xs text-foreground/50 text-center">
                 Click to chat
               </div>
             </div>
@@ -99,7 +99,7 @@ export default function GenesisBotNode({ id, data, selected }: NodeProps<any>) {
           type="source"
           position={Position.Right}
           id="output"
-          className="!bg-blue-500 !border-2 !border-slate-900"
+          className="!bg-sky !border-2 !border-white"
         />
       </div>
     </>

@@ -115,14 +115,15 @@ export default function CanvasViewport({
         // Only apply style for default nodes (custom nodes have their own styling)
         ...(nodeType === 'default' && {
           style: {
-            background: isSelected ? '#1e40af' : '#1e293b',
-            border: `2px solid ${isSelected ? '#3b82f6' : '#475569'}`,
+            background: isSelected ? 'rgba(14, 165, 233, 0.15)' : 'rgba(255, 255, 255, 0.85)',
+            border: `2px solid ${isSelected ? '#0ea5e9' : 'rgba(0, 0, 0, 0.15)'}`,
             borderRadius: '12px',
             padding: '12px 16px',
-            color: '#f1f5f9',
+            color: '#1e293b',
             fontSize: '14px',
             fontWeight: 500,
             minWidth: '180px',
+            backdropFilter: 'blur(8px)',
           },
         }),
       };
@@ -147,14 +148,14 @@ export default function CanvasViewport({
         deletable: true, // Allow edge deletion
         interactionWidth: 20, // Wider click area for easier selection
         style: {
-          stroke: workflowMode ? '#3b82f6' : '#64748b',
+          stroke: workflowMode ? '#0ea5e9' : 'rgba(0, 0, 0, 0.3)',
           strokeWidth: 2,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
           width: 20,
           height: 20,
-          color: workflowMode ? '#3b82f6' : '#64748b',
+          color: workflowMode ? '#0ea5e9' : 'rgba(0, 0, 0, 0.3)',
         },
       };
     });
@@ -273,7 +274,7 @@ export default function CanvasViewport({
   );
 
   return (
-    <div className="h-full w-full bg-slate-950">
+    <div className="h-full w-full bg-gradient-to-br from-white/80 to-lavender/20">
       <ReactFlow
         nodes={reactFlowNodes}
         edges={reactFlowEdges}
@@ -310,8 +311,8 @@ export default function CanvasViewport({
         <Background
           gap={20}
           size={1}
-          color="#334155"
-          style={{ background: '#0f172a' }}
+          color="rgba(0, 0, 0, 0.08)"
+          style={{ background: 'transparent' }}
         />
 
         {/* Navigation Controls */}
@@ -320,9 +321,10 @@ export default function CanvasViewport({
           showFitView
           showInteractive
           style={{
-            background: '#1e293b',
-            border: '1px solid #475569',
+            background: 'rgba(255, 255, 255, 0.8)',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
             borderRadius: '8px',
+            backdropFilter: 'blur(8px)',
           }}
         />
 
@@ -342,11 +344,12 @@ export default function CanvasViewport({
             };
             return colorMap[nodeData?.color] || '#64748b';
           }}
-          maskColor="#0f172a99"
+          maskColor="rgba(255, 255, 255, 0.7)"
           style={{
-            background: '#1e293b',
-            border: '1px solid #475569',
+            background: 'rgba(255, 255, 255, 0.8)',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
             borderRadius: '8px',
+            backdropFilter: 'blur(8px)',
           }}
         />
 
@@ -365,18 +368,18 @@ export default function CanvasViewport({
         }
 
         .canvas-viewport .react-flow__node.selected {
-          box-shadow: 0 0 0 2px #3b82f6;
+          box-shadow: 0 0 0 2px #0ea5e9;
         }
 
         .canvas-viewport .react-flow__handle {
           width: 10px;
           height: 10px;
-          background: #64748b;
-          border: 2px solid #1e293b;
+          background: rgba(100, 116, 139, 0.8);
+          border: 2px solid rgba(255, 255, 255, 0.9);
         }
 
         .canvas-viewport .react-flow__handle-connecting {
-          background: #3b82f6;
+          background: #0ea5e9;
         }
 
         .canvas-viewport .react-flow__handle-valid {
@@ -393,23 +396,27 @@ export default function CanvasViewport({
         }
 
         .canvas-viewport .react-flow__edge.selected .react-flow__edge-path {
-          stroke: #3b82f6;
+          stroke: #0ea5e9;
           stroke-width: 3;
         }
 
         .canvas-viewport .react-flow__edge-text {
-          fill: #f1f5f9;
+          fill: #1e293b;
           font-size: 10px;
         }
 
         .canvas-viewport .react-flow__controls button {
-          background: #334155;
+          background: rgba(255, 255, 255, 0.9);
           border: none;
-          color: #f1f5f9;
+          color: #1e293b;
         }
 
         .canvas-viewport .react-flow__controls button:hover {
-          background: #475569;
+          background: rgba(255, 255, 255, 1);
+        }
+
+        .canvas-viewport .react-flow__controls button svg {
+          fill: #1e293b;
         }
       `}</style>
     </div>

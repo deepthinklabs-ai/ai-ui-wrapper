@@ -120,9 +120,9 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
     <div
       data-node-id={id}
       className={`
-        rounded-lg border-2 bg-slate-800 shadow-lg min-w-[260px]
+        rounded-lg border-2 bg-white/85 backdrop-blur-md shadow-lg min-w-[260px]
         transition-all
-        ${selected ? 'border-teal-500 ring-2 ring-teal-500/50' : 'border-slate-600'}
+        ${selected ? 'border-teal-500 ring-2 ring-teal-500/50' : 'border-foreground/20'}
       `}
     >
       {/* Input Handle */}
@@ -130,7 +130,7 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
         type="target"
         position={Position.Left}
         id="responses"
-        className="!bg-teal-500 !border-2 !border-slate-900"
+        className="!bg-teal-500 !border-2 !border-white"
       />
 
       <div className="p-4">
@@ -140,10 +140,10 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
             <span role="img" aria-label="compiler">📋</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-slate-100 text-sm truncate">
+            <div className="font-semibold text-foreground text-sm truncate">
               {nodeData.config.name}
             </div>
-            <div className="text-xs text-teal-400">
+            <div className="text-xs text-teal-600">
               Response Compiler
             </div>
           </div>
@@ -153,21 +153,21 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
           /* Edit Mode */
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Name</label>
+              <label className="block text-xs text-foreground/60 mb-1">Name</label>
               <input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="w-full px-2 py-1 text-sm bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-teal-500"
+                className="w-full px-2 py-1 text-sm bg-white/80 border border-foreground/20 rounded text-foreground focus:outline-none focus:border-teal-500"
                 placeholder="Compiler name"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Description</label>
+              <label className="block text-xs text-foreground/60 mb-1">Description</label>
               <textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full px-2 py-1 text-sm bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-teal-500 resize-none"
+                className="w-full px-2 py-1 text-sm bg-white/80 border border-foreground/20 rounded text-foreground focus:outline-none focus:border-teal-500 resize-none"
                 placeholder="Optional description"
                 rows={2}
               />
@@ -183,7 +183,7 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
               <button
                 onClick={handleCancelEdit}
                 disabled={isSaving}
-                className="flex-1 px-3 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-200 rounded transition-colors disabled:opacity-50"
+                className="flex-1 px-3 py-1 text-xs bg-foreground/10 hover:bg-foreground/20 text-foreground rounded transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -195,43 +195,43 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
             {/* Configuration Display */}
             <div className="space-y-2 text-xs">
               {/* Compilation Strategy */}
-              <div className="p-2 bg-slate-700/50 rounded">
-                <div className="text-slate-400 mb-1">Compilation Strategy:</div>
-                <div className="text-slate-200 font-medium">
+              <div className="p-2 bg-foreground/5 rounded">
+                <div className="text-foreground/50 mb-1">Compilation Strategy:</div>
+                <div className="text-foreground font-medium">
                   {getStrategyDisplay(nodeData.config.compilation_strategy)}
                 </div>
               </div>
 
               {/* Output Format */}
-              <div className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
-                <span className="text-slate-400">Output Format:</span>
-                <span className="text-slate-200 font-medium">
+              <div className="flex items-center justify-between p-2 bg-foreground/5 rounded">
+                <span className="text-foreground/50">Output Format:</span>
+                <span className="text-foreground font-medium">
                   {getFormatDisplay(nodeData.config.output_format)}
                 </span>
               </div>
 
               {/* Source Attribution */}
-              <div className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
-                <span className="text-slate-400">Source Attribution:</span>
-                <span className={`font-medium ${nodeData.config.include_source_attribution ? 'text-green-400' : 'text-slate-500'}`}>
+              <div className="flex items-center justify-between p-2 bg-foreground/5 rounded">
+                <span className="text-foreground/50">Source Attribution:</span>
+                <span className={`font-medium ${nodeData.config.include_source_attribution ? 'text-green-600' : 'text-foreground/50'}`}>
                   {nodeData.config.include_source_attribution ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
 
               {/* Upstream Connections */}
-              <div className="p-2 bg-slate-700/50 rounded">
-                <div className="text-slate-400 mb-1">Upstream Sources ({upstreamCount}):</div>
+              <div className="p-2 bg-foreground/5 rounded">
+                <div className="text-foreground/50 mb-1">Upstream Sources ({upstreamCount}):</div>
                 {upstreamAgents.length > 0 ? (
                   <div className="space-y-1">
                     {upstreamAgents.map((name, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-slate-300">
-                        <span className="text-teal-400">←</span>
+                      <div key={idx} className="flex items-center gap-2 text-foreground/70">
+                        <span className="text-teal-600">←</span>
                         <span className="truncate">{name}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-slate-500 italic">
+                  <div className="text-foreground/50 italic">
                     No sources connected
                   </div>
                 )}
@@ -239,18 +239,18 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
 
               {/* Usage Stats */}
               {nodeData.config.compilation_count !== undefined && nodeData.config.compilation_count > 0 && (
-                <div className="flex items-center justify-between text-slate-500">
+                <div className="flex items-center justify-between text-foreground/50">
                   <span>Compilations:</span>
-                  <span className="text-slate-300">{nodeData.config.compilation_count}</span>
+                  <span className="text-foreground/70">{nodeData.config.compilation_count}</span>
                 </div>
               )}
             </div>
 
             {/* Edit Button */}
-            <div className="mt-3 pt-3 border-t border-slate-700">
+            <div className="mt-3 pt-3 border-t border-foreground/10">
               <button
                 onClick={() => setIsEditing(true)}
-                className="w-full px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+                className="w-full px-3 py-1.5 text-xs bg-foreground/10 hover:bg-foreground/20 text-foreground/70 rounded transition-colors"
               >
                 Edit Configuration
               </button>
@@ -258,7 +258,7 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
 
             {/* Status Hint */}
             <div className="mt-2 text-center">
-              <div className={`text-xs ${upstreamCount > 0 ? 'text-teal-400' : 'text-slate-500'}`}>
+              <div className={`text-xs ${upstreamCount > 0 ? 'text-teal-600' : 'text-foreground/50'}`}>
                 {upstreamCount > 0
                   ? `Ready to compile ${upstreamCount} source${upstreamCount > 1 ? 's' : ''}`
                   : 'Connect agents to compile responses'
@@ -274,7 +274,7 @@ export default function ResponseCompilerNode({ id, data, selected }: NodeProps<a
         type="source"
         position={Position.Right}
         id="compiled"
-        className="!bg-teal-500 !border-2 !border-slate-900"
+        className="!bg-teal-500 !border-2 !border-white"
       />
     </div>
   );

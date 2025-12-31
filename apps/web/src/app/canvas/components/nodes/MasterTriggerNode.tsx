@@ -91,9 +91,9 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
     <div
       data-node-id={id}
       className={`
-        rounded-lg border-2 bg-slate-800 shadow-lg min-w-[250px]
+        rounded-lg border-2 bg-white/85 backdrop-blur-md shadow-lg min-w-[250px]
         transition-all
-        ${selected ? 'border-purple-500 ring-2 ring-purple-500/50' : 'border-slate-600'}
+        ${selected ? 'border-purple-500 ring-2 ring-purple-500/50' : 'border-foreground/20'}
         ${isExposed ? 'ring-1 ring-green-500/30' : ''}
       `}
     >
@@ -106,14 +106,14 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
             <span role="img" aria-label="trigger">🎯</span>
             {/* Exposure indicator */}
             {isExposed && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-slate-800" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white" />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-slate-100 text-sm truncate">
+            <div className="font-semibold text-foreground text-sm truncate">
               {nodeData.label}
             </div>
-            <div className="text-xs text-purple-400">
+            <div className="text-xs text-purple-600">
               Chatbot Trigger
             </div>
           </div>
@@ -123,21 +123,21 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
           /* Edit Mode */
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Display Name</label>
+              <label className="block text-xs text-foreground/60 mb-1">Display Name</label>
               <input
                 type="text"
                 value={editDisplayName}
                 onChange={(e) => setEditDisplayName(e.target.value)}
-                className="w-full px-2 py-1 text-sm bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-purple-500"
+                className="w-full px-2 py-1 text-sm bg-white/80 border border-foreground/20 rounded text-foreground focus:outline-none focus:border-purple-500"
                 placeholder="Workflow name in dropdown"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Description (optional)</label>
+              <label className="block text-xs text-foreground/60 mb-1">Description (optional)</label>
               <textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full px-2 py-1 text-sm bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-purple-500 resize-none"
+                className="w-full px-2 py-1 text-sm bg-white/80 border border-foreground/20 rounded text-foreground focus:outline-none focus:border-purple-500 resize-none"
                 placeholder="Brief description for the dropdown"
                 rows={2}
               />
@@ -153,7 +153,7 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
               <button
                 onClick={handleCancelEdit}
                 disabled={isSaving}
-                className="flex-1 px-3 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-200 rounded transition-colors disabled:opacity-50"
+                className="flex-1 px-3 py-1 text-xs bg-foreground/10 hover:bg-foreground/20 text-foreground rounded transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -164,25 +164,25 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
           <>
             {/* Configuration Display */}
             <div className="space-y-2 text-xs">
-              <div className="p-2 bg-slate-700/50 rounded">
-                <div className="text-slate-400 mb-1">Dropdown Name:</div>
-                <div className="text-slate-200 font-medium">
+              <div className="p-2 bg-foreground/5 rounded">
+                <div className="text-foreground/50 mb-1">Dropdown Name:</div>
+                <div className="text-foreground font-medium">
                   {nodeData.config.display_name || 'Not set'}
                 </div>
               </div>
 
               {nodeData.config.description && (
-                <div className="p-2 bg-slate-700/50 rounded">
-                  <div className="text-slate-400 mb-1">Description:</div>
-                  <div className="text-slate-300 text-xs">
+                <div className="p-2 bg-foreground/5 rounded">
+                  <div className="text-foreground/50 mb-1">Description:</div>
+                  <div className="text-foreground/70 text-xs">
                     {nodeData.config.description}
                   </div>
                 </div>
               )}
 
               {/* Exposure Status */}
-              <div className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
-                <span className="text-slate-400">Exposed:</span>
+              <div className="flex items-center justify-between p-2 bg-foreground/5 rounded">
+                <span className="text-foreground/50">Exposed:</span>
                 <button
                   onClick={handleToggleExposure}
                   disabled={isSaving}
@@ -190,7 +190,7 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
                     px-2 py-0.5 rounded text-xs font-medium transition-colors
                     ${isExposed
                       ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                      : 'bg-foreground/10 text-foreground/70 hover:bg-foreground/20'
                     }
                     ${isSaving ? 'opacity-50 cursor-wait' : ''}
                   `}
@@ -201,18 +201,18 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
 
               {/* Usage Stats */}
               {nodeData.config.trigger_count !== undefined && nodeData.config.trigger_count > 0 && (
-                <div className="flex items-center justify-between text-slate-500">
+                <div className="flex items-center justify-between text-foreground/50">
                   <span>Triggered:</span>
-                  <span className="text-slate-300">{nodeData.config.trigger_count} times</span>
+                  <span className="text-foreground/70">{nodeData.config.trigger_count} times</span>
                 </div>
               )}
             </div>
 
             {/* Edit Button */}
-            <div className="mt-3 pt-3 border-t border-slate-700">
+            <div className="mt-3 pt-3 border-t border-foreground/10">
               <button
                 onClick={() => setIsEditing(true)}
-                className="w-full px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+                className="w-full px-3 py-1.5 text-xs bg-foreground/10 hover:bg-foreground/20 text-foreground/70 rounded transition-colors"
               >
                 Edit Configuration
               </button>
@@ -220,7 +220,7 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
 
             {/* Status Hint */}
             <div className="mt-2 text-center">
-              <div className={`text-xs ${isExposed ? 'text-green-400' : 'text-slate-500'}`}>
+              <div className={`text-xs ${isExposed ? 'text-green-600' : 'text-foreground/50'}`}>
                 {isExposed
                   ? 'Visible in Chatbot dropdown'
                   : 'Enable exposure to show in Chatbot'
@@ -236,7 +236,7 @@ export default function MasterTriggerNode({ id, data, selected }: NodeProps<any>
         type="source"
         position={Position.Right}
         id="output"
-        className="!bg-purple-500 !border-2 !border-slate-900"
+        className="!bg-purple-500 !border-2 !border-white"
       />
     </div>
   );

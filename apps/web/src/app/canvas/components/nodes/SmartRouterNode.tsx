@@ -139,9 +139,9 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
     <div
       data-node-id={id}
       className={`
-        rounded-lg border-2 bg-slate-800 shadow-lg min-w-[280px]
+        rounded-lg border-2 bg-white/85 backdrop-blur-md shadow-lg min-w-[280px]
         transition-all
-        ${selected ? 'border-cyan-500 ring-2 ring-cyan-500/50' : 'border-slate-600'}
+        ${selected ? 'border-cyan-500 ring-2 ring-cyan-500/50' : 'border-foreground/20'}
       `}
     >
       {/* Input Handle */}
@@ -149,7 +149,7 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
         type="target"
         position={Position.Left}
         id="input"
-        className="!bg-cyan-500 !border-2 !border-slate-900"
+        className="!bg-cyan-500 !border-2 !border-white"
       />
 
       <div className="p-4">
@@ -159,10 +159,10 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
             <span role="img" aria-label="router">🔀</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-slate-100 text-sm truncate">
+            <div className="font-semibold text-foreground text-sm truncate">
               {nodeData.config.name}
             </div>
-            <div className="text-xs text-cyan-400">
+            <div className="text-xs text-cyan-600">
               Smart Router
             </div>
           </div>
@@ -172,21 +172,21 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
           /* Edit Mode */
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Name</label>
+              <label className="block text-xs text-foreground/60 mb-1">Name</label>
               <input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="w-full px-2 py-1 text-sm bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-cyan-500"
+                className="w-full px-2 py-1 text-sm bg-white/80 border border-foreground/20 rounded text-foreground focus:outline-none focus:border-cyan-500"
                 placeholder="Router name"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Description</label>
+              <label className="block text-xs text-foreground/60 mb-1">Description</label>
               <textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full px-2 py-1 text-sm bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-cyan-500 resize-none"
+                className="w-full px-2 py-1 text-sm bg-white/80 border border-foreground/20 rounded text-foreground focus:outline-none focus:border-cyan-500 resize-none"
                 placeholder="Optional description"
                 rows={2}
               />
@@ -202,7 +202,7 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
               <button
                 onClick={handleCancelEdit}
                 disabled={isSaving}
-                className="flex-1 px-3 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-200 rounded transition-colors disabled:opacity-50"
+                className="flex-1 px-3 py-1 text-xs bg-foreground/10 hover:bg-foreground/20 text-foreground rounded transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -214,16 +214,16 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
             {/* Configuration Display */}
             <div className="space-y-2 text-xs">
               {/* Routing Strategy */}
-              <div className="p-2 bg-slate-700/50 rounded">
-                <div className="text-slate-400 mb-1">Routing Strategy:</div>
-                <div className="text-slate-200 font-medium capitalize">
+              <div className="p-2 bg-foreground/5 rounded">
+                <div className="text-foreground/50 mb-1">Routing Strategy:</div>
+                <div className="text-foreground font-medium capitalize">
                   {nodeData.config.routing_strategy.replace(/_/g, ' → ')}
                 </div>
               </div>
 
               {/* Connected Agents */}
-              <div className="p-2 bg-slate-700/50 rounded">
-                <div className="text-slate-400 mb-2">Connected Agents ({connectedAgents.length}):</div>
+              <div className="p-2 bg-foreground/5 rounded">
+                <div className="text-foreground/50 mb-2">Connected Agents ({connectedAgents.length}):</div>
                 {connectedAgents.length > 0 ? (
                   <div className="space-y-1.5">
                     {connectedAgents.map(agent => (
@@ -239,39 +239,39 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
                             <span title="General AI">🤖</span>
                           )}
                         </div>
-                        <span className="text-slate-300 truncate">{agent.name}</span>
+                        <span className="text-foreground/70 truncate">{agent.name}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-slate-500 italic">
+                  <div className="text-foreground/50 italic">
                     No agents connected. Connect AI Agents to enable routing.
                   </div>
                 )}
               </div>
 
               {/* Parallel Routing */}
-              <div className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
-                <span className="text-slate-400">Parallel Routing:</span>
-                <span className={`font-medium ${nodeData.config.allow_parallel_routing ? 'text-green-400' : 'text-slate-500'}`}>
+              <div className="flex items-center justify-between p-2 bg-foreground/5 rounded">
+                <span className="text-foreground/50">Parallel Routing:</span>
+                <span className={`font-medium ${nodeData.config.allow_parallel_routing ? 'text-green-600' : 'text-foreground/50'}`}>
                   {nodeData.config.allow_parallel_routing ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
 
               {/* Usage Stats */}
               {nodeData.config.routing_count !== undefined && nodeData.config.routing_count > 0 && (
-                <div className="flex items-center justify-between text-slate-500">
+                <div className="flex items-center justify-between text-foreground/50">
                   <span>Routes processed:</span>
-                  <span className="text-slate-300">{nodeData.config.routing_count}</span>
+                  <span className="text-foreground/70">{nodeData.config.routing_count}</span>
                 </div>
               )}
             </div>
 
             {/* Edit Button */}
-            <div className="mt-3 pt-3 border-t border-slate-700">
+            <div className="mt-3 pt-3 border-t border-foreground/10">
               <button
                 onClick={() => setIsEditing(true)}
-                className="w-full px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+                className="w-full px-3 py-1.5 text-xs bg-foreground/10 hover:bg-foreground/20 text-foreground/70 rounded transition-colors"
               >
                 Edit Configuration
               </button>
@@ -279,7 +279,7 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
 
             {/* Status Hint */}
             <div className="mt-2 text-center">
-              <div className={`text-xs ${connectedAgents.length > 0 ? 'text-cyan-400' : 'text-slate-500'}`}>
+              <div className={`text-xs ${connectedAgents.length > 0 ? 'text-cyan-600' : 'text-foreground/50'}`}>
                 {connectedAgents.length > 0
                   ? `Ready to route to ${connectedAgents.length} agent${connectedAgents.length > 1 ? 's' : ''}`
                   : 'Connect AI Agents to enable routing'
@@ -295,7 +295,7 @@ export default function SmartRouterNode({ id, data, selected }: NodeProps<any>) 
         type="source"
         position={Position.Right}
         id="output"
-        className="!bg-cyan-500 !border-2 !border-slate-900"
+        className="!bg-cyan-500 !border-2 !border-white"
       />
     </div>
   );
