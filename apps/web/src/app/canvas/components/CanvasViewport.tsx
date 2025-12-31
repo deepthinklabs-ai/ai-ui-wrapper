@@ -310,8 +310,8 @@ export default function CanvasViewport({
         {/* Grid Background */}
         <Background
           gap={20}
-          size={1}
-          color="rgba(0, 0, 0, 0.08)"
+          size={1.5}
+          color="rgba(100, 116, 139, 0.4)"
           style={{ background: 'transparent' }}
         />
 
