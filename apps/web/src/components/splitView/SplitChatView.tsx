@@ -249,15 +249,15 @@ export default function SplitChatView({
   }, [isDragging]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-slate-950">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Header with controls */}
-      <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-white/30 bg-white/40 backdrop-blur-md px-4 py-3">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-slate-100">Split View</h1>
+          <h1 className="text-xl font-bold text-foreground">Split View</h1>
           <div className="flex items-center gap-2">
             <button
               onClick={onSwapPanels}
-              className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors"
+              className="rounded-lg border border-white/40 bg-white/50 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-white/70 transition-colors"
               title="Swap panels"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,7 +271,7 @@ export default function SplitChatView({
             </button>
             <button
               onClick={() => setSplitRatio(50)}
-              className="rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors"
+              className="rounded-lg border border-white/40 bg-white/50 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-white/70 transition-colors"
               title="Reset to 50/50 split"
             >
               Reset Split
@@ -279,10 +279,10 @@ export default function SplitChatView({
             {onToggleCrossChat && (
               <button
                 onClick={onToggleCrossChat}
-                className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-2 ${
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-2 ${
                   crossChatEnabled
-                    ? 'border-green-600 bg-green-600 text-white hover:bg-green-500'
-                    : 'border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700'
+                    ? 'border-mint bg-mint text-foreground hover:bg-mint/80'
+                    : 'border-white/40 bg-white/50 text-foreground hover:bg-white/70'
                 }`}
                 title="Enable workflow mode: Main chat can send instructions to New chat"
               >
@@ -298,13 +298,13 @@ export default function SplitChatView({
               </button>
             )}
             {crossChatEnabled && (
-              <div className="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-800 overflow-hidden">
+              <div className="flex items-center gap-1 rounded-lg border border-white/40 bg-white/50 overflow-hidden">
                 <button
                   onClick={() => onMessageTypeChange('instruction')}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                     messageType === 'instruction'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-200 hover:bg-slate-700'
+                      ? 'bg-sky text-foreground'
+                      : 'text-foreground hover:bg-white/70'
                   }`}
                   title="Instruction mode: Task-oriented, minimal response"
                 >
@@ -314,8 +314,8 @@ export default function SplitChatView({
                   onClick={() => onMessageTypeChange('chat')}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                     messageType === 'chat'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-200 hover:bg-slate-700'
+                      ? 'bg-sky text-foreground'
+                      : 'text-foreground hover:bg-white/70'
                   }`}
                   title="Chat mode: Conversational, expects response"
                 >
@@ -327,7 +327,7 @@ export default function SplitChatView({
         </div>
         <button
           onClick={onClose}
-          className="rounded-md border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors"
+          className="rounded-lg border border-white/40 bg-white/50 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/70 transition-colors"
         >
           Exit Split View
         </button>
@@ -341,11 +341,11 @@ export default function SplitChatView({
           style={{ width: `${splitRatio}%` }}
         >
           {/* Thread selector for left */}
-          <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-2">
+          <div className="border-b border-white/30 bg-white/30 backdrop-blur-sm px-4 py-2">
             <select
               value={leftThreadId || ""}
               onChange={(e) => onSelectLeftThread(e.target.value)}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-white/40 bg-white/60 px-3 py-1.5 text-sm text-foreground focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
             >
               <option value="">Select a thread...</option>
               {threads.map((thread) => (
@@ -384,7 +384,7 @@ export default function SplitChatView({
               currentPanelId="left"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-slate-500">
+            <div className="flex h-full items-center justify-center text-foreground/50">
               <div className="text-center">
                 <p className="text-lg font-medium">No thread selected</p>
                 <p className="mt-2 text-sm">Select a thread from the dropdown above</p>
@@ -395,17 +395,17 @@ export default function SplitChatView({
 
         {/* Draggable Divider */}
         <div
-          className={`relative w-1 cursor-ew-resize bg-slate-800 hover:bg-blue-500 transition-colors ${
-            isDragging ? "bg-blue-500" : ""
+          className={`relative w-1 cursor-ew-resize bg-white/40 hover:bg-sky transition-colors ${
+            isDragging ? "bg-sky" : ""
           }`}
           onMouseDown={handleMouseDown}
         >
           <div className="absolute inset-y-0 -left-1 -right-1" />
           {/* Drag handle indicator */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col gap-1">
-            <div className="h-1 w-1 rounded-full bg-slate-600" />
-            <div className="h-1 w-1 rounded-full bg-slate-600" />
-            <div className="h-1 w-1 rounded-full bg-slate-600" />
+            <div className="h-1 w-1 rounded-full bg-foreground/30" />
+            <div className="h-1 w-1 rounded-full bg-foreground/30" />
+            <div className="h-1 w-1 rounded-full bg-foreground/30" />
           </div>
         </div>
 
@@ -415,11 +415,11 @@ export default function SplitChatView({
           style={{ width: `${100 - splitRatio}%` }}
         >
           {/* Thread selector for right */}
-          <div className="border-b border-slate-800 bg-slate-900/50 px-4 py-2">
+          <div className="border-b border-white/30 bg-white/30 backdrop-blur-sm px-4 py-2">
             <select
               value={rightThreadId || ""}
               onChange={(e) => onSelectRightThread(e.target.value)}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-white/40 bg-white/60 px-3 py-1.5 text-sm text-foreground focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
             >
               <option value="">Select a thread...</option>
               {threads.map((thread) => (
@@ -458,7 +458,7 @@ export default function SplitChatView({
               currentPanelId="right"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-slate-500">
+            <div className="flex h-full items-center justify-center text-foreground/50">
               <div className="text-center">
                 <p className="text-lg font-medium">No thread selected</p>
                 <p className="mt-2 text-sm">Select a thread from the dropdown above</p>
