@@ -106,14 +106,14 @@ export function GmailOAuthPanel({
           >
             <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" />
           </svg>
-          <span className="text-sm font-medium text-slate-200">Gmail</span>
+          <span className="text-sm font-medium text-foreground/80">Gmail</span>
         </div>
         <button
           type="button"
           onClick={handleToggleEnabled}
           disabled={disabled}
           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-            currentConfig.enabled ? 'bg-blue-600' : 'bg-slate-600'
+            currentConfig.enabled ? 'bg-sky' : 'bg-foreground/30'
           } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
           <span
@@ -128,10 +128,10 @@ export function GmailOAuthPanel({
       {currentConfig.enabled && (
         <>
           {/* Connection Status */}
-          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-white/30">
             {isLoading ? (
-              <div className="flex items-center gap-2 text-slate-400">
-                <div className="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full" />
+              <div className="flex items-center gap-2 text-foreground/60">
+                <div className="animate-spin h-4 w-4 border-2 border-foreground/40 border-t-transparent rounded-full" />
                 <span className="text-sm">Checking connection...</span>
               </div>
             ) : status === 'connected' && connection ? (
@@ -143,35 +143,35 @@ export function GmailOAuthPanel({
                     className="w-8 h-8 rounded-full"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-200 truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {connection.name}
                     </p>
-                    <p className="text-xs text-slate-400 truncate">{connection.email}</p>
+                    <p className="text-xs text-foreground/60 truncate">{connection.email}</p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 bg-green-500 rounded-full" />
-                    <span className="text-xs text-green-400">Connected</span>
+                    <span className="text-xs text-green-600">Connected</span>
                   </div>
                 </div>
                 <button
                   onClick={handleDisconnect}
                   disabled={isDisconnecting}
-                  className="w-full px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
+                  className="w-full px-3 py-1.5 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
                 >
                   {isDisconnecting ? 'Disconnecting...' : 'Disconnect Gmail'}
                 </button>
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-foreground/60">
                   Connect your Gmail account to enable email capabilities.
                 </p>
                 {error && (
-                  <p className="text-xs text-red-400">{error}</p>
+                  <p className="text-xs text-red-500">{error}</p>
                 )}
                 <button
                   onClick={handleConnect}
-                  className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-3 py-2 bg-sky hover:bg-sky/80 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" />
@@ -186,10 +186,10 @@ export function GmailOAuthPanel({
           {status === 'connected' && (
             <>
               <div className="space-y-2">
-                <label className="block text-xs font-medium text-slate-300">
+                <label className="block text-xs font-medium text-foreground/80">
                   Permissions
                 </label>
-                <div className="space-y-2 bg-slate-800/30 rounded-lg p-3">
+                <div className="space-y-2 bg-foreground/5 rounded-lg p-3">
                   <PermissionToggle
                     label="Read Emails"
                     description="Allow bot to read email content"
@@ -232,10 +232,10 @@ export function GmailOAuthPanel({
               {/* Safety Settings - Only show if Send is enabled */}
               {currentConfig.permissions.canSend && (
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium text-slate-300">
+                  <label className="block text-xs font-medium text-foreground/80">
                     Safety Settings
                   </label>
-                  <div className="space-y-3 bg-amber-900/20 border border-amber-700/50 rounded-lg p-3">
+                  <div className="space-y-3 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
                     <PermissionToggle
                       label="Require Confirmation"
                       description="Ask for confirmation before sending emails"
@@ -244,7 +244,7 @@ export function GmailOAuthPanel({
                       disabled={disabled}
                     />
                     <div>
-                      <label className="block text-xs text-slate-300 mb-1">
+                      <label className="block text-xs text-foreground/80 mb-1">
                         Max Emails Per Hour
                       </label>
                       <input
@@ -256,7 +256,7 @@ export function GmailOAuthPanel({
                           handleSettingChange('maxEmailsPerHour', parseInt(e.target.value) || 10)
                         }
                         disabled={disabled}
-                        className="w-full px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                        className="w-full px-2 py-1 bg-white/60 border border-white/40 rounded text-sm text-foreground focus:outline-none focus:border-sky"
                       />
                     </div>
                   </div>
@@ -297,9 +297,9 @@ function PermissionToggle({
         className={`relative mt-0.5 inline-flex h-4 w-7 items-center rounded-full transition-colors ${
           checked
             ? dangerous
-              ? 'bg-amber-600'
-              : 'bg-blue-600'
-            : 'bg-slate-600'
+              ? 'bg-amber-500'
+              : 'bg-sky'
+            : 'bg-foreground/30'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span
@@ -310,12 +310,12 @@ function PermissionToggle({
       <div className="flex-1">
         <span
           className={`text-sm ${
-            dangerous && checked ? 'text-amber-300' : 'text-slate-200'
+            dangerous && checked ? 'text-amber-600' : 'text-foreground/80'
           }`}
         >
           {label}
         </span>
-        <p className="text-xs text-slate-400">{description}</p>
+        <p className="text-xs text-foreground/60">{description}</p>
       </div>
     </div>
   );
