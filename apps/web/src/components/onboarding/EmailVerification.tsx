@@ -170,26 +170,21 @@ export default function EmailVerification({
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex min-h-screen items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md space-y-4">
         {/* Header */}
         <div className="text-center">
-          <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90 mb-6" />
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sky/20 mb-6">
-            <svg className="h-8 w-8 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Verify Your Email</h1>
-          <p className="mt-2 text-sm text-foreground/60">
+          <img src="/logo.png" alt="Aiuiw" className="h-12 w-auto mx-auto brightness-90 mb-4" />
+          <h1 className="text-xl font-bold text-foreground">Verify Your Email</h1>
+          <p className="mt-1 text-sm text-foreground/60">
             We've sent a 6-digit code to
           </p>
           <p className="text-sm font-medium text-sky">{userEmail}</p>
         </div>
 
         {/* Code Input */}
-        <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
-          <div className="flex justify-center gap-2 mb-6">
+        <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-5">
+          <div className="flex justify-center gap-2 mb-4">
             {code.map((digit, index) => (
               <input
                 key={index}
@@ -255,27 +250,23 @@ export default function EmailVerification({
         </div>
 
         {/* Info box */}
-        <div className="rounded-2xl border border-white/40 bg-white/40 backdrop-blur-md p-4">
-          <div className="flex items-start gap-3">
-            <svg className="h-5 w-5 text-sky mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <div className="rounded-xl border border-white/40 bg-white/40 backdrop-blur-md p-3">
+          <div className="flex items-start gap-2">
+            <svg className="h-4 w-4 text-sky mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
-            <div>
-              <p className="text-sm text-foreground font-medium">Why email verification?</p>
-              <p className="text-xs text-foreground/60 mt-1">
-                Two-factor authentication adds an extra layer of security to your account.
-                Every time you log in, we'll send a verification code to your email.
-              </p>
-            </div>
+            <p className="text-xs text-foreground/60">
+              Two-factor authentication adds an extra layer of security. We'll send a code each time you log in.
+            </p>
           </div>
         </div>
 
         {/* Back / Sign out buttons */}
-        <div className="text-center space-y-2">
+        <div className="text-center">
           {onBack && (
             <button
               onClick={onBack}
-              className="text-sm text-foreground/60 hover:text-foreground block w-full"
+              className="text-sm text-foreground/60 hover:text-foreground mr-4"
             >
               Go back
             </button>
@@ -288,7 +279,7 @@ export default function EmailVerification({
             }}
             className="text-sm text-red-500 hover:text-red-400"
           >
-            Sign out and start over
+            Sign out
           </button>
         </div>
       </div>
