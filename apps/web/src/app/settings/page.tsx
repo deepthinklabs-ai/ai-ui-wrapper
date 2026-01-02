@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import SubscriptionManagement from "@/components/settings/SubscriptionManagement";
 import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal";
 import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
-import MCPServerSettings from "@/components/settings/MCPServerSettings";
-import MCPMigrationBanner from "@/components/settings/MCPMigrationBanner";
 import EncryptionSettings from "@/components/settings/EncryptionSettings";
 import BYOKSettings from "@/components/settings/BYOKSettings";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -122,9 +120,6 @@ function SettingsPageContent() {
             </div>
           )}
 
-          {/* MCP Credentials Migration Banner */}
-          <MCPMigrationBanner />
-
           {/* BYOK API Keys Section - Primary for BYOK model */}
           <BYOKSettings />
 
@@ -220,11 +215,6 @@ function SettingsPageContent() {
           {/* Push-to-Talk Settings Section */}
           <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <PushToTalkSettings />
-          </section>
-
-          {/* MCP Servers Section */}
-          <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
-            <MCPServerSettings />
           </section>
 
         </div>

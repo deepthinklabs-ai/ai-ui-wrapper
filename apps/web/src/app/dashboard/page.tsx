@@ -23,7 +23,6 @@ import { useFeatureToggles } from "@/hooks/useFeatureToggles";
 import { useSplitView } from "@/hooks/useSplitView";
 import { useThreadContext } from "@/hooks/useThreadContext";
 import { useResizableSidebar } from "@/hooks/useResizableSidebar";
-import { useMCPServers } from "@/hooks/useMCPServers";
 import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
 import { useThreadExport } from "@/hooks/useThreadExport";
 import { useEncryption } from "@/contexts/EncryptionContext";
@@ -37,7 +36,6 @@ import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
 import MessageList from "@/components/dashboard/MessageList";
 import MessageComposer from "@/components/dashboard/MessageComposer";
-import MCPServerIndicator from "@/components/dashboard/MCPServerIndicator";
 import RevertUndoButton from "@/components/dashboard/RevertUndoButton";
 import RevertWithDraftUndoButton from "@/components/dashboard/RevertWithDraftUndoButton";
 import ContextWindowIndicator from "@/components/dashboard/ContextWindowIndicator";
@@ -189,9 +187,6 @@ export default function DashboardPage() {
     [threadContextSections]
   );
 
-  // MCP servers
-  const { connections, tools, isConnecting, servers, isEnabled } = useMCPServers();
-
   // Resizable sidebar
   const { isResizing, handleMouseDown: handleSidebarResize, sidebarStyle } = useResizableSidebar();
 
@@ -248,17 +243,6 @@ export default function DashboardPage() {
 
   // Chatbot export
   const { exportChatbot } = useChatbotExport();
-
-  // Debug MCP status
-  useEffect(() => {
-    console.log('[Dashboard MCP Status]', {
-      isEnabled,
-      serversConfigured: servers.length,
-      connections: connections.length,
-      tools: tools.length,
-      isConnecting
-    });
-  }, [isEnabled, servers.length, connections.length, tools.length, isConnecting]);
 
   useEffect(() => {
     if (!loadingUser && !user) {
@@ -916,7 +900,7 @@ export default function DashboardPage() {
             {/* Centered chat area, like ChatGPT */}
             <div className="flex h-full w-full justify-center overflow-hidden">
               <div className="flex h-full w-3/4 flex-col gap-3 px-4 py-4 overflow-hidden">
-                {/* Header at top of chat column with Split View button and MCP indicator */}
+                {/* Header at top of chat column with Split View button */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1">
                     <ChatHeader
@@ -926,11 +910,6 @@ export default function DashboardPage() {
                       activeChatbot={previewChatbot}
                       onEditChatbot={handleEditActiveChatbot}
                       isEditingChatbot={isEditingChatbot}
-                    />
-                    <MCPServerIndicator
-                      connections={connections}
-                      tools={tools}
-                      isConnecting={isConnecting}
                     />
                   </div>
                   {selectedThreadId && (
