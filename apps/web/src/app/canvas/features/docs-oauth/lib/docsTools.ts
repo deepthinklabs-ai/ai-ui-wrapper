@@ -221,7 +221,11 @@ export const DOCS_TOOLS: DocsTool[] = [
 /**
  * Get tools that are enabled based on permissions
  */
-export function getEnabledDocsTools(permissions: DocsPermissions): DocsTool[] {
+export function getEnabledDocsTools(permissions: DocsPermissions | undefined): DocsTool[] {
+  // Return empty array if permissions are not defined
+  if (!permissions) {
+    return [];
+  }
   return DOCS_TOOLS.filter((tool) => permissions[tool.requiredPermission]);
 }
 

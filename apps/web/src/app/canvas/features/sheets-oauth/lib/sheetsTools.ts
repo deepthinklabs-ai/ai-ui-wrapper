@@ -210,7 +210,11 @@ export const sheetsTools: SheetsTool[] = [
 /**
  * Get tools that are enabled based on permissions
  */
-export function getEnabledSheetsTools(permissions: SheetsPermissions): SheetsTool[] {
+export function getEnabledSheetsTools(permissions: SheetsPermissions | undefined): SheetsTool[] {
+  // Return empty array if permissions are not defined
+  if (!permissions) {
+    return [];
+  }
   return sheetsTools.filter((tool) => {
     switch (tool.requiredPermission) {
       case 'canRead':
