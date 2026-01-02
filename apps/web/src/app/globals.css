@@ -31,12 +31,12 @@
 
 /* Force Light Mode Aesthetics */
 body {
-  background-color: var(--cream);
+  background-color: #F5F5F5;
   background-image:
-    radial-gradient(at 10% 10%, var(--butter) 0px, transparent 50%),
-    radial-gradient(at 90% 0%, var(--sky) 0px, transparent 50%),
-    radial-gradient(at 10% 90%, var(--lavender) 0px, transparent 50%),
-    radial-gradient(at 90% 90%, var(--mint) 0px, transparent 50%);
+    radial-gradient(at 10% 10%, #EBEBEB 0px, transparent 50%),
+    radial-gradient(at 90% 0%, #E8E8E8 0px, transparent 50%),
+    radial-gradient(at 10% 90%, #E5E5E5 0px, transparent 50%),
+    radial-gradient(at 90% 90%, #EAEAEA 0px, transparent 50%);
   background-attachment: fixed;
   background-size: 100% 100%;
   color: var(--text-main);
