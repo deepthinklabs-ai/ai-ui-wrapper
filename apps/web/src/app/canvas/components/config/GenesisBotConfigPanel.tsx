@@ -284,13 +284,13 @@ export default function GenesisBotConfigPanel({
     <div className="space-y-4">
       {/* Model Configuration */}
       <div>
-        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/60">
           AI Model
         </h5>
 
         {/* Model Provider */}
         <div className="mb-3">
-          <label className="block text-xs font-medium text-slate-300 mb-2">
+          <label className="block text-xs font-medium text-foreground/80 mb-2">
             Provider
           </label>
           <select
@@ -311,7 +311,7 @@ export default function GenesisBotConfigPanel({
                 onUpdate({ model_provider: provider });
               }
             }}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full rounded-lg border border-white/40 bg-white/60 px-3 py-2 text-sm text-foreground focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/50"
           >
             <option value="openai">OpenAI</option>
             <option value="claude">Claude (Anthropic)</option>
@@ -321,14 +321,14 @@ export default function GenesisBotConfigPanel({
 
         {/* Model Name */}
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-2">
+          <label className="block text-xs font-medium text-foreground/80 mb-2">
             Model
           </label>
           <select
             value={formData.model_name}
             onChange={(e) => handleChange('model_name', e.target.value as AIModel)}
             onBlur={() => handleBlur('model_name')}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full rounded-lg border border-white/40 bg-white/60 px-3 py-2 text-sm text-foreground focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/50"
           >
             {availableModelsForProvider.map((model) => (
               <option key={model.value} value={model.value}>
@@ -336,7 +336,7 @@ export default function GenesisBotConfigPanel({
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-foreground/50">
             {availableModelsForProvider.find((m) => m.value === formData.model_name)
               ?.description}
           </p>
@@ -345,12 +345,12 @@ export default function GenesisBotConfigPanel({
 
       {/* System Prompt */}
       <div>
-        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/60">
           Behavior
         </h5>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-2">
+          <label className="block text-xs font-medium text-foreground/80 mb-2">
             System Prompt
           </label>
           <textarea
@@ -358,10 +358,10 @@ export default function GenesisBotConfigPanel({
             onChange={(e) => handleChange('system_prompt', e.target.value)}
             onBlur={() => handleBlur('system_prompt')}
             rows={8}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-mono"
+            className="w-full rounded-lg border border-white/40 bg-white/60 px-3 py-2 text-sm text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/50 font-mono"
             placeholder="You are a helpful AI assistant..."
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-foreground/50">
             Define the bot's personality, expertise, and behavior
           </p>
         </div>
@@ -370,37 +370,37 @@ export default function GenesisBotConfigPanel({
         {integrationPrompts.length > 0 && (
           <div className="mt-4 space-y-3">
             <div className="flex items-center gap-2">
-              <div className="h-px flex-1 bg-slate-700" />
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <div className="h-px flex-1 bg-foreground/20" />
+              <span className="text-xs font-medium text-foreground/50 uppercase tracking-wider">
                 Integration Prompts (Auto-injected)
               </span>
-              <div className="h-px flex-1 bg-slate-700" />
+              <div className="h-px flex-1 bg-foreground/20" />
             </div>
 
             {integrationPrompts.map((integration, index) => (
               <div
                 key={integration.name}
-                className="rounded-lg border border-slate-700/50 bg-slate-900/50 overflow-hidden"
+                className="rounded-lg border border-white/30 bg-foreground/5 overflow-hidden"
               >
                 {/* Integration Header */}
-                <div className={`px-3 py-2 border-b border-slate-700/50 flex items-center gap-2 ${
-                  integration.color === 'red' ? 'bg-red-900/20' :
-                  integration.color === 'blue' ? 'bg-blue-900/20' :
-                  integration.color === 'green' ? 'bg-green-900/20' :
-                  integration.color === 'purple' ? 'bg-purple-900/20' :
-                  'bg-slate-800/50'
+                <div className={`px-3 py-2 border-b border-white/20 flex items-center gap-2 ${
+                  integration.color === 'red' ? 'bg-red-500/10' :
+                  integration.color === 'blue' ? 'bg-blue-500/10' :
+                  integration.color === 'green' ? 'bg-green-500/10' :
+                  integration.color === 'purple' ? 'bg-purple-500/10' :
+                  'bg-foreground/5'
                 }`}>
                   <span className="text-base">{integration.icon}</span>
                   <span className={`text-xs font-semibold ${
-                    integration.color === 'red' ? 'text-red-400' :
-                    integration.color === 'blue' ? 'text-blue-400' :
-                    integration.color === 'green' ? 'text-green-400' :
-                    integration.color === 'purple' ? 'text-purple-400' :
-                    'text-slate-300'
+                    integration.color === 'red' ? 'text-red-600' :
+                    integration.color === 'blue' ? 'text-blue-600' :
+                    integration.color === 'green' ? 'text-green-600' :
+                    integration.color === 'purple' ? 'text-purple-600' :
+                    'text-foreground/80'
                   }`}>
                     {integration.name}
                   </span>
-                  <span className="ml-auto text-xs text-slate-500 flex items-center gap-1">
+                  <span className="ml-auto text-xs text-foreground/50 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
@@ -410,14 +410,14 @@ export default function GenesisBotConfigPanel({
 
                 {/* Integration Prompt Content */}
                 <div className="px-3 py-2">
-                  <pre className="text-xs text-slate-400 whitespace-pre-wrap font-mono leading-relaxed">
+                  <pre className="text-xs text-foreground/60 whitespace-pre-wrap font-mono leading-relaxed">
                     {integration.prompt}
                   </pre>
                 </div>
               </div>
             ))}
 
-            <p className="text-xs text-slate-500 italic">
+            <p className="text-xs text-foreground/50 italic">
               These prompts are automatically added when integrations are enabled.
               They instruct the AI how to use each integration's tools.
             </p>
@@ -427,13 +427,13 @@ export default function GenesisBotConfigPanel({
 
       {/* Advanced Settings */}
       <div>
-        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/60">
           Advanced Settings
         </h5>
 
         {/* Temperature */}
         <div className="mb-3">
-          <label className="block text-xs font-medium text-slate-300 mb-2">
+          <label className="block text-xs font-medium text-foreground/80 mb-2">
             Temperature: {formData.temperature?.toFixed(2) || '0.70'}
           </label>
           <input
@@ -444,9 +444,9 @@ export default function GenesisBotConfigPanel({
             value={formData.temperature || 0.7}
             onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
             onMouseUp={() => handleBlur('temperature')}
-            className="w-full"
+            className="w-full accent-sky"
           />
-          <div className="flex justify-between text-xs text-slate-500 mt-1">
+          <div className="flex justify-between text-xs text-foreground/50 mt-1">
             <span>More Focused</span>
             <span>More Creative</span>
           </div>
@@ -454,7 +454,7 @@ export default function GenesisBotConfigPanel({
 
         {/* Max Tokens */}
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-2">
+          <label className="block text-xs font-medium text-foreground/80 mb-2">
             Max Tokens (Optional)
           </label>
           <input
@@ -466,10 +466,10 @@ export default function GenesisBotConfigPanel({
               handleChange('max_tokens', e.target.value ? parseInt(e.target.value) : undefined)
             }
             onBlur={() => handleBlur('max_tokens')}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full rounded-lg border border-white/40 bg-white/60 px-3 py-2 text-sm text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/50"
             placeholder="Auto"
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-foreground/50">
             Maximum response length (leave empty for model default)
           </p>
         </div>
@@ -477,12 +477,12 @@ export default function GenesisBotConfigPanel({
 
       {/* Description */}
       <div>
-        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/60">
           Documentation
         </h5>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-2">
+          <label className="block text-xs font-medium text-foreground/80 mb-2">
             Description (Optional)
           </label>
           <textarea
@@ -490,7 +490,7 @@ export default function GenesisBotConfigPanel({
             onChange={(e) => handleChange('description', e.target.value || undefined)}
             onBlur={() => handleBlur('description')}
             rows={3}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full rounded-lg border border-white/40 bg-white/60 px-3 py-2 text-sm text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/50"
             placeholder="Describe what this bot does..."
           />
         </div>
@@ -498,7 +498,7 @@ export default function GenesisBotConfigPanel({
 
       {/* Feature Toggles */}
       <div>
-        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/60">
           Features
         </h5>
 
@@ -510,9 +510,9 @@ export default function GenesisBotConfigPanel({
               checked={formData.streaming_enabled !== false}
               onChange={(e) => handleChange('streaming_enabled', e.target.checked)}
               onBlur={() => handleBlur('streaming_enabled')}
-              className="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-2 focus:ring-blue-500/50"
+              className="rounded border-white/40 bg-white/60 text-sky focus:ring-2 focus:ring-sky/50"
             />
-            <span className="text-sm text-slate-300">Enable Streaming Responses</span>
+            <span className="text-sm text-foreground/80">Enable Streaming Responses</span>
           </label>
 
           {/* Show Thinking */}
@@ -522,9 +522,9 @@ export default function GenesisBotConfigPanel({
               checked={formData.show_thinking || false}
               onChange={(e) => handleChange('show_thinking', e.target.checked)}
               onBlur={() => handleBlur('show_thinking')}
-              className="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-2 focus:ring-blue-500/50"
+              className="rounded border-white/40 bg-white/60 text-sky focus:ring-2 focus:ring-sky/50"
             />
-            <span className="text-sm text-slate-300">Show Thinking Process</span>
+            <span className="text-sm text-foreground/80">Show Thinking Process</span>
           </label>
 
           {/* Memory */}
@@ -534,9 +534,9 @@ export default function GenesisBotConfigPanel({
               checked={formData.memory_enabled || false}
               onChange={(e) => handleChange('memory_enabled', e.target.checked)}
               onBlur={() => handleBlur('memory_enabled')}
-              className="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-2 focus:ring-blue-500/50"
+              className="rounded border-white/40 bg-white/60 text-sky focus:ring-2 focus:ring-sky/50"
             />
-            <span className="text-sm text-slate-300">Enable Memory (Context Retention)</span>
+            <span className="text-sm text-foreground/80">Enable Memory (Context Retention)</span>
           </label>
 
           {/* Web Search */}
@@ -546,16 +546,16 @@ export default function GenesisBotConfigPanel({
               checked={formData.web_search_enabled !== false}
               onChange={(e) => handleChange('web_search_enabled', e.target.checked)}
               onBlur={() => handleBlur('web_search_enabled')}
-              className="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-2 focus:ring-blue-500/50"
+              className="rounded border-white/40 bg-white/60 text-sky focus:ring-2 focus:ring-sky/50"
             />
-            <span className="text-sm text-slate-300">Enable Web Search (Real-time Information)</span>
+            <span className="text-sm text-foreground/80">Enable Web Search (Real-time Information)</span>
           </label>
         </div>
       </div>
 
       {/* Integrations Section */}
       <div>
-        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/60">
           Integrations
         </h5>
 
