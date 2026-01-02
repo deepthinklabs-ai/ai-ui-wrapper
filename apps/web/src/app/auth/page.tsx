@@ -21,7 +21,7 @@ function AuthPageLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8 text-center">
-        <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto" />
+        <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
         <div className="animate-pulse text-foreground/60">Loading...</div>
       </div>
     </div>
@@ -192,7 +192,7 @@ function AuthPageContent() {
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto" />
+            <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
           </div>
 
           <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
@@ -214,7 +214,7 @@ function AuthPageContent() {
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto" />
+            <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
             <p className="mt-4 text-sm text-foreground/60">
               Reset your password
             </p>
@@ -235,7 +235,7 @@ function AuthPageContent() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto" />
+          <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
           <p className="mt-4 text-sm text-foreground/60">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>

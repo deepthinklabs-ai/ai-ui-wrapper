@@ -86,8 +86,8 @@ export default function ResetPasswordPage() {
   // Show loading while checking session
   if (isValidSession === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-        <div className="text-slate-400">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="text-foreground/60">Loading...</div>
       </div>
     );
   }
@@ -95,16 +95,14 @@ export default function ResetPasswordPage() {
   // Show error if no valid session
   if (!isValidSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+      <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-slate-100">
-              AI Chat Platform
-            </h1>
+            <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
           </div>
 
-          <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
-            <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
+            <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-600">
               <p className="font-medium">Invalid or expired reset link</p>
               <p className="mt-1">
                 This password reset link is invalid or has expired. Please request a new one.
@@ -113,7 +111,7 @@ export default function ResetPasswordPage() {
 
             <button
               onClick={() => router.push("/auth")}
-              className="mt-4 w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+              className="mt-4 w-full rounded-full rainbow-gradient border border-foreground/30 px-4 py-2 text-sm font-semibold text-foreground hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 focus:ring-offset-white"
             >
               Back to Sign In
             </button>
@@ -126,16 +124,14 @@ export default function ResetPasswordPage() {
   // Show success message
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+      <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-slate-100">
-              AI Chat Platform
-            </h1>
+            <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
           </div>
 
-          <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
-            <div className="rounded-md bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-400">
+          <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
+            <div className="rounded-md bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-emerald-600">
               <p className="font-medium">Password reset successful!</p>
               <p className="mt-1">
                 Your password has been updated. Redirecting to sign in...
@@ -148,23 +144,21 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-100">
-            AI Chat Platform
-          </h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
+          <p className="mt-4 text-sm text-foreground/60">
             Set your new password
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div className="space-y-4 rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+          <div className="space-y-4 rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-slate-300"
+                className="block text-sm font-medium text-foreground"
               >
                 New Password
               </label>
@@ -175,14 +169,14 @@ export default function ResetPasswordPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 pr-10 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 pr-10 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                   placeholder="••••••••"
                   minLength={8}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/60"
                   tabIndex={-1}
                 >
                   {showPassword ? (
@@ -197,7 +191,7 @@ export default function ResetPasswordPage() {
                   )}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-foreground/50">
                 Must be at least 8 characters
               </p>
 
@@ -215,7 +209,7 @@ export default function ResetPasswordPage() {
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-slate-300"
+                className="block text-sm font-medium text-foreground"
               >
                 Confirm New Password
               </label>
@@ -226,14 +220,14 @@ export default function ResetPasswordPage() {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="block w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 pr-10 text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 pr-10 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                   placeholder="••••••••"
                   minLength={8}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/60"
                   tabIndex={-1}
                 >
                   {showConfirmPassword ? (
@@ -249,14 +243,14 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
               {confirmPassword.length > 0 && password !== confirmPassword && (
-                <p className="mt-1 text-xs text-red-400">
+                <p className="mt-1 text-xs text-red-500">
                   Passwords do not match
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+              <div className="rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-600">
                 {error}
               </div>
             )}
@@ -264,7 +258,7 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading || password !== confirmPassword}
-              className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-full rainbow-gradient border border-foreground/30 px-4 py-2 text-sm font-semibold text-foreground hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading ? "Updating password..." : "Reset Password"}
             </button>
@@ -275,7 +269,7 @@ export default function ResetPasswordPage() {
           <button
             type="button"
             onClick={() => router.push("/auth")}
-            className="text-blue-400 hover:text-blue-300"
+            className="text-foreground hover:text-foreground/80"
           >
             Back to Sign In
           </button>

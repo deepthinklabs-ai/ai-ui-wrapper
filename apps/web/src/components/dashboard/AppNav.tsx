@@ -14,7 +14,7 @@ const AppNav: React.FC<AppNavProps> = ({ userEmail }) => {
         <img
           src="/logo.png"
           alt="aiuiw"
-          className="h-8 w-8 rounded-lg object-cover"
+          className="h-8 w-8 rounded-lg object-cover brightness-90"
         />
       </div>
 
