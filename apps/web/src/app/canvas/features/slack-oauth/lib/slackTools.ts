@@ -233,7 +233,11 @@ export const SLACK_TOOLS: SlackTool[] = [
 /**
  * Get tools that are enabled based on permissions
  */
-export function getEnabledSlackTools(permissions: SlackPermissions): SlackTool[] {
+export function getEnabledSlackTools(permissions: SlackPermissions | undefined): SlackTool[] {
+  // Return empty array if permissions are not defined
+  if (!permissions) {
+    return [];
+  }
   return SLACK_TOOLS.filter((tool) => permissions[tool.requiredPermission]);
 }
 

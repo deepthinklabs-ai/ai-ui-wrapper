@@ -18,15 +18,15 @@ export default function PostCard({ post, onClick }: PostCardProps) {
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer rounded-lg border border-slate-700 bg-slate-800 p-4 transition-all hover:border-purple-500/50 hover:bg-slate-800/80"
+      className="group cursor-pointer rounded-lg border border-white/30 bg-white/60 backdrop-blur-md p-4 transition-all hover:border-sky/50 hover:bg-white/80"
     >
       {/* Header */}
       <div className="mb-3">
-        <h3 className="text-lg font-semibold text-slate-100 group-hover:text-purple-300 line-clamp-1">
+        <h3 className="text-lg font-semibold text-foreground group-hover:text-sky line-clamp-1">
           {post.title}
         </h3>
         {post.author_name && (
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-foreground/50 mt-0.5">
             by {post.author_name}
           </p>
         )}
@@ -34,7 +34,7 @@ export default function PostCard({ post, onClick }: PostCardProps) {
 
       {/* Description */}
       {post.description && (
-        <p className="text-sm text-slate-400 line-clamp-2 mb-3">
+        <p className="text-sm text-foreground/60 line-clamp-2 mb-3">
           {post.description}
         </p>
       )}
@@ -42,19 +42,19 @@ export default function PostCard({ post, onClick }: PostCardProps) {
       {/* File badges */}
       <div className="flex flex-wrap gap-1.5 mb-3">
         {post.has_chatbot && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 ring-1 ring-inset ring-blue-500/20">
             <span>🤖</span>
             Chatbot
           </span>
         )}
         {post.has_canvas && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
+          <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-600 ring-1 ring-inset ring-purple-500/20">
             <span>🎨</span>
             Canvas
           </span>
         )}
         {post.has_thread && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 ring-1 ring-inset ring-green-500/20">
             <span>💬</span>
             Thread
           </span>
@@ -67,13 +67,13 @@ export default function PostCard({ post, onClick }: PostCardProps) {
           {post.categories.slice(0, 3).map((category) => (
             <span
               key={category}
-              className="rounded-md bg-slate-700 px-2 py-0.5 text-xs text-slate-300"
+              className="rounded-md bg-foreground/10 px-2 py-0.5 text-xs text-foreground/80"
             >
               {category}
             </span>
           ))}
           {post.categories.length > 3 && (
-            <span className="rounded-md bg-slate-700 px-2 py-0.5 text-xs text-slate-400">
+            <span className="rounded-md bg-foreground/10 px-2 py-0.5 text-xs text-foreground/60">
               +{post.categories.length - 3}
             </span>
           )}
@@ -86,13 +86,13 @@ export default function PostCard({ post, onClick }: PostCardProps) {
           {post.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
-              className="text-xs text-slate-500"
+              className="text-xs text-foreground/50"
             >
               #{tag}
             </span>
           ))}
           {post.tags.length > 4 && (
-            <span className="text-xs text-slate-600">
+            <span className="text-xs text-foreground/40">
               +{post.tags.length - 4}
             </span>
           )}
@@ -100,7 +100,7 @@ export default function PostCard({ post, onClick }: PostCardProps) {
       )}
 
       {/* Stats */}
-      <div className="flex items-center gap-4 text-xs text-slate-500 border-t border-slate-700 pt-3 mt-auto">
+      <div className="flex items-center gap-4 text-xs text-foreground/50 border-t border-white/30 pt-3 mt-auto">
         <div className="flex items-center gap-1">
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

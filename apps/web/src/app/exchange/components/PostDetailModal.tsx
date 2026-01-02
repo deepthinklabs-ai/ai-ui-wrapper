@@ -171,11 +171,11 @@ export default function PostDetailModal({
 
   if (postLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="rounded-lg border border-slate-700 bg-slate-800 p-8">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="rounded-lg border border-white/30 bg-white/80 backdrop-blur-md p-8">
           <div className="flex items-center gap-3">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
-            <span className="text-slate-300">Loading post...</span>
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
+            <span className="text-foreground/80">Loading post...</span>
           </div>
         </div>
       </div>
@@ -184,19 +184,19 @@ export default function PostDetailModal({
 
   if (postError || !post) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="rounded-lg border border-slate-700 bg-slate-800 p-8 max-w-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="rounded-lg border border-white/30 bg-white/80 backdrop-blur-md p-8 max-w-md">
           <div className="text-center">
             <div className="mx-auto h-12 w-12 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
-              <svg className="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-6 w-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-slate-100 mb-2">Failed to Load</h3>
-            <p className="text-sm text-slate-400 mb-4">{postError || 'Post not found'}</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">Failed to Load</h3>
+            <p className="text-sm text-foreground/60 mb-4">{postError || 'Post not found'}</p>
             <button
               onClick={onClose}
-              className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-600"
+              className="rounded-lg bg-foreground/10 px-4 py-2 text-sm font-medium text-foreground hover:bg-foreground/20"
             >
               Close
             </button>
@@ -207,22 +207,22 @@ export default function PostDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-4xl max-h-[90vh] rounded-lg border border-slate-700 bg-slate-800 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+      <div className="w-full max-w-4xl max-h-[90vh] rounded-lg border border-white/30 bg-white/80 backdrop-blur-md flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-white/30 px-6 py-4">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{getProviderIcon(post.provider)}</span>
             <div>
-              <h2 className="text-lg font-semibold text-slate-100">{post.title}</h2>
-              <p className="text-sm text-slate-400">
+              <h2 className="text-lg font-semibold text-foreground">{post.title}</h2>
+              <p className="text-sm text-foreground/60">
                 by {post.author?.name || 'Anonymous'} · {formatDate(post.created_at)}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+            className="rounded-lg p-2 text-foreground/60 hover:bg-foreground/10 hover:text-foreground"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -231,13 +231,13 @@ export default function PostDetailModal({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-700">
+        <div className="flex border-b border-white/30">
           <button
             onClick={() => setActiveTab('details')}
             className={`px-6 py-3 text-sm font-medium transition-colors ${
               activeTab === 'details'
-                ? 'border-b-2 border-purple-500 text-purple-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'border-b-2 border-sky text-sky'
+                : 'text-foreground/60 hover:text-foreground'
             }`}
           >
             Details
@@ -246,8 +246,8 @@ export default function PostDetailModal({
             onClick={() => setActiveTab('test')}
             className={`px-6 py-3 text-sm font-medium transition-colors ${
               activeTab === 'test'
-                ? 'border-b-2 border-purple-500 text-purple-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'border-b-2 border-sky text-sky'
+                : 'text-foreground/60 hover:text-foreground'
             }`}
           >
             Test
@@ -256,8 +256,8 @@ export default function PostDetailModal({
             onClick={() => setActiveTab('query')}
             className={`px-6 py-3 text-sm font-medium transition-colors ${
               activeTab === 'query'
-                ? 'border-b-2 border-purple-500 text-purple-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'border-b-2 border-sky text-sky'
+                : 'text-foreground/60 hover:text-foreground'
             }`}
           >
             Query
@@ -266,8 +266,8 @@ export default function PostDetailModal({
             onClick={() => setActiveTab('download')}
             className={`px-6 py-3 text-sm font-medium transition-colors ${
               activeTab === 'download'
-                ? 'border-b-2 border-purple-500 text-purple-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'border-b-2 border-sky text-sky'
+                : 'text-foreground/60 hover:text-foreground'
             }`}
           >
             Download
@@ -282,28 +282,28 @@ export default function PostDetailModal({
               {/* Description */}
               {post.description && (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-300 mb-2">Description</h3>
-                  <p className="text-sm text-slate-400 whitespace-pre-wrap">{post.description}</p>
+                  <h3 className="text-sm font-medium text-foreground/80 mb-2">Description</h3>
+                  <p className="text-sm text-foreground/60 whitespace-pre-wrap">{post.description}</p>
                 </div>
               )}
 
               {/* Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="rounded-lg bg-slate-700/50 p-4">
-                  <div className="text-2xl font-bold text-slate-100">{post.download_count}</div>
-                  <div className="text-xs text-slate-400">Downloads</div>
+                <div className="rounded-lg bg-foreground/5 p-4">
+                  <div className="text-2xl font-bold text-foreground">{post.download_count}</div>
+                  <div className="text-xs text-foreground/60">Downloads</div>
                 </div>
-                <div className="rounded-lg bg-slate-700/50 p-4">
-                  <div className="text-2xl font-bold text-slate-100">{post.test_count}</div>
-                  <div className="text-xs text-slate-400">Tests</div>
+                <div className="rounded-lg bg-foreground/5 p-4">
+                  <div className="text-2xl font-bold text-foreground">{post.test_count}</div>
+                  <div className="text-xs text-foreground/60">Tests</div>
                 </div>
-                <div className="rounded-lg bg-slate-700/50 p-4">
-                  <div className="text-lg font-semibold text-slate-100 capitalize">{post.provider || 'Unknown'}</div>
-                  <div className="text-xs text-slate-400">Provider</div>
+                <div className="rounded-lg bg-foreground/5 p-4">
+                  <div className="text-lg font-semibold text-foreground capitalize">{post.provider || 'Unknown'}</div>
+                  <div className="text-xs text-foreground/60">Provider</div>
                 </div>
-                <div className="rounded-lg bg-slate-700/50 p-4">
-                  <div className="text-lg font-semibold text-slate-100 truncate">{post.model_name || 'Unknown'}</div>
-                  <div className="text-xs text-slate-400">Model</div>
+                <div className="rounded-lg bg-foreground/5 p-4">
+                  <div className="text-lg font-semibold text-foreground truncate">{post.model_name || 'Unknown'}</div>
+                  <div className="text-xs text-foreground/60">Model</div>
                 </div>
               </div>
 
@@ -312,7 +312,7 @@ export default function PostDetailModal({
                 {post.categories.map((cat) => (
                   <span
                     key={cat.id}
-                    className="rounded-full bg-purple-500/20 px-3 py-1 text-xs font-medium text-purple-300"
+                    className="rounded-full bg-sky/20 px-3 py-1 text-xs font-medium text-sky"
                   >
                     {cat.display_name}
                   </span>
@@ -320,7 +320,7 @@ export default function PostDetailModal({
                 {post.tags.map((tag) => (
                   <span
                     key={tag.id}
-                    className="rounded-full bg-slate-600 px-3 py-1 text-xs font-medium text-slate-300"
+                    className="rounded-full bg-foreground/10 px-3 py-1 text-xs font-medium text-foreground/80"
                   >
                     #{tag.name}
                   </span>
@@ -329,24 +329,24 @@ export default function PostDetailModal({
 
               {/* Files Included */}
               <div>
-                <h3 className="text-sm font-medium text-slate-300 mb-2">Included Files</h3>
+                <h3 className="text-sm font-medium text-foreground/80 mb-2">Included Files</h3>
                 <div className="flex gap-3">
                   {post.chatbot_file && (
-                    <div className="flex items-center gap-2 rounded-lg bg-slate-700/50 px-3 py-2">
+                    <div className="flex items-center gap-2 rounded-lg bg-foreground/5 px-3 py-2">
                       <span className="text-lg">🤖</span>
-                      <span className="text-sm text-slate-300">.chatbot</span>
+                      <span className="text-sm text-foreground/80">.chatbot</span>
                     </div>
                   )}
                   {post.canvas_file && (
-                    <div className="flex items-center gap-2 rounded-lg bg-slate-700/50 px-3 py-2">
+                    <div className="flex items-center gap-2 rounded-lg bg-foreground/5 px-3 py-2">
                       <span className="text-lg">🎨</span>
-                      <span className="text-sm text-slate-300">.canvas</span>
+                      <span className="text-sm text-foreground/80">.canvas</span>
                     </div>
                   )}
                   {post.thread_file && (
-                    <div className="flex items-center gap-2 rounded-lg bg-slate-700/50 px-3 py-2">
+                    <div className="flex items-center gap-2 rounded-lg bg-foreground/5 px-3 py-2">
                       <span className="text-lg">💬</span>
-                      <span className="text-sm text-slate-300">.thread</span>
+                      <span className="text-sm text-foreground/80">.thread</span>
                     </div>
                   )}
                 </div>
@@ -355,33 +355,33 @@ export default function PostDetailModal({
               {/* OAuth Requirements */}
               {post.has_oauth_requirements && post.oauth_requirements && (
                 <div>
-                  <h3 className="text-sm font-medium text-slate-300 mb-2">OAuth Requirements</h3>
-                  <p className="text-xs text-slate-500 mb-2">
+                  <h3 className="text-sm font-medium text-foreground/80 mb-2">OAuth Requirements</h3>
+                  <p className="text-xs text-foreground/50 mb-2">
                     This chatbot requires OAuth connections for full functionality.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {post.oauth_requirements.gmail && (
-                      <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-300">
+                      <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-600">
                         Gmail
                       </span>
                     )}
                     {post.oauth_requirements.calendar && (
-                      <span className="rounded-full bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-300">
+                      <span className="rounded-full bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-600">
                         Calendar
                       </span>
                     )}
                     {post.oauth_requirements.sheets && (
-                      <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-300">
+                      <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-600">
                         Sheets
                       </span>
                     )}
                     {post.oauth_requirements.docs && (
-                      <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-medium text-yellow-300">
+                      <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-medium text-yellow-600">
                         Docs
                       </span>
                     )}
                     {post.oauth_requirements.slack && (
-                      <span className="rounded-full bg-purple-500/20 px-3 py-1 text-xs font-medium text-purple-300">
+                      <span className="rounded-full bg-purple-500/20 px-3 py-1 text-xs font-medium text-purple-600">
                         Slack
                       </span>
                     )}
@@ -394,13 +394,13 @@ export default function PostDetailModal({
                 <button
                   onClick={handleStartTest}
                   disabled={sandboxLoading || !post.chatbot_file}
-                  className="flex-1 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 rounded-lg bg-sky px-4 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {sandboxLoading ? 'Starting...' : 'Test Chatbot'}
                 </button>
                 <button
                   onClick={() => setActiveTab('download')}
-                  className="flex-1 rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-600 transition-colors"
+                  className="flex-1 rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/80 transition-colors"
                 >
                   Download Files
                 </button>
@@ -413,8 +413,8 @@ export default function PostDetailModal({
             <div className="h-full flex flex-col">
               {!session ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8">
-                  <div className="rounded-full bg-slate-700/50 p-6 mb-4">
-                    <svg className="h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="rounded-full bg-foreground/10 p-6 mb-4">
+                    <svg className="h-12 w-12 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -423,19 +423,19 @@ export default function PostDetailModal({
                       />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-medium text-slate-100 mb-2">Test in Sandbox</h3>
-                  <p className="text-sm text-slate-400 text-center max-w-sm mb-6">
+                  <h3 className="text-lg font-medium text-foreground mb-2">Test in Sandbox</h3>
+                  <p className="text-sm text-foreground/60 text-center max-w-sm mb-6">
                     Test this chatbot using your own API keys. Messages are not saved to your account.
                   </p>
                   {!post.chatbot_file ? (
-                    <p className="text-sm text-amber-400">This post does not contain a chatbot to test.</p>
+                    <p className="text-sm text-amber-600">This post does not contain a chatbot to test.</p>
                   ) : !user ? (
-                    <p className="text-sm text-amber-400">Please log in to test chatbots.</p>
+                    <p className="text-sm text-amber-600">Please log in to test chatbots.</p>
                   ) : (
                     <button
                       onClick={handleStartTest}
                       disabled={sandboxLoading}
-                      className="rounded-lg bg-purple-600 px-6 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                      className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 transition-colors"
                     >
                       {sandboxLoading ? 'Starting Session...' : 'Start Test Session'}
                     </button>
@@ -490,25 +490,25 @@ export default function PostDetailModal({
               <div className="space-y-4">
                 {/* Individual Files */}
                 <div>
-                  <h3 className="text-sm font-medium text-slate-300 mb-3">Individual Files</h3>
+                  <h3 className="text-sm font-medium text-foreground/80 mb-3">Individual Files</h3>
                   <div className="space-y-2">
                     {post.chatbot_file && (
                       <button
                         onClick={() => handleDownload('chatbot')}
                         disabled={downloadLoading === 'chatbot'}
-                        className="w-full flex items-center justify-between rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                        className="w-full flex items-center justify-between rounded-lg border border-white/40 bg-white/60 px-4 py-3 hover:bg-white/80 transition-colors disabled:opacity-50"
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-xl">🤖</span>
                           <div className="text-left">
-                            <div className="text-sm font-medium text-slate-100">{post.title}.chatbot</div>
-                            <div className="text-xs text-slate-400">Chatbot configuration</div>
+                            <div className="text-sm font-medium text-foreground">{post.title}.chatbot</div>
+                            <div className="text-xs text-foreground/60">Chatbot configuration</div>
                           </div>
                         </div>
                         {downloadLoading === 'chatbot' ? (
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
                         ) : (
-                          <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-5 w-5 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
                         )}
@@ -519,19 +519,19 @@ export default function PostDetailModal({
                       <button
                         onClick={() => handleDownload('canvas')}
                         disabled={downloadLoading === 'canvas'}
-                        className="w-full flex items-center justify-between rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                        className="w-full flex items-center justify-between rounded-lg border border-white/40 bg-white/60 px-4 py-3 hover:bg-white/80 transition-colors disabled:opacity-50"
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-xl">🎨</span>
                           <div className="text-left">
-                            <div className="text-sm font-medium text-slate-100">{post.title}.canvas</div>
-                            <div className="text-xs text-slate-400">Canvas workflow</div>
+                            <div className="text-sm font-medium text-foreground">{post.title}.canvas</div>
+                            <div className="text-xs text-foreground/60">Canvas workflow</div>
                           </div>
                         </div>
                         {downloadLoading === 'canvas' ? (
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
                         ) : (
-                          <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-5 w-5 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
                         )}
@@ -542,19 +542,19 @@ export default function PostDetailModal({
                       <button
                         onClick={() => handleDownload('thread')}
                         disabled={downloadLoading === 'thread'}
-                        className="w-full flex items-center justify-between rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                        className="w-full flex items-center justify-between rounded-lg border border-white/40 bg-white/60 px-4 py-3 hover:bg-white/80 transition-colors disabled:opacity-50"
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-xl">💬</span>
                           <div className="text-left">
-                            <div className="text-sm font-medium text-slate-100">{post.title}.thread</div>
-                            <div className="text-xs text-slate-400">Conversation thread</div>
+                            <div className="text-sm font-medium text-foreground">{post.title}.thread</div>
+                            <div className="text-xs text-foreground/60">Conversation thread</div>
                           </div>
                         </div>
                         {downloadLoading === 'thread' ? (
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
                         ) : (
-                          <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-5 w-5 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
                         )}
@@ -566,23 +566,23 @@ export default function PostDetailModal({
                 {/* Bundle Download */}
                 {(post.chatbot_file || post.canvas_file || post.thread_file) && (
                   <div>
-                    <h3 className="text-sm font-medium text-slate-300 mb-3">Bundle</h3>
+                    <h3 className="text-sm font-medium text-foreground/80 mb-3">Bundle</h3>
                     <button
                       onClick={() => handleDownload('bundle')}
                       disabled={downloadLoading === 'bundle'}
-                      className="w-full flex items-center justify-between rounded-lg border-2 border-purple-500/50 bg-purple-500/10 px-4 py-4 hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+                      className="w-full flex items-center justify-between rounded-lg border-2 border-sky/50 bg-sky/10 px-4 py-4 hover:bg-sky/20 transition-colors disabled:opacity-50"
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">📦</span>
                         <div className="text-left">
-                          <div className="text-sm font-medium text-slate-100">{post.title}.aiuiw</div>
-                          <div className="text-xs text-slate-400">All files bundled together</div>
+                          <div className="text-sm font-medium text-foreground">{post.title}.aiuiw</div>
+                          <div className="text-xs text-foreground/60">All files bundled together</div>
                         </div>
                       </div>
                       {downloadLoading === 'bundle' ? (
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky border-t-transparent" />
                       ) : (
-                        <svg className="h-5 w-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5 text-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                       )}

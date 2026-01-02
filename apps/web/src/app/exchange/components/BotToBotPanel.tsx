@@ -75,20 +75,20 @@ export default function BotToBotPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-white/30 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-xl">{getProviderIcon(targetProvider)}</span>
           <div>
-            <h3 className="text-sm font-medium text-slate-100">
+            <h3 className="text-sm font-medium text-foreground">
               Query {targetTitle}
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-foreground/60">
               Single-query mode (no conversation)
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center rounded-full bg-blue-500/20 px-2 py-1 text-xs font-medium text-blue-300">
+          <span className="inline-flex items-center rounded-full bg-blue-500/20 px-2 py-1 text-xs font-medium text-blue-600">
             Bot-to-Bot
           </span>
         </div>
@@ -98,8 +98,8 @@ export default function BotToBotPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Remaining Queries */}
         {remainingQueries !== null && (
-          <div className="rounded-lg bg-slate-700/50 px-4 py-2">
-            <p className="text-sm text-slate-300">
+          <div className="rounded-lg bg-foreground/5 px-4 py-2">
+            <p className="text-sm text-foreground/80">
               <span className="font-medium">{remainingQueries}</span> queries remaining today
             </p>
           </div>
@@ -110,22 +110,22 @@ export default function BotToBotPanel({
           <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-green-400">Response from {lastResult.chatbot_name}</span>
+                <span className="text-green-600">Response from {lastResult.chatbot_name}</span>
               </div>
               <button
                 onClick={onClearResult}
-                className="text-green-400 hover:text-green-300"
+                className="text-green-500 hover:text-green-600"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="text-sm text-green-100 whitespace-pre-wrap">
+            <div className="text-sm text-foreground whitespace-pre-wrap">
               {lastResult.response}
             </div>
             {lastResult.tokens_used !== undefined && (
-              <p className="mt-2 text-xs text-green-400">
+              <p className="mt-2 text-xs text-green-600">
                 {lastResult.tokens_used} tokens used
               </p>
             )}
@@ -136,10 +136,10 @@ export default function BotToBotPanel({
         {error && (
           <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-red-300">{error}</p>
+              <p className="text-sm text-red-600">{error}</p>
               <button
                 onClick={onClearError}
-                className="text-red-400 hover:text-red-300"
+                className="text-red-500 hover:text-red-600"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -151,9 +151,9 @@ export default function BotToBotPanel({
 
         {/* How it works */}
         {!lastResult && !error && (
-          <div className="rounded-lg bg-slate-700/30 p-4">
-            <h4 className="text-sm font-medium text-slate-300 mb-2">How Bot-to-Bot Works</h4>
-            <ul className="text-xs text-slate-400 space-y-1">
+          <div className="rounded-lg bg-foreground/5 p-4">
+            <h4 className="text-sm font-medium text-foreground/80 mb-2">How Bot-to-Bot Works</h4>
+            <ul className="text-xs text-foreground/60 space-y-1">
               <li>• Send a single query to this chatbot</li>
               <li>• Uses YOUR API key (not the poster's)</li>
               <li>• Optionally include context from your conversation</li>
@@ -165,7 +165,7 @@ export default function BotToBotPanel({
       </div>
 
       {/* Query Form */}
-      <form onSubmit={handleSubmit} className="border-t border-slate-700 p-4 space-y-4">
+      <form onSubmit={handleSubmit} className="border-t border-white/30 p-4 space-y-4">
         {/* Context Toggle */}
         <div className="flex items-center gap-2">
           <button
@@ -173,8 +173,8 @@ export default function BotToBotPanel({
             onClick={() => setShowContext(!showContext)}
             className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               showContext
-                ? 'bg-purple-500/20 text-purple-300'
-                : 'bg-slate-700 text-slate-400 hover:text-slate-300'
+                ? 'bg-sky/20 text-sky'
+                : 'bg-foreground/10 text-foreground/60 hover:text-foreground/80'
             }`}
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +187,7 @@ export default function BotToBotPanel({
             </svg>
             {showContext ? 'Hide Context' : 'Add Context'}
           </button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-foreground/50">
             Optional context from your conversation
           </span>
         </div>
@@ -199,7 +199,7 @@ export default function BotToBotPanel({
             onChange={(e) => setContext(e.target.value)}
             placeholder="Paste relevant context from your conversation..."
             rows={3}
-            className="w-full resize-none rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm text-slate-100 placeholder-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className="w-full resize-none rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-sm text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
           />
         )}
 
@@ -211,12 +211,12 @@ export default function BotToBotPanel({
             placeholder="Type your query..."
             disabled={sending}
             rows={2}
-            className="flex-1 resize-none rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm text-slate-100 placeholder-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+            className="flex-1 resize-none rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-sm text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={!query.trim() || sending}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-end"
+            className="rounded-lg bg-sky px-4 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-end"
           >
             {sending ? (
               <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export default function BotToBotPanel({
           </button>
         </div>
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-foreground/50">
           This sends a one-time query. For interactive testing, use the Test tab.
         </p>
       </form>

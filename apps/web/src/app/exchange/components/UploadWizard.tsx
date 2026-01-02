@@ -317,17 +317,17 @@ export default function UploadWizard({
   const selectedCanvas = canvases.find((c) => c.id === selectedCanvasId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl max-h-[90vh] rounded-lg border border-slate-700 bg-slate-800 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+      <div className="w-full max-w-2xl max-h-[90vh] rounded-lg border border-white/30 bg-white/80 backdrop-blur-md flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-white/30 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-100">Post to Exchange</h2>
-            <p className="text-sm text-slate-400">Share your chatbot with the community</p>
+            <h2 className="text-lg font-semibold text-foreground">Post to Exchange</h2>
+            <p className="text-sm text-foreground/60">Share your chatbot with the community</p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+            className="rounded-lg p-2 text-foreground/60 hover:bg-foreground/10 hover:text-foreground"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -336,26 +336,26 @@ export default function UploadWizard({
         </div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 border-b border-slate-700 px-6 py-3">
+        <div className="flex items-center justify-center gap-2 border-b border-white/30 px-6 py-3">
           {(['details', 'content', 'categories', 'review'] as Step[]).map((s, i) => (
             <React.Fragment key={s}>
               <div
                 className={`flex items-center gap-2 ${
-                  step === s ? 'text-purple-400' : 'text-slate-500'
+                  step === s ? 'text-sky' : 'text-foreground/50'
                 }`}
               >
                 <div
                   className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium ${
                     step === s
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-slate-700 text-slate-400'
+                      ? 'bg-sky text-white'
+                      : 'bg-foreground/10 text-foreground/60'
                   }`}
                 >
                   {i + 1}
                 </div>
                 <span className="text-sm capitalize hidden sm:inline">{s}</span>
               </div>
-              {i < 3 && <div className="h-px w-8 bg-slate-700" />}
+              {i < 3 && <div className="h-px w-8 bg-foreground/20" />}
             </React.Fragment>
           ))}
         </div>
@@ -366,19 +366,19 @@ export default function UploadWizard({
           {step === 'details' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Title <span className="text-red-400">*</span>
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  Title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="My Awesome Chatbot"
-                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-slate-100 placeholder-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="w-full rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
                   Description
                 </label>
                 <textarea
@@ -386,7 +386,7 @@ export default function UploadWizard({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe what your chatbot does..."
                   rows={4}
-                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-slate-100 placeholder-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
+                  className="w-full rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky resize-none"
                 />
               </div>
             </div>
@@ -397,16 +397,16 @@ export default function UploadWizard({
             <div className="space-y-6">
               {/* Thread Selection */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Select a Thread (Chatbot Config) <span className="text-red-400">*</span>
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  Select a Thread (Chatbot Config) <span className="text-red-500">*</span>
                 </label>
-                <p className="text-xs text-slate-500 mb-3">
+                <p className="text-xs text-foreground/50 mb-3">
                   The thread's model and system prompt will be used as the chatbot configuration.
                 </p>
                 {loadingOptions ? (
-                  <div className="text-center py-4 text-slate-400">Loading...</div>
+                  <div className="text-center py-4 text-foreground/60">Loading...</div>
                 ) : threads.length === 0 ? (
-                  <div className="text-center py-4 text-slate-400">
+                  <div className="text-center py-4 text-foreground/60">
                     No threads found. Create a thread first.
                   </div>
                 ) : (
@@ -417,14 +417,14 @@ export default function UploadWizard({
                         onClick={() => setSelectedThreadId(thread.id)}
                         className={`w-full text-left rounded-lg border px-4 py-3 transition-colors ${
                           selectedThreadId === thread.id
-                            ? 'border-purple-500 bg-purple-500/10'
-                            : 'border-slate-600 bg-slate-700/50 hover:bg-slate-700'
+                            ? 'border-sky bg-sky/10'
+                            : 'border-white/40 bg-white/60 hover:bg-white/80'
                         }`}
                       >
-                        <div className="font-medium text-slate-100">
+                        <div className="font-medium text-foreground">
                           {thread.title || 'Untitled Thread'}
                         </div>
-                        <div className="text-xs text-slate-400 mt-1">
+                        <div className="text-xs text-foreground/60 mt-1">
                           Model: {thread.model || 'Default'} | Created:{' '}
                           {new Date(thread.created_at).toLocaleDateString()}
                         </div>
@@ -436,14 +436,14 @@ export default function UploadWizard({
 
               {/* Canvas Selection (Optional) */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
                   Include Canvas (Optional)
                 </label>
-                <p className="text-xs text-slate-500 mb-3">
+                <p className="text-xs text-foreground/50 mb-3">
                   Optionally include a canvas workflow with your chatbot.
                 </p>
                 {canvases.length === 0 ? (
-                  <div className="text-center py-4 text-slate-500 text-sm">
+                  <div className="text-center py-4 text-foreground/50 text-sm">
                     No canvases found.
                   </div>
                 ) : (
@@ -452,11 +452,11 @@ export default function UploadWizard({
                       onClick={() => setSelectedCanvasId(null)}
                       className={`w-full text-left rounded-lg border px-4 py-2 transition-colors ${
                         selectedCanvasId === null
-                          ? 'border-purple-500 bg-purple-500/10'
-                          : 'border-slate-600 bg-slate-700/50 hover:bg-slate-700'
+                          ? 'border-sky bg-sky/10'
+                          : 'border-white/40 bg-white/60 hover:bg-white/80'
                       }`}
                     >
-                      <span className="text-slate-400">None</span>
+                      <span className="text-foreground/60">None</span>
                     </button>
                     {canvases.map((canvas) => (
                       <button
@@ -464,12 +464,12 @@ export default function UploadWizard({
                         onClick={() => setSelectedCanvasId(canvas.id)}
                         className={`w-full text-left rounded-lg border px-4 py-2 transition-colors ${
                           selectedCanvasId === canvas.id
-                            ? 'border-purple-500 bg-purple-500/10'
-                            : 'border-slate-600 bg-slate-700/50 hover:bg-slate-700'
+                            ? 'border-sky bg-sky/10'
+                            : 'border-white/40 bg-white/60 hover:bg-white/80'
                         }`}
                       >
-                        <div className="font-medium text-slate-100">{canvas.name}</div>
-                        <div className="text-xs text-slate-400">Mode: {canvas.mode}</div>
+                        <div className="font-medium text-foreground">{canvas.name}</div>
+                        <div className="text-xs text-foreground/60">Mode: {canvas.mode}</div>
                       </button>
                     ))}
                   </div>
@@ -483,10 +483,10 @@ export default function UploadWizard({
             <div className="space-y-6">
               {/* Categories */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Categories <span className="text-red-400">*</span>
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  Categories <span className="text-red-500">*</span>
                 </label>
-                <p className="text-xs text-slate-500 mb-3">
+                <p className="text-xs text-foreground/50 mb-3">
                   Select at least one category for your post.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -496,8 +496,8 @@ export default function UploadWizard({
                       onClick={() => toggleCategory(category.id)}
                       className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         selectedCategoryIds.includes(category.id)
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          ? 'bg-sky text-white'
+                          : 'bg-foreground/10 text-foreground/80 hover:bg-foreground/20'
                       }`}
                     >
                       {category.display_name}
@@ -508,10 +508,10 @@ export default function UploadWizard({
 
               {/* Tags */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
                   Tags (Optional)
                 </label>
-                <p className="text-xs text-slate-500 mb-3">
+                <p className="text-xs text-foreground/50 mb-3">
                   Add up to 10 tags to help others find your post.
                 </p>
                 <div className="flex gap-2 mb-3">
@@ -521,12 +521,12 @@ export default function UploadWizard({
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={handleTagKeyDown}
                     placeholder="Add a tag..."
-                    className="flex-1 rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm text-slate-100 placeholder-slate-400 focus:border-purple-500 focus:outline-none"
+                    className="flex-1 rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-sm text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none"
                   />
                   <button
                     onClick={handleAddTag}
                     disabled={!tagInput.trim()}
-                    className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-600 disabled:opacity-50"
+                    className="rounded-lg bg-foreground/10 px-4 py-2 text-sm font-medium text-foreground hover:bg-foreground/20 disabled:opacity-50"
                   >
                     Add
                   </button>
@@ -536,12 +536,12 @@ export default function UploadWizard({
                     {tags.map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center gap-1 rounded-full bg-slate-700 px-3 py-1 text-sm text-slate-300"
+                        className="inline-flex items-center gap-1 rounded-full bg-foreground/10 px-3 py-1 text-sm text-foreground/80"
                       >
                         #{tag}
                         <button
                           onClick={() => handleRemoveTag(tag)}
-                          className="text-slate-400 hover:text-slate-200"
+                          className="text-foreground/50 hover:text-foreground"
                         >
                           <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -558,44 +558,44 @@ export default function UploadWizard({
           {/* Step 4: Review */}
           {step === 'review' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-slate-100">Review Your Post</h3>
+              <h3 className="text-lg font-medium text-foreground">Review Your Post</h3>
 
-              <div className="rounded-lg border border-slate-700 bg-slate-700/30 p-4 space-y-3">
+              <div className="rounded-lg border border-white/30 bg-foreground/5 p-4 space-y-3">
                 <div>
-                  <span className="text-sm text-slate-400">Title:</span>
-                  <p className="text-slate-100 font-medium">{title}</p>
+                  <span className="text-sm text-foreground/60">Title:</span>
+                  <p className="text-foreground font-medium">{title}</p>
                 </div>
 
                 {description && (
                   <div>
-                    <span className="text-sm text-slate-400">Description:</span>
-                    <p className="text-slate-200 text-sm">{description}</p>
+                    <span className="text-sm text-foreground/60">Description:</span>
+                    <p className="text-foreground/80 text-sm">{description}</p>
                   </div>
                 )}
 
                 <div>
-                  <span className="text-sm text-slate-400">Chatbot Config:</span>
-                  <p className="text-slate-200 text-sm">
+                  <span className="text-sm text-foreground/60">Chatbot Config:</span>
+                  <p className="text-foreground/80 text-sm">
                     {selectedThread?.title || 'Untitled Thread'} ({selectedThread?.model || 'Default model'})
                   </p>
                 </div>
 
                 {selectedCanvas && (
                   <div>
-                    <span className="text-sm text-slate-400">Canvas:</span>
-                    <p className="text-slate-200 text-sm">{selectedCanvas.name}</p>
+                    <span className="text-sm text-foreground/60">Canvas:</span>
+                    <p className="text-foreground/80 text-sm">{selectedCanvas.name}</p>
                   </div>
                 )}
 
                 <div>
-                  <span className="text-sm text-slate-400">Categories:</span>
+                  <span className="text-sm text-foreground/60">Categories:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {selectedCategoryIds.map((id) => {
                       const cat = categories.find((c) => c.id === id);
                       return (
                         <span
                           key={id}
-                          className="rounded-full bg-purple-500/20 px-2 py-0.5 text-xs text-purple-300"
+                          className="rounded-full bg-sky/20 px-2 py-0.5 text-xs text-sky"
                         >
                           {cat?.display_name}
                         </span>
@@ -606,12 +606,12 @@ export default function UploadWizard({
 
                 {tags.length > 0 && (
                   <div>
-                    <span className="text-sm text-slate-400">Tags:</span>
+                    <span className="text-sm text-foreground/60">Tags:</span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-full bg-slate-600 px-2 py-0.5 text-xs text-slate-300"
+                          className="rounded-full bg-foreground/10 px-2 py-0.5 text-xs text-foreground/80"
                         >
                           #{tag}
                         </span>
@@ -623,7 +623,7 @@ export default function UploadWizard({
 
               {error && (
                 <div className="rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-3">
-                  <p className="text-sm text-red-300">{error}</p>
+                  <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
             </div>
@@ -631,10 +631,10 @@ export default function UploadWizard({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-700 px-6 py-4">
+        <div className="flex items-center justify-between border-t border-white/30 px-6 py-4">
           <button
             onClick={step === 'details' ? onClose : prevStep}
-            className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-600 transition-colors"
+            className="rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/80 transition-colors"
           >
             {step === 'details' ? 'Cancel' : 'Back'}
           </button>
@@ -643,7 +643,7 @@ export default function UploadWizard({
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="rounded-lg bg-purple-600 px-6 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Publishing...' : 'Publish to Exchange'}
             </button>
@@ -651,7 +651,7 @@ export default function UploadWizard({
             <button
               onClick={nextStep}
               disabled={!canProceed()}
-              className="rounded-lg bg-purple-600 px-6 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 transition-colors"
             >
               Next
             </button>

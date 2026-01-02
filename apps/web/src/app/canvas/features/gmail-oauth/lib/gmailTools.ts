@@ -244,7 +244,11 @@ export const gmailTools: GmailToolDefinition[] = [
 /**
  * Get tools that are enabled based on permissions
  */
-export function getEnabledGmailTools(permissions: GmailPermissions): GmailToolDefinition[] {
+export function getEnabledGmailTools(permissions: GmailPermissions | undefined): GmailToolDefinition[] {
+  // Return empty array if permissions are not defined
+  if (!permissions) {
+    return [];
+  }
   return gmailTools.filter((tool) => permissions[tool.requiredPermission]);
 }
 

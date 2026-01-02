@@ -69,7 +69,7 @@ export default function ExchangeFilters({
       {/* Search */}
       <div className="relative">
         <svg
-          className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/50"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -86,18 +86,18 @@ export default function ExchangeFilters({
           placeholder="Search posts..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="w-full rounded-lg border border-slate-600 bg-slate-800 py-2 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+          className="w-full rounded-lg border border-white/40 bg-white/60 py-2 pl-10 pr-4 text-sm text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
         />
       </div>
 
       {/* Sort and Clear */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Sort by:</span>
+          <span className="text-xs text-foreground/60">Sort by:</span>
           <select
             value={filter.sort_by || 'created_at'}
             onChange={(e) => handleSortChange(e.target.value as ListExchangePostsFilter['sort_by'])}
-            className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200 focus:border-purple-500 focus:outline-none"
+            className="rounded-md border border-white/40 bg-white/60 px-2 py-1 text-xs text-foreground focus:border-sky focus:outline-none"
           >
             <option value="created_at">Newest</option>
             <option value="download_count">Most Downloaded</option>
@@ -108,7 +108,7 @@ export default function ExchangeFilters({
         {hasActiveFilters && (
           <button
             onClick={handleClearFilters}
-            className="text-xs text-purple-400 hover:text-purple-300"
+            className="text-xs text-sky hover:text-sky/80"
           >
             Clear filters
           </button>
@@ -117,7 +117,7 @@ export default function ExchangeFilters({
 
       {/* Categories */}
       <div>
-        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground/60">
           Categories
         </h4>
         <div className="flex flex-wrap gap-2">
@@ -130,8 +130,8 @@ export default function ExchangeFilters({
                 disabled={loading}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   isSelected
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    ? 'bg-sky text-white'
+                    : 'bg-white/40 text-foreground/80 hover:bg-white/60'
                 } disabled:opacity-50`}
               >
                 {category.display_name}

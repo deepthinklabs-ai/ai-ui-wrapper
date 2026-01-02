@@ -56,7 +56,7 @@ export default function ExchangeGrid({
       <div className="flex flex-col items-center justify-center py-12">
         <div className="text-center">
           <svg
-            className="mx-auto h-16 w-16 text-slate-500"
+            className="mx-auto h-16 w-16 text-foreground/40"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -68,8 +68,8 @@ export default function ExchangeGrid({
               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
             />
           </svg>
-          <h3 className="mt-4 text-lg font-medium text-slate-300">No posts found</h3>
-          <p className="mt-2 text-sm text-slate-500">
+          <h3 className="mt-4 text-lg font-medium text-foreground/80">No posts found</h3>
+          <p className="mt-2 text-sm text-foreground/50">
             Try adjusting your filters or be the first to post!
           </p>
         </div>
@@ -94,18 +94,18 @@ export default function ExchangeGrid({
           Array.from({ length: 6 }).map((_, i) => (
             <div
               key={`skeleton-${i}`}
-              className="animate-pulse rounded-lg border border-slate-700 bg-slate-800 p-4"
+              className="animate-pulse rounded-lg border border-white/30 bg-white/60 backdrop-blur-md p-4"
             >
-              <div className="mb-3 h-5 w-3/4 rounded bg-slate-700" />
+              <div className="mb-3 h-5 w-3/4 rounded bg-foreground/10" />
               <div className="mb-3 space-y-2">
-                <div className="h-3 w-full rounded bg-slate-700" />
-                <div className="h-3 w-2/3 rounded bg-slate-700" />
+                <div className="h-3 w-full rounded bg-foreground/10" />
+                <div className="h-3 w-2/3 rounded bg-foreground/10" />
               </div>
               <div className="mb-3 flex gap-2">
-                <div className="h-5 w-16 rounded-full bg-slate-700" />
-                <div className="h-5 w-16 rounded-full bg-slate-700" />
+                <div className="h-5 w-16 rounded-full bg-foreground/10" />
+                <div className="h-5 w-16 rounded-full bg-foreground/10" />
               </div>
-              <div className="h-8 rounded bg-slate-700" />
+              <div className="h-8 rounded bg-foreground/10" />
             </div>
           ))}
       </div>
@@ -115,7 +115,7 @@ export default function ExchangeGrid({
         <div className="mt-8 flex justify-center">
           <button
             onClick={onLoadMore}
-            className="rounded-lg border border-slate-600 bg-slate-800 px-6 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors"
+            className="rounded-lg border border-white/40 bg-white/60 px-6 py-2 text-sm font-medium text-foreground hover:bg-white/80 transition-colors"
           >
             Load More
           </button>
@@ -125,7 +125,7 @@ export default function ExchangeGrid({
       {/* Loading indicator for load more */}
       {loading && posts.length > 0 && (
         <div className="mt-8 flex justify-center">
-          <div className="flex items-center gap-2 text-slate-400">
+          <div className="flex items-center gap-2 text-foreground/60">
             <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"

@@ -304,7 +304,11 @@ export const calendarTools: CalendarToolDefinition[] = [
 /**
  * Get tools that are enabled based on permissions
  */
-export function getEnabledCalendarTools(permissions: CalendarPermissions): CalendarToolDefinition[] {
+export function getEnabledCalendarTools(permissions: CalendarPermissions | undefined): CalendarToolDefinition[] {
+  // Return empty array if permissions are not defined
+  if (!permissions) {
+    return [];
+  }
   return calendarTools.filter((tool) => permissions[tool.requiredPermission]);
 }
 
