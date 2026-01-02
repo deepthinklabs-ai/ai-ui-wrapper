@@ -170,24 +170,25 @@ export default function EmailVerification({
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10 mb-6">
-            <svg className="h-8 w-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90 mb-6" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sky/20 mb-6">
+            <svg className="h-8 w-8 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-slate-100">Verify Your Email</h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <h1 className="text-2xl font-bold text-foreground">Verify Your Email</h1>
+          <p className="mt-2 text-sm text-foreground/60">
             We've sent a 6-digit code to
           </p>
-          <p className="text-sm font-medium text-blue-400">{userEmail}</p>
+          <p className="text-sm font-medium text-sky">{userEmail}</p>
         </div>
 
         {/* Code Input */}
-        <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+        <div className="rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
           <div className="flex justify-center gap-2 mb-6">
             {code.map((digit, index) => (
               <input
@@ -201,7 +202,7 @@ export default function EmailVerification({
                 onKeyDown={e => handleKeyDown(index, e)}
                 onPaste={index === 0 ? handlePaste : undefined}
                 disabled={isLoading}
-                className="w-12 h-14 text-center text-2xl font-bold rounded-md border border-slate-700 bg-slate-900 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                className="w-12 h-14 text-center text-2xl font-bold rounded-md border border-foreground/20 bg-white/80 text-foreground focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky disabled:opacity-50"
                 autoFocus={index === 0}
               />
             ))}
@@ -210,14 +211,14 @@ export default function EmailVerification({
           {/* Error message */}
           {error && (
             <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/20">
-              <p className="text-sm text-red-400 text-center">{error}</p>
+              <p className="text-sm text-red-600 text-center">{error}</p>
             </div>
           )}
 
           {/* Success message */}
           {success && (
             <div className="mb-4 p-3 rounded-md bg-green-500/10 border border-green-500/20">
-              <p className="text-sm text-green-400 text-center">{success}</p>
+              <p className="text-sm text-emerald-600 text-center">{success}</p>
             </div>
           )}
 
@@ -225,7 +226,7 @@ export default function EmailVerification({
           <button
             onClick={() => verifyCode()}
             disabled={isLoading || code.some(d => d === '')}
-            className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-full rainbow-gradient border border-foreground/30 px-4 py-3 text-sm font-semibold text-foreground hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
@@ -242,11 +243,11 @@ export default function EmailVerification({
 
           {/* Resend code */}
           <div className="mt-4 text-center">
-            <p className="text-sm text-slate-400 mb-2">Didn't receive the code?</p>
+            <p className="text-sm text-foreground/60 mb-2">Didn't receive the code?</p>
             <button
               onClick={sendVerificationCode}
               disabled={isSending || resendCooldown > 0}
-              className="text-sm text-blue-400 hover:text-blue-300 disabled:text-slate-500 disabled:cursor-not-allowed"
+              className="text-sm text-sky hover:text-sky/80 disabled:text-foreground/40 disabled:cursor-not-allowed"
             >
               {isSending ? 'Sending...' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
             </button>
@@ -254,14 +255,14 @@ export default function EmailVerification({
         </div>
 
         {/* Info box */}
-        <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-4">
+        <div className="rounded-2xl border border-white/40 bg-white/40 backdrop-blur-md p-4">
           <div className="flex items-start gap-3">
-            <svg className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="h-5 w-5 text-sky mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
             <div>
-              <p className="text-sm text-slate-300 font-medium">Why email verification?</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-sm text-foreground font-medium">Why email verification?</p>
+              <p className="text-xs text-foreground/60 mt-1">
                 Two-factor authentication adds an extra layer of security to your account.
                 Every time you log in, we'll send a verification code to your email.
               </p>
@@ -274,7 +275,7 @@ export default function EmailVerification({
           {onBack && (
             <button
               onClick={onBack}
-              className="text-sm text-slate-400 hover:text-slate-300 block w-full"
+              className="text-sm text-foreground/60 hover:text-foreground block w-full"
             >
               Go back
             </button>
@@ -285,7 +286,7 @@ export default function EmailVerification({
               await supabase.auth.signOut();
               window.location.href = '/auth';
             }}
-            className="text-sm text-red-400 hover:text-red-300"
+            className="text-sm text-red-500 hover:text-red-400"
           >
             Sign out and start over
           </button>
