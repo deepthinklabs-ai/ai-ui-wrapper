@@ -180,10 +180,10 @@ export default function CanvasPage() {
   // Show loading state while auth is loading
   if (loadingUser) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
+      <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto" />
-          <p className="text-slate-400">Loading Canvas...</p>
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-lavender border-t-transparent mx-auto" />
+          <p className="text-foreground/60">Loading Canvas...</p>
         </div>
       </div>
     );
@@ -192,10 +192,10 @@ export default function CanvasPage() {
   // Show error state
   if (canvasError) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <div className="max-w-md rounded-lg border border-red-500/50 bg-red-500/10 p-6 text-center">
-          <h2 className="mb-2 text-lg font-bold text-red-400">Error Loading Canvas</h2>
-          <p className="text-sm text-slate-300">{canvasError}</p>
+      <div className="flex h-screen items-center justify-center">
+        <div className="max-w-md rounded-xl border border-red-500/30 bg-red-500/10 backdrop-blur-md p-6 text-center">
+          <h2 className="mb-2 text-lg font-bold text-red-700">Error Loading Canvas</h2>
+          <p className="text-sm text-foreground/70">{canvasError}</p>
         </div>
       </div>
     );
@@ -204,11 +204,11 @@ export default function CanvasPage() {
   // Show encryption locked state
   if (encryptionState.hasEncryption && !encryptionState.isUnlocked && !encryptionState.isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <div className="max-w-md rounded-lg border border-amber-500/50 bg-amber-500/10 p-6 text-center">
+      <div className="flex h-screen items-center justify-center">
+        <div className="max-w-md rounded-xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-md p-6 text-center">
           <div className="mb-4 text-4xl">🔒</div>
-          <h2 className="mb-2 text-lg font-bold text-amber-400">Canvas Locked</h2>
-          <p className="text-sm text-slate-300">
+          <h2 className="mb-2 text-lg font-bold text-amber-700">Canvas Locked</h2>
+          <p className="text-sm text-foreground/70">
             Your canvas data is encrypted. Please unlock your encryption to view and edit your canvases.
           </p>
         </div>
@@ -219,10 +219,10 @@ export default function CanvasPage() {
   // Show encryption error state
   if (encryptionError) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <div className="max-w-md rounded-lg border border-red-500/50 bg-red-500/10 p-6 text-center">
-          <h2 className="mb-2 text-lg font-bold text-red-400">Encryption Error</h2>
-          <p className="text-sm text-slate-300">{encryptionError}</p>
+      <div className="flex h-screen items-center justify-center">
+        <div className="max-w-md rounded-xl border border-red-500/30 bg-red-500/10 backdrop-blur-md p-6 text-center">
+          <h2 className="mb-2 text-lg font-bold text-red-700">Encryption Error</h2>
+          <p className="text-sm text-foreground/70">{encryptionError}</p>
         </div>
       </div>
     );
@@ -232,52 +232,52 @@ export default function CanvasPage() {
   if (!canvasLoading && canvases.length === 0 && !currentCanvas) {
     return (
       <>
-        <div className="flex h-screen flex-col items-center justify-center bg-slate-950 p-8">
+        <div className="flex h-screen flex-col items-center justify-center p-8">
           <div className="max-w-2xl text-center">
             {/* Icon */}
             <div className="mb-6 text-6xl">🎨</div>
 
             {/* Title */}
-            <h1 className="mb-4 text-3xl font-bold text-slate-100">
+            <h1 className="mb-4 text-3xl font-bold text-foreground">
               Welcome to Canvas
             </h1>
 
             {/* Description */}
-            <p className="mb-8 text-lg text-slate-300">
+            <p className="mb-8 text-lg text-foreground/70">
               Canvas is your visual workflow builder for orchestrating AI Agents,
               Training Sessions, Boardrooms, and all your AI features in one place.
             </p>
 
             {/* Features List */}
             <div className="mb-8 grid grid-cols-1 gap-4 text-left sm:grid-cols-2">
-              <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
+              <div className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-4">
                 <div className="mb-2 text-2xl">🤖</div>
-                <h3 className="mb-1 font-semibold text-slate-200">AI Agents</h3>
-                <p className="text-sm text-slate-400">
+                <h3 className="mb-1 font-semibold text-foreground">AI Agents</h3>
+                <p className="text-sm text-foreground/60">
                   Connect and orchestrate multiple AI agents with different roles
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
+              <div className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-4">
                 <div className="mb-2 text-2xl">🎓</div>
-                <h3 className="mb-1 font-semibold text-slate-200">Training Sessions</h3>
-                <p className="text-sm text-slate-400">
+                <h3 className="mb-1 font-semibold text-foreground">Training Sessions</h3>
+                <p className="text-sm text-foreground/60">
                   Refine bot behavior through interactive training workflows
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
+              <div className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-4">
                 <div className="mb-2 text-2xl">🏛️</div>
-                <h3 className="mb-1 font-semibold text-slate-200">Boardrooms</h3>
-                <p className="text-sm text-slate-400">
+                <h3 className="mb-1 font-semibold text-foreground">Boardrooms</h3>
+                <p className="text-sm text-foreground/60">
                   Multi-bot discussions for brainstorming and decision-making
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
+              <div className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-4">
                 <div className="mb-2 text-2xl">⚡</div>
-                <h3 className="mb-1 font-semibold text-slate-200">Automation</h3>
-                <p className="text-sm text-slate-400">
+                <h3 className="mb-1 font-semibold text-foreground">Automation</h3>
+                <p className="text-sm text-foreground/60">
                   Triggers, tools, and workflows for full automation
                 </p>
               </div>
@@ -286,7 +286,7 @@ export default function CanvasPage() {
             {/* CTA Button */}
             <button
               onClick={() => setShowCreateModal(true)}
-              className="rounded-lg bg-blue-600 px-8 py-3 text-lg font-medium text-white hover:bg-blue-500 transition-colors"
+              className="rounded-lg bg-sky px-8 py-3 text-lg font-medium text-white hover:bg-sky/80 transition-colors"
             >
               Create Your First Canvas
             </button>

@@ -92,12 +92,12 @@ export default function PushToTalkSettings() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-medium mb-2">Push-to-Talk</h3>
-        <p className="text-sm text-gray-400 mb-2">
+        <h3 className="text-lg font-medium text-foreground mb-2">Push-to-Talk</h3>
+        <p className="text-sm text-foreground/60 mb-2">
           Hold a key to activate voice input. Release to stop recording.
         </p>
-        <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 mb-4">
-          <p className="text-xs text-blue-300">
+        <div className="rounded-lg border border-sky/30 bg-sky/10 px-3 py-2 mb-4">
+          <p className="text-xs text-sky-700">
             <strong>💡 Recommendation:</strong> Use a non-alphanumeric key (like Space, Tab, or CapsLock)
             to avoid conflicts when typing messages. Avoid letters and numbers.
           </p>
@@ -106,14 +106,14 @@ export default function PushToTalkSettings() {
 
       {/* Enable/Disable Toggle */}
       <div className="flex items-center justify-between">
-        <label htmlFor="ptt-enabled" className="text-sm font-medium">
+        <label htmlFor="ptt-enabled" className="text-sm font-medium text-foreground">
           Enable Push-to-Talk
         </label>
         <button
           id="ptt-enabled"
           onClick={handleToggle}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            enabled ? "bg-blue-600" : "bg-gray-700"
+            enabled ? "bg-sky" : "bg-foreground/20"
           }`}
         >
           <span
@@ -127,32 +127,32 @@ export default function PushToTalkSettings() {
       {/* Key Binding Configuration */}
       {enabled && (
         <div className="space-y-3 pt-2">
-          <label className="text-sm font-medium">Key Binding</label>
+          <label className="text-sm font-medium text-foreground">Key Binding</label>
 
           {!isRecording ? (
             <div className="flex items-center gap-3">
-              <div className="flex-1 bg-gray-800 rounded-lg px-4 py-3 border border-gray-700">
-                <span className="font-mono text-sm">{formatKeybind(keybind)}</span>
+              <div className="flex-1 bg-white/60 rounded-lg px-4 py-3 border border-white/40">
+                <span className="font-mono text-sm text-foreground">{formatKeybind(keybind)}</span>
               </div>
               <button
                 onClick={startRecording}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                className="px-4 py-2 bg-sky hover:bg-sky/80 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 Change
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="bg-blue-950 border border-blue-800 rounded-lg px-4 py-3">
-                <p className="text-sm text-blue-300 mb-2">
+              <div className="bg-sky/10 border border-sky/30 rounded-lg px-4 py-3">
+                <p className="text-sm text-sky-700 mb-2">
                   Press any key combination...
                 </p>
                 {recordedKey ? (
-                  <div className="font-mono text-sm text-white">
+                  <div className="font-mono text-sm text-foreground">
                     {formatKeybind(recordedKey)}
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-400">Waiting for input...</div>
+                  <div className="text-sm text-foreground/40">Waiting for input...</div>
                 )}
               </div>
 
@@ -160,13 +160,13 @@ export default function PushToTalkSettings() {
                 <button
                   onClick={saveKeybind}
                   disabled={!recordedKey}
-                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-500 text-white disabled:bg-foreground/10 disabled:text-foreground/40 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
                 >
                   Save
                 </button>
                 <button
                   onClick={cancelRecording}
-                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-white/60 border border-white/40 hover:bg-white/80 text-foreground rounded-lg text-sm font-medium transition-colors"
                 >
                   Cancel
                 </button>
@@ -175,10 +175,10 @@ export default function PushToTalkSettings() {
           )}
 
           <div className="space-y-2">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-foreground/50">
               <strong>Tip:</strong> You can use modifier keys (Ctrl, Alt, Shift, Meta) combined with any key.
             </p>
-            <p className="text-xs text-amber-400">
+            <p className="text-xs text-amber-600">
               <strong>⚠️ Avoid:</strong> Letters and numbers may interfere when typing in the message box.
               Recommended: Space, Tab, CapsLock, or modifier combinations.
             </p>

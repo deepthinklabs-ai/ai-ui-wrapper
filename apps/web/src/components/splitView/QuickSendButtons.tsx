@@ -47,19 +47,19 @@ export default function QuickSendButtons({
   };
 
   return (
-    <div className="flex items-center gap-2 border-t border-slate-800/50 bg-slate-900/30 px-4 py-2">
+    <div className="flex items-center gap-2 border-t border-white/20 bg-white/20 backdrop-blur-sm px-4 py-2">
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-slate-400">Quick Send:</span>
+        <span className="text-xs font-medium text-foreground/60">Quick Send:</span>
         <div className="flex gap-2">
           {availableTargets.map((target) => (
             <button
               key={target.panelId}
               onClick={() => handleQuickSend(target.panelId)}
               disabled={disabled || !currentDraft.trim()}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                 disabled || !currentDraft.trim()
-                  ? 'cursor-not-allowed bg-slate-800 text-slate-500'
-                  : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
+                  ? 'cursor-not-allowed bg-white/30 text-foreground/40'
+                  : 'bg-sky text-foreground hover:bg-sky/80 active:bg-sky/70'
               }`}
               title={`Send current message directly to ${target.panelName}`}
             >
@@ -83,7 +83,7 @@ export default function QuickSendButtons({
         </div>
       </div>
       <div className="ml-auto">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-foreground/50">
           Direct routing (no AI interpretation)
         </span>
       </div>

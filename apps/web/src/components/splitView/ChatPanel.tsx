@@ -278,22 +278,22 @@ export default function ChatPanel({
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       {showHeader && (
-        <div className="flex-shrink-0 border-b border-slate-800 px-4 py-3">
-          <h2 className="text-lg font-semibold text-slate-200">
+        <div className="flex-shrink-0 border-b border-white/30 px-4 py-3">
+          <h2 className="text-lg font-semibold text-foreground">
             {headerTitle || thread?.title || "New Chat"}
           </h2>
         </div>
       )}
 
       {/* Panel Name Editor */}
-      <div className="flex-shrink-0 border-b border-slate-800/50 bg-slate-900/30 px-4 py-2">
+      <div className="flex-shrink-0 border-b border-white/20 bg-white/20 backdrop-blur-sm px-4 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-slate-400">Panel Name:</span>
+          <span className="text-xs font-medium text-foreground/60">Panel Name:</span>
           <input
             type="text"
             value={panelName}
             onChange={(e) => onPanelNameChange?.(e.target.value)}
-            className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex-1 rounded-lg border border-white/40 bg-white/60 px-2 py-1 text-sm text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
             placeholder="Enter panel name..."
           />
         </div>
@@ -301,13 +301,13 @@ export default function ChatPanel({
 
       {/* Error display */}
       {messagesError && (
-        <div className="flex-shrink-0 mx-4 mt-3 rounded-md border border-red-700 bg-red-900/20 px-4 py-2 text-sm text-red-400">
+        <div className="flex-shrink-0 mx-4 mt-3 rounded-lg border border-red-300 bg-red-100/80 backdrop-blur-sm px-4 py-2 text-sm text-red-700">
           {messagesError}
         </div>
       )}
 
       {/* Chat card: messages + composer */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-lg m-3">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/40 bg-white/40 backdrop-blur-md shadow-lg m-3">
         {/* Messages list (scrolls) */}
         <div
           ref={messagesContainerRef}
@@ -327,7 +327,7 @@ export default function ChatPanel({
         </div>
 
         {/* Undo buttons */}
-        <div className="border-t border-slate-800/50">
+        <div className="border-t border-white/20">
           <RevertUndoButton
             canUndo={canUndoRevert}
             undoInFlight={undoRevertInFlight}
@@ -352,7 +352,7 @@ export default function ChatPanel({
         )}
 
         {/* Composer */}
-        <div className="border-t border-slate-800 px-4 py-3">
+        <div className="border-t border-white/30 px-4 py-3">
           <MessageComposer
             value={draft}
             onChange={setDraft}

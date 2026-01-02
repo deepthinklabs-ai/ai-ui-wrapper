@@ -19,9 +19,9 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="border-b border-slate-800 px-4 py-3">
-        <h3 className="text-sm font-semibold text-slate-200">Node Palette</h3>
-        <p className="mt-1 text-xs text-slate-400">
+      <div className="border-b border-white/30 px-4 py-3">
+        <h3 className="text-sm font-semibold text-foreground">Node Palette</h3>
+        <p className="mt-1 text-xs text-foreground/60">
           Click to add nodes to canvas
         </p>
       </div>
@@ -38,7 +38,7 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
                 {/* Category Header */}
                 <div className="mb-2 flex items-center gap-2">
                   <span className="text-lg">{category.icon}</span>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/60">
                     {category.label}
                   </h4>
                 </div>
@@ -50,9 +50,9 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
                       key={definition.type}
                       onClick={() => onAddNode(definition.type)}
                       className={`
-                        group relative w-full rounded-lg border-2 border-slate-700
-                        bg-slate-800 p-3 text-left transition-all
-                        hover:border-${definition.color}-500 hover:bg-slate-750
+                        group relative w-full rounded-lg border-2 border-white/40
+                        bg-white/60 p-3 text-left transition-all
+                        hover:border-${definition.color}-500 hover:bg-white/80
                         active:scale-95
                       `}
                     >
@@ -60,11 +60,11 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
                       <div className="flex items-start gap-3">
                         <div className="text-2xl">{definition.icon}</div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-slate-200">
+                          <div className="text-sm font-medium text-foreground">
                             {definition.label}
                           </div>
                           {definition.description && (
-                            <div className="mt-1 text-xs text-slate-400 line-clamp-2">
+                            <div className="mt-1 text-xs text-foreground/60 line-clamp-2">
                               {definition.description}
                             </div>
                           )}
@@ -72,7 +72,7 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
                       </div>
 
                       {/* Ports Indicator */}
-                      <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                      <div className="mt-2 flex items-center gap-2 text-xs text-foreground/50">
                         {definition.inputs.length > 0 && (
                           <span>↓ {definition.inputs.length} in</span>
                         )}
@@ -99,8 +99,8 @@ export default function NodePalette({ onAddNode }: NodePaletteProps) {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-slate-800 px-4 py-3">
-        <p className="text-xs text-slate-500">
+      <div className="border-t border-white/30 px-4 py-3">
+        <p className="text-xs text-foreground/50">
           {Object.values(NODE_DEFINITIONS).filter(def => !def.hidden).length} node types available
         </p>
       </div>
