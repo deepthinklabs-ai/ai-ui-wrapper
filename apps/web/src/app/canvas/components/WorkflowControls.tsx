@@ -18,8 +18,6 @@ interface WorkflowControlsProps {
   onCreateCanvas: () => void;
   onUpdateCanvas: (id: CanvasId, updates: Partial<Canvas>) => Promise<boolean>;
   onDeleteCanvas: (id: CanvasId) => Promise<boolean>;
-  workflowMode: boolean;
-  onToggleWorkflowMode: () => void;
   onToggleNodePalette: () => void;
   onToggleInspector: () => void;
   showNodePalette: boolean;
@@ -33,8 +31,6 @@ export default function WorkflowControls({
   onCreateCanvas,
   onUpdateCanvas,
   onDeleteCanvas,
-  workflowMode,
-  onToggleWorkflowMode,
   onToggleNodePalette,
   onToggleInspector,
   showNodePalette,
@@ -171,22 +167,6 @@ export default function WorkflowControls({
         )}
       </div>
 
-      {/* Center Section - Workflow Controls */}
-      {currentCanvas && (
-        <div className="flex items-center gap-2">
-          {/* Workflow Mode Toggle */}
-          <button
-            onClick={onToggleWorkflowMode}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              workflowMode
-                ? 'bg-sky text-white'
-                : 'border border-foreground/30 bg-white/60 text-foreground/60 hover:bg-white/80'
-            }`}
-          >
-            {workflowMode ? '⚡ Workflow Mode' : '✏️ Edit Mode'}
-          </button>
-        </div>
-      )}
 
       {/* Right Section - View Toggles */}
       <div className="flex items-center gap-2">
