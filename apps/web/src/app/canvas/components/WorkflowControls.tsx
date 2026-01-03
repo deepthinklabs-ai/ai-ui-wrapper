@@ -167,7 +167,6 @@ export default function WorkflowControls({
         )}
       </div>
 
-
       {/* Right Section - View Toggles */}
       <div className="flex items-center gap-2">
         {/* Node Palette Toggle */}
