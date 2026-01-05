@@ -23,8 +23,7 @@ interface UploadWizardProps {
 interface ThreadOption {
   id: string;
   title: string;
-  model: string | null;
-  system_prompt: string | null;
+  chatbot_id: string | null;
   created_at: string;
 }
 
@@ -36,34 +35,6 @@ interface CanvasOption {
 }
 
 type Step = 'details' | 'content' | 'categories' | 'review';
-
-// Patterns that might indicate sensitive data in the system prompt
-const SENSITIVE_PATTERNS = [
-  { pattern: /sk-[a-zA-Z0-9]{20,}/i, name: 'OpenAI API key' },
-  { pattern: /sk-ant-[a-zA-Z0-9-]{20,}/i, name: 'Anthropic API key' },
-  { pattern: /xai-[a-zA-Z0-9]{20,}/i, name: 'xAI API key' },
-  { pattern: /Bearer\s+[a-zA-Z0-9._-]{20,}/i, name: 'Bearer token' },
-  { pattern: /api[_-]?key['":\s=]+[a-zA-Z0-9_-]{16,}/i, name: 'API key' },
-  { pattern: /password['":\s=]+[^\s'"]{8,}/i, name: 'Password' },
-  { pattern: /secret['":\s=]+[a-zA-Z0-9_-]{16,}/i, name: 'Secret' },
-  { pattern: /ghp_[a-zA-Z0-9]{36}/i, name: 'GitHub token' },
-  { pattern: /gho_[a-zA-Z0-9]{36}/i, name: 'GitHub OAuth token' },
-  { pattern: /AKIA[A-Z0-9]{16}/i, name: 'AWS access key' },
-];
-
-/**
- * Checks if text contains patterns that might indicate sensitive data
- */
-function detectSensitiveData(text: string | null | undefined): string[] {
-  if (!text) return [];
-  const found: string[] = [];
-  for (const { pattern, name } of SENSITIVE_PATTERNS) {
-    if (pattern.test(text)) {
-      found.push(name);
-    }
-  }
-  return found;
-}
 
 export default function UploadWizard({
   categories,
@@ -105,7 +76,7 @@ export default function UploadWizard({
         // Fetch threads
         const { data: threadsData, error: threadsError } = await supabase
           .from('threads')
-          .select('id, title, model, system_prompt, created_at')
+          .select('id, title, chatbot_id, created_at')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false });
 
@@ -121,7 +92,7 @@ export default function UploadWizard({
             console.log('[UploadWizard] Preselected thread not in list, fetching directly:', preselectedThreadId);
             const { data: preselectedData, error: preselectedError } = await supabase
               .from('threads')
-              .select('id, title, model, system_prompt, created_at')
+              .select('id, title, chatbot_id, created_at')
               .eq('id', preselectedThreadId)
               .eq('user_id', user.id)
               .single();
@@ -274,7 +245,7 @@ export default function UploadWizard({
 
     const { data, error } = await supabase
       .from('threads')
-      .select('id, title, model, system_prompt, created_at')
+      .select('id, title, chatbot_id, created_at')
       .eq('id', threadId)
       .eq('user_id', user.id)
       .single();
@@ -302,12 +273,9 @@ export default function UploadWizard({
         description: postDescription || undefined,
         original_thread_id: thread.id,
         original_thread_title: thread.title,
+        chatbot_id: thread.chatbot_id,
         created_at: thread.created_at,
         exported_at: new Date().toISOString(),
-      },
-      config: {
-        model: thread.model || 'gpt-4o',
-        system_prompt: thread.system_prompt || 'You are a helpful assistant.',
       },
     };
   };
@@ -407,8 +375,8 @@ export default function UploadWizard({
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const selectedCanvas = canvases.find((c) => c.id === selectedCanvasId);
 
-  // Check for sensitive data in the system prompt
-  const sensitiveDataFound = detectSensitiveData(selectedThread?.system_prompt);
+  // Note: Threads don't have system_prompt directly - it's on the chatbot
+  // For now, we just show a general security reminder
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
@@ -472,14 +440,7 @@ export default function UploadWizard({
                     {loadingOptions ? (
                       <span className="text-foreground/50">Loading...</span>
                     ) : selectedThread ? (
-                      <div className="flex items-center justify-between">
-                        <span>{selectedThread.title || 'Untitled Thread'}</span>
-                        {selectedThread.model && (
-                          <span className="text-xs text-foreground/50 bg-foreground/10 px-2 py-0.5 rounded">
-                            {selectedThread.model}
-                          </span>
-                        )}
-                      </div>
+                      <span>{selectedThread.title || 'Untitled Thread'}</span>
                     ) : (
                       <span className="text-red-500">Thread not found</span>
                     )}
@@ -690,38 +651,20 @@ export default function UploadWizard({
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-foreground">Review Your Post</h3>
 
-              {/* Security Warning - Red if sensitive data detected, amber otherwise */}
-              {sensitiveDataFound.length > 0 ? (
-                <div className="rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-3">
-                  <div className="flex items-start gap-2">
-                    <svg className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-red-700">Potential Sensitive Data Detected!</p>
-                      <p className="text-xs text-red-600 mt-1">
-                        Your system prompt may contain: <strong>{sensitiveDataFound.join(', ')}</strong>.
-                        Please remove any API keys, passwords, or secrets before publishing.
-                        Your system prompt will be visible to everyone who downloads this chatbot.
-                      </p>
-                    </div>
+              {/* Security Reminder */}
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/50 px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <svg className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-amber-700">Security Reminder</p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      Your thread metadata will be shared publicly. Please ensure your post does not reference API keys, passwords, personal information, or other sensitive data.
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="rounded-lg bg-amber-500/10 border border-amber-500/50 px-4 py-3">
-                  <div className="flex items-start gap-2">
-                    <svg className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-amber-700">Security Reminder</p>
-                      <p className="text-xs text-amber-600 mt-1">
-                        Your thread's system prompt will be shared publicly. Please ensure it does not contain API keys, passwords, personal information, or other sensitive data.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
 
               <div className="rounded-lg border border-white/30 bg-foreground/5 p-4 space-y-3">
                 <div>
@@ -741,9 +684,6 @@ export default function UploadWizard({
                   <span className="text-sm text-foreground/60">Source Thread:</span>
                   <p className="text-foreground/80 text-sm">
                     {selectedThread?.title || 'Untitled Thread'}
-                    {selectedThread?.model && (
-                      <span className="text-foreground/50 ml-2">({selectedThread.model})</span>
-                    )}
                   </p>
                 </div>
 
