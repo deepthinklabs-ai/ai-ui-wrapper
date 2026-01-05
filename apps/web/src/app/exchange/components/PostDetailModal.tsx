@@ -384,9 +384,9 @@ export default function PostDetailModal({
                       ({(post.thread_file as any).messages.length} messages)
                     </span>
                   </h3>
-                  <div className="rounded-lg border border-white/30 bg-foreground/5 max-h-64 overflow-y-auto">
+                  <div className="rounded-lg border border-white/30 bg-foreground/5 max-h-96 overflow-y-auto">
                     <div className="p-3 space-y-3">
-                      {((post.thread_file as any).messages as any[]).slice(0, 10).map((msg, index) => (
+                      {((post.thread_file as any).messages as any[]).map((msg, index) => (
                         <div
                           key={index}
                           className={`flex gap-3 ${msg.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'}`}
@@ -407,7 +407,7 @@ export default function PostDetailModal({
                                 : 'bg-lavender/10 text-foreground/80'
                             }`}
                           >
-                            <div className="line-clamp-3 whitespace-pre-wrap">
+                            <div className="whitespace-pre-wrap">
                               {msg.content}
                             </div>
                             {msg.model && (
@@ -416,15 +416,10 @@ export default function PostDetailModal({
                           </div>
                         </div>
                       ))}
-                      {(post.thread_file as any).messages.length > 10 && (
-                        <div className="text-center text-xs text-foreground/50 py-2">
-                          + {(post.thread_file as any).messages.length - 10} more messages
-                        </div>
-                      )}
                     </div>
                   </div>
                   <p className="text-xs text-foreground/50 mt-2">
-                    Import this thread to see the full conversation in your dashboard.
+                    Scroll to view the full conversation. Import to add to your dashboard.
                   </p>
                 </div>
               )}
