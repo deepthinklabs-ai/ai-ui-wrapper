@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthSession } from '@/hooks/useAuthSession';
+import { useCSRF } from '@/hooks/useCSRF';
 import { supabase } from '@/lib/supabaseClient';
 import type { ExchangeCategory } from '../types';
 
@@ -43,6 +44,7 @@ export default function UploadWizard({
   onSuccess,
 }: UploadWizardProps) {
   const { user } = useAuthSession();
+  const { csrfFetch } = useCSRF();
   const [step, setStep] = useState<Step>('details');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -301,7 +303,8 @@ export default function UploadWizard({
       tagNames,
     });
 
-    const response = await fetch('/api/exchange/posts', {
+    // Use csrfFetch to include CSRF token automatically
+    const response = await csrfFetch('/api/exchange/posts', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
