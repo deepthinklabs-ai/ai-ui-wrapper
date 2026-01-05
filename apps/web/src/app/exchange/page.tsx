@@ -6,7 +6,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useExchangeCategories } from './hooks/useExchangeCategories';
 import { useExchangePosts } from './hooks/useExchangePosts';
@@ -15,7 +15,10 @@ import ExchangeGrid from './components/ExchangeGrid';
 import PostDetailModal from './components/PostDetailModal';
 import UploadWizard from './components/UploadWizard';
 
-export default function ExchangePage() {
+/**
+ * Inner component that uses useSearchParams (requires Suspense boundary)
+ */
+function ExchangePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
@@ -158,5 +161,20 @@ export default function ExchangePage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Exchange Page wrapper with Suspense boundary for useSearchParams
+ */
+export default function ExchangePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-foreground/60">Loading...</div>
+      </div>
+    }>
+      <ExchangePageContent />
+    </Suspense>
   );
 }
