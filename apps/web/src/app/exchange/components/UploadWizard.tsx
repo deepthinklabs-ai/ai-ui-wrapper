@@ -104,7 +104,32 @@ export default function UploadWizard({
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false });
 
-        setThreads(threadsData || []);
+        let allThreads = threadsData || [];
+
+        // If we have a preselected thread, ensure it's in the list
+        if (preselectedThreadId) {
+          const preselectedInList = allThreads.find((t) => t.id === preselectedThreadId);
+          if (!preselectedInList) {
+            // Fetch the preselected thread directly
+            console.log('[UploadWizard] Preselected thread not in list, fetching directly:', preselectedThreadId);
+            const { data: preselectedData, error: preselectedError } = await supabase
+              .from('threads')
+              .select('id, title, model, system_prompt, created_at')
+              .eq('id', preselectedThreadId)
+              .eq('user_id', user.id)
+              .single();
+
+            if (preselectedData && !preselectedError) {
+              // Add to the beginning of the list
+              allThreads = [preselectedData, ...allThreads];
+              console.log('[UploadWizard] Preselected thread fetched:', preselectedData.title);
+            } else {
+              console.error('[UploadWizard] Failed to fetch preselected thread:', preselectedError);
+            }
+          }
+        }
+
+        setThreads(allThreads);
 
         // Fetch canvases
         const { data: canvasesData } = await supabase
@@ -122,7 +147,7 @@ export default function UploadWizard({
     };
 
     fetchOptions();
-  }, [user?.id]);
+  }, [user?.id, preselectedThreadId]);
 
   // Pre-fill title from pre-selected thread when threads are loaded
   useEffect(() => {
@@ -130,6 +155,7 @@ export default function UploadWizard({
       const preselectedThread = threads.find((t) => t.id === preselectedThreadId);
       if (preselectedThread?.title) {
         setTitle(preselectedThread.title);
+        console.log('[UploadWizard] Pre-filled title from thread:', preselectedThread.title);
       }
     }
   }, [preselectedThreadId, threads, title]);
@@ -680,6 +706,17 @@ export default function UploadWizard({
                     <p className="text-foreground/80 text-sm">{description}</p>
                   </div>
                 )}
+
+                {/* Show which thread is being shared */}
+                <div>
+                  <span className="text-sm text-foreground/60">Source Thread:</span>
+                  <p className="text-foreground/80 text-sm">
+                    {selectedThread?.title || 'Untitled Thread'}
+                    {selectedThread?.model && (
+                      <span className="text-foreground/50 ml-2">({selectedThread.model})</span>
+                    )}
+                  </p>
+                </div>
 
                 <div>
                   <span className="text-sm text-foreground/60">Categories:</span>
