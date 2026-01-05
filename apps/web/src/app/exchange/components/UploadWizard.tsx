@@ -160,7 +160,12 @@ export default function UploadWizard({
   const nextStep = () => {
     switch (step) {
       case 'details':
-        setStep('content');
+        // Skip content step if thread is pre-selected
+        if (preselectedThreadId) {
+          setStep('categories');
+        } else {
+          setStep('content');
+        }
         break;
       case 'content':
         setStep('categories');
@@ -177,7 +182,12 @@ export default function UploadWizard({
         setStep('details');
         break;
       case 'categories':
-        setStep('content');
+        // Skip content step if thread is pre-selected
+        if (preselectedThreadId) {
+          setStep('details');
+        } else {
+          setStep('content');
+        }
         break;
       case 'review':
         setStep('categories');
@@ -350,7 +360,10 @@ export default function UploadWizard({
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-2 border-b border-white/30 px-6 py-3">
-          {(['details', 'content', 'categories', 'review'] as Step[]).map((s, i) => (
+          {(preselectedThreadId
+            ? (['details', 'categories', 'review'] as Step[])
+            : (['details', 'content', 'categories', 'review'] as Step[])
+          ).map((s, i, arr) => (
             <React.Fragment key={s}>
               <div
                 className={`flex items-center gap-2 ${
@@ -368,7 +381,7 @@ export default function UploadWizard({
                 </div>
                 <span className="text-sm capitalize hidden sm:inline">{s}</span>
               </div>
-              {i < 3 && <div className="h-px w-8 bg-foreground/20" />}
+              {i < arr.length - 1 && <div className="h-px w-8 bg-foreground/20" />}
             </React.Fragment>
           ))}
         </div>
