@@ -459,7 +459,7 @@ export default function UploadWizard({
                 <div
                   className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium ${
                     step === s
-                      ? 'bg-sky text-white'
+                      ? 'bg-sky text-black'
                       : 'bg-foreground/10 text-foreground/60'
                   }`}
                 >
@@ -634,7 +634,7 @@ export default function UploadWizard({
                       onClick={() => toggleCategory(category.id)}
                       className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         selectedCategoryIds.includes(category.id)
-                          ? 'bg-sky text-white'
+                          ? 'bg-sky text-black'
                           : 'bg-foreground/10 text-foreground/80 hover:bg-foreground/20'
                       }`}
                     >
@@ -790,7 +790,7 @@ export default function UploadWizard({
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-black hover:bg-sky/80 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Publishing...' : 'Publish to Exchange'}
             </button>
@@ -798,7 +798,7 @@ export default function UploadWizard({
             <button
               onClick={nextStep}
               disabled={!canProceed()}
-              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-black hover:bg-sky/80 disabled:opacity-50 transition-colors"
             >
               Next
             </button>
