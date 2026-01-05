@@ -453,7 +453,7 @@ export default function UploadWizard({
             <React.Fragment key={s}>
               <div
                 className={`flex items-center gap-2 ${
-                  step === s ? 'text-sky' : 'text-foreground/50'
+                  step === s ? 'text-black' : 'text-foreground/50'
                 }`}
               >
                 <div
