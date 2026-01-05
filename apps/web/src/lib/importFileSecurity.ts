@@ -117,8 +117,10 @@ const FILE_TYPE_IDENTIFIERS: Record<ImportFileType, string> = {
 
 /** Dangerous HTML/script patterns to strip from imported content */
 const DANGEROUS_PATTERNS = [
-  // Script tags (handles </script > with optional whitespace before >)
-  /<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi,
+  // Script opening tags - strip any <script with attributes
+  /<script\b[^>]*>/gi,
+  // Script closing tags - strip any </script variations
+  /<\/script[^>]*>/gi,
   // Event handlers
   /\bon\w+\s*=\s*["'][^"']*["']/gi,
   /\bon\w+\s*=\s*[^\s>]+/gi,
