@@ -7,9 +7,11 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useCSRF } from '@/hooks/useCSRF';
+import { useEncryption } from '@/contexts/EncryptionContext';
+import { validateDecryption, isDecryptionSuccess } from '@/lib/decryptionValidator';
 import { supabase } from '@/lib/supabaseClient';
 import type { ExchangeCategory } from '../types';
 
@@ -45,6 +47,7 @@ export default function UploadWizard({
 }: UploadWizardProps) {
   const { user } = useAuthSession();
   const { csrfFetch } = useCSRF();
+  const { decryptText, state: encryptionState } = useEncryption();
   const [step, setStep] = useState<Step>('details');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -266,6 +269,26 @@ export default function UploadWizard({
   };
 
   /**
+   * Decrypt a single message content
+   * Returns plaintext if decryption succeeds, or original content if not encrypted
+   */
+  const decryptMessageContent = useCallback(async (content: string): Promise<string> => {
+    // If encryption isn't set up or not unlocked, return content as-is
+    if (!encryptionState.hasEncryption || !encryptionState.isUnlocked) {
+      return content;
+    }
+
+    const result = await validateDecryption(content, decryptText, { itemType: 'export' });
+
+    if (isDecryptionSuccess(result)) {
+      return result.data;
+    }
+
+    // If decryption fails, return original (might already be plaintext)
+    return content;
+  }, [decryptText, encryptionState.hasEncryption, encryptionState.isUnlocked]);
+
+  /**
    * Fetches messages for a thread
    */
   const fetchThreadMessages = async (threadId: string) => {
@@ -288,7 +311,10 @@ export default function UploadWizard({
 
   /**
    * Builds the thread file object for the Exchange post
-   * Includes messages for the conversation history
+   * Includes DECRYPTED messages for the conversation history
+   *
+   * IMPORTANT: Messages are decrypted before sharing so other users
+   * can import and view them without needing the original encryption key.
    */
   const buildThreadFile = async (thread: ThreadOption, postTitle: string, postDescription: string) => {
     console.log('[UploadWizard] Building thread file from:', thread);
@@ -296,17 +322,20 @@ export default function UploadWizard({
     // Fetch messages for the thread
     const messages = await fetchThreadMessages(thread.id);
 
-    // Format messages for the thread file
-    const formattedMessages = messages.map((msg: any) => ({
+    // Format and DECRYPT messages for the thread file
+    // This ensures shared content is readable by other users
+    const formattedMessages = await Promise.all(messages.map(async (msg: any) => ({
       role: msg.role,
-      content: msg.content,
+      content: await decryptMessageContent(msg.content), // Decrypt before sharing
       model: msg.model || null,
       created_at: msg.created_at,
       attachments: msg.attachments || null,
       input_tokens: msg.input_tokens || null,
       output_tokens: msg.output_tokens || null,
       total_tokens: msg.total_tokens || null,
-    }));
+    })));
+
+    console.log('[UploadWizard] Decrypted', formattedMessages.length, 'messages for sharing');
 
     return {
       version: '1.0.0',
@@ -381,6 +410,13 @@ export default function UploadWizard({
 
     if (!user?.id || !selectedThreadId) {
       console.error('[UploadWizard] Missing required data:', { userId: user?.id, selectedThreadId });
+      return;
+    }
+
+    // Check if encryption is enabled but not unlocked
+    // This would result in sharing encrypted (unreadable) content
+    if (encryptionState.hasEncryption && !encryptionState.isUnlocked) {
+      setError('Please unlock encryption before sharing. Your messages are encrypted and cannot be shared without unlocking.');
       return;
     }
 
