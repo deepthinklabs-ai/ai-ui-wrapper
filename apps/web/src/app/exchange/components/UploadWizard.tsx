@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { supabase } from '@/lib/supabaseClient';
 import type { ExchangeCategory } from '../types';
@@ -60,6 +60,9 @@ export default function UploadWizard({
   const [threads, setThreads] = useState<ThreadOption[]>([]);
   const [canvases, setCanvases] = useState<CanvasOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
+
+  // Track if we've already pre-filled the title (to prevent re-filling when user clears it)
+  const hasPrefilledTitle = useRef(false);
 
   // Fetch user's threads and canvases
   useEffect(() => {
@@ -127,16 +130,17 @@ export default function UploadWizard({
     fetchOptions();
   }, [user?.id, preselectedThreadId]);
 
-  // Pre-fill title from pre-selected thread when threads are loaded
+  // Pre-fill title from pre-selected thread when threads are loaded (only once)
   useEffect(() => {
-    if (preselectedThreadId && threads.length > 0 && !title) {
+    if (preselectedThreadId && threads.length > 0 && !hasPrefilledTitle.current) {
       const preselectedThread = threads.find((t) => t.id === preselectedThreadId);
       if (preselectedThread?.title) {
         setTitle(preselectedThread.title);
+        hasPrefilledTitle.current = true;
         console.log('[UploadWizard] Pre-filled title from thread:', preselectedThread.title);
       }
     }
-  }, [preselectedThreadId, threads, title]);
+  }, [preselectedThreadId, threads]);
 
   // Close on escape
   useEffect(() => {
