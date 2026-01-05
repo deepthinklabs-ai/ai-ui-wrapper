@@ -15,6 +15,11 @@ import {
   mergeWithDefaults,
   CHATBOT_FILE_EXT,
 } from "../lib/chatbotFileUtils";
+import {
+  validateImportFileExtension,
+  validateImportFileSize,
+  IMPORT_FILE_EXTENSIONS,
+} from "@/lib/importFileSecurity";
 
 export type UseChatbotImportResult = {
   /** Whether an import is in progress */
@@ -82,11 +87,19 @@ export function useChatbotImport(options: UseChatbotImportOptions = {}): UseChat
   }, [onImportSuccess, onImportError]);
 
   const importFromFile = useCallback(async (file: File): Promise<ChatbotFile | null> => {
-    // Validate file extension
-    if (!file.name.endsWith(CHATBOT_FILE_EXT) && !file.name.endsWith(".json")) {
-      const error = `Invalid file type. Expected ${CHATBOT_FILE_EXT} or .json file`;
-      setImportError(error);
-      if (onImportError) onImportError(error);
+    // Security validation: Check file extension (exact match, no .json fallback)
+    const extCheck = validateImportFileExtension(file.name, 'chatbot');
+    if (!extCheck.valid) {
+      setImportError(extCheck.error!);
+      if (onImportError) onImportError(extCheck.error!);
+      return null;
+    }
+
+    // Security validation: Check file size
+    const sizeCheck = validateImportFileSize(file);
+    if (!sizeCheck.valid) {
+      setImportError(sizeCheck.error!);
+      if (onImportError) onImportError(sizeCheck.error!);
       return null;
     }
 
@@ -135,7 +148,8 @@ export function useChatbotImport(options: UseChatbotImportOptions = {}): UseChat
     if (!fileInputRef.current) {
       const input = document.createElement("input");
       input.type = "file";
-      input.accept = `${CHATBOT_FILE_EXT},.json`;
+      // Security: Only accept .chatbot files (no .json fallback)
+      input.accept = CHATBOT_FILE_EXT;
       input.style.display = "none";
       input.onchange = async (e) => {
         const files = (e.target as HTMLInputElement).files;

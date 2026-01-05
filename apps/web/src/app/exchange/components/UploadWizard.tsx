@@ -14,6 +14,8 @@ import type { ExchangeCategory } from '../types';
 
 interface UploadWizardProps {
   categories: ExchangeCategory[];
+  /** Pre-selected thread ID from "Share to Exchange" button */
+  preselectedThreadId?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -37,6 +39,7 @@ type Step = 'details' | 'content' | 'categories' | 'review';
 
 export default function UploadWizard({
   categories,
+  preselectedThreadId,
   onClose,
   onSuccess,
 }: UploadWizardProps) {
@@ -48,7 +51,7 @@ export default function UploadWizard({
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(preselectedThreadId || null);
   const [selectedCanvasId, setSelectedCanvasId] = useState<string | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -92,6 +95,16 @@ export default function UploadWizard({
 
     fetchOptions();
   }, [user?.id]);
+
+  // Pre-fill title from pre-selected thread when threads are loaded
+  useEffect(() => {
+    if (preselectedThreadId && threads.length > 0 && !title) {
+      const preselectedThread = threads.find((t) => t.id === preselectedThreadId);
+      if (preselectedThread?.title) {
+        setTitle(preselectedThread.title);
+      }
+    }
+  }, [preselectedThreadId, threads, title]);
 
   // Close on escape
   useEffect(() => {

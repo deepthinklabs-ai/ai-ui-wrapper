@@ -10,6 +10,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { readThreadFile } from '@/lib/threadFileUtils';
 import type { ThreadFile, ThreadImportResult } from '@/types/threadFile';
 import { THREAD_FILE_EXTENSION } from '@/types/threadFile';
+import {
+  validateImportFileExtension,
+  validateImportFileSize,
+  IMPORT_FILE_EXTENSIONS,
+} from '@/lib/importFileSecurity';
 
 type UseThreadImportResult = {
   /** Import a thread from a File object */
@@ -173,19 +178,27 @@ export function useThreadImport(options: UseThreadImportOptions): UseThreadImpor
    * Import a thread from a File object
    */
   const importThread = useCallback(async (file: File): Promise<ThreadImportResult> => {
-    // Validate file extension
-    if (!file.name.endsWith(THREAD_FILE_EXTENSION)) {
-      const errorMsg = `Invalid file type. Please select a ${THREAD_FILE_EXTENSION} file`;
-      setError(errorMsg);
-      onImportError?.(errorMsg);
-      return { success: false, error: errorMsg };
+    // Security validation: Check file extension
+    const extCheck = validateImportFileExtension(file.name, 'thread');
+    if (!extCheck.valid) {
+      setError(extCheck.error!);
+      onImportError?.(extCheck.error!);
+      return { success: false, error: extCheck.error };
+    }
+
+    // Security validation: Check file size
+    const sizeCheck = validateImportFileSize(file);
+    if (!sizeCheck.valid) {
+      setError(sizeCheck.error!);
+      onImportError?.(sizeCheck.error!);
+      return { success: false, error: sizeCheck.error };
     }
 
     setIsImporting(true);
     setError(null);
 
     try {
-      // Parse and validate the file
+      // Parse and validate the file structure
       const validation = await readThreadFile(file);
 
       if (!validation.valid || !validation.data) {

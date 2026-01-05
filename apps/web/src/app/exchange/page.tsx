@@ -6,8 +6,8 @@
 
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useExchangeCategories } from './hooks/useExchangeCategories';
 import { useExchangePosts } from './hooks/useExchangePosts';
 import ExchangeFilters from './components/ExchangeFilters';
@@ -17,8 +17,23 @@ import UploadWizard from './components/UploadWizard';
 
 export default function ExchangePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [showUploadWizard, setShowUploadWizard] = useState(false);
+  const [preselectedThreadId, setPreselectedThreadId] = useState<string | null>(null);
+
+  // Check for share query parameters (e.g., from "Share to Exchange" button)
+  useEffect(() => {
+    const shareType = searchParams.get('share');
+    const threadId = searchParams.get('threadId');
+
+    if (shareType === 'thread' && threadId) {
+      setPreselectedThreadId(threadId);
+      setShowUploadWizard(true);
+      // Clean up the URL without triggering a navigation
+      window.history.replaceState({}, '', '/exchange');
+    }
+  }, [searchParams]);
 
   // Fetch categories
   const {
@@ -129,9 +144,14 @@ export default function ExchangePage() {
       {showUploadWizard && (
         <UploadWizard
           categories={categories}
-          onClose={() => setShowUploadWizard(false)}
+          preselectedThreadId={preselectedThreadId}
+          onClose={() => {
+            setShowUploadWizard(false);
+            setPreselectedThreadId(null);
+          }}
           onSuccess={() => {
             setShowUploadWizard(false);
+            setPreselectedThreadId(null);
             // Refresh posts after successful upload
             setFilter({ ...filter });
           }}

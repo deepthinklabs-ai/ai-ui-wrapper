@@ -26,8 +26,6 @@ type ChatbotItemProps = {
   onEdit?: () => void;
   /** Called when the duplicate action is triggered */
   onDuplicate?: () => void;
-  /** Called when the export action is triggered */
-  onExport?: () => void;
   /** Called when the delete action is triggered */
   onDelete?: () => void;
   /** Called when the name is updated inline */
@@ -47,7 +45,6 @@ export function ChatbotItem({
   onStartThread,
   onEdit,
   onDuplicate,
-  onExport,
   onDelete,
   onRename,
   depth = 0,
@@ -129,11 +126,6 @@ export function ChatbotItem({
   const handleDuplicate = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDuplicate) onDuplicate();
-  };
-
-  const handleExport = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onExport) onExport();
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -234,23 +226,6 @@ export function ChatbotItem({
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </button>
-            )}
-            {/* Export Button */}
-            {onExport && (
-              <button
-                type="button"
-                onClick={handleExport}
-                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-mint"
-                title="Export chatbot"
-              >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
                 </svg>
               </button>
             )}

@@ -2,9 +2,19 @@
  * File Processor Utility
  *
  * Handles processing of uploaded files for LLM consumption:
+ * - Security validation (type, size, content verification)
  * - Converts images to base64 for vision models
  * - Reads text-based files and extracts content
  */
+
+import {
+  validateFile,
+  validateFiles,
+  quickValidateFile,
+  sanitizeFilename,
+  type FileValidationOptions,
+  type FileValidationResult,
+} from './fileUploadSecurity';
 
 export type ProcessedFile = {
   name: string;
@@ -12,6 +22,18 @@ export type ProcessedFile = {
   size: number;
   content: string; // base64 for images, text content for text files
   isImage: boolean;
+};
+
+export type SecureProcessResult = {
+  success: boolean;
+  file?: ProcessedFile;
+  error?: string;
+};
+
+export type SecureProcessMultipleResult = {
+  processedFiles: ProcessedFile[];
+  errors: string[];
+  allSuccessful: boolean;
 };
 
 /**
@@ -95,3 +117,122 @@ export function formatFilesForMessage(processedFiles: ProcessedFile[]): string {
 
   return fileContent;
 }
+
+/**
+ * Securely process a single file with full validation
+ * Validates file type, size, and content before processing
+ */
+export async function secureProcessFile(
+  file: File,
+  options?: FileValidationOptions
+): Promise<SecureProcessResult> {
+  // Validate the file first
+  const validation = await validateFile(file, options);
+
+  if (!validation.valid) {
+    return {
+      success: false,
+      error: validation.error || 'File validation failed',
+    };
+  }
+
+  try {
+    // Process the validated file
+    const processed = await processFile(file);
+
+    // Use sanitized filename
+    if (validation.sanitizedFilename) {
+      processed.name = validation.sanitizedFilename;
+    }
+
+    return {
+      success: true,
+      file: processed,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
+  }
+}
+
+/**
+ * Securely process multiple files with full validation
+ * Returns successfully processed files and any errors
+ */
+export async function secureProcessFiles(
+  files: File[],
+  options?: FileValidationOptions
+): Promise<SecureProcessMultipleResult> {
+  const processedFiles: ProcessedFile[] = [];
+  const errors: string[] = [];
+
+  // Validate all files first
+  const validation = await validateFiles(files, options);
+
+  // Add validation errors
+  errors.push(...validation.errors);
+
+  // Process valid files
+  for (const file of validation.validFiles) {
+    try {
+      const processed = await processFile(file);
+
+      // Use sanitized filename if available
+      const sanitizedName = validation.sanitizedFilenames.get(file);
+      if (sanitizedName) {
+        processed.name = sanitizedName;
+      }
+
+      processedFiles.push(processed);
+    } catch (error) {
+      errors.push(
+        `${file.name}: Failed to process - ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  return {
+    processedFiles,
+    errors,
+    allSuccessful: errors.length === 0,
+  };
+}
+
+/**
+ * Quick validation for UI feedback (synchronous, no magic byte check)
+ * Use this for immediate user feedback before full processing
+ */
+export function quickValidateFiles(files: File[]): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  for (const file of files) {
+    const result = quickValidateFile(file);
+    if (!result.valid) {
+      errors.push(`${file.name}: ${result.error}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+// Re-export security utilities for convenience
+export {
+  validateFile,
+  validateFiles,
+  quickValidateFile,
+  sanitizeFilename,
+  type FileValidationOptions,
+  type FileValidationResult,
+} from './fileUploadSecurity';
+
+export {
+  FILE_UPLOAD_LIMITS,
+  FILE_SECURITY_LISTS,
+  enableFileUploadSecurityDebug,
+  isFileUploadSecurityDebugEnabled,
+} from './fileUploadSecurity';

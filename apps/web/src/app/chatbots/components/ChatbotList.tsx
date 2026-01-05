@@ -24,8 +24,6 @@ type ChatbotListProps = {
   onEditChatbot?: (id: string) => void;
   /** Called when duplicate action is triggered */
   onDuplicateChatbot?: (id: string) => void;
-  /** Called when export action is triggered */
-  onExportChatbot?: (id: string) => void;
   /** Called when delete action is triggered */
   onDeleteChatbot?: (id: string) => void;
   /** Called when rename is triggered */
@@ -43,7 +41,6 @@ export function ChatbotList({
   onStartChatbotThread,
   onEditChatbot,
   onDuplicateChatbot,
-  onExportChatbot,
   onDeleteChatbot,
   onRenameChatbot,
   emptyMessage = "No chatbots yet. Create one to get started.",
@@ -68,7 +65,6 @@ export function ChatbotList({
             onStartThread={onStartChatbotThread ? () => onStartChatbotThread(chatbot.id, chatbot.name) : undefined}
             onEdit={onEditChatbot ? () => onEditChatbot(chatbot.id) : undefined}
             onDuplicate={onDuplicateChatbot ? () => onDuplicateChatbot(chatbot.id) : undefined}
-            onExport={onExportChatbot ? () => onExportChatbot(chatbot.id) : undefined}
             onDelete={onDeleteChatbot ? () => onDeleteChatbot(chatbot.id) : undefined}
             onRename={onRenameChatbot ? (newName) => onRenameChatbot(chatbot.id, newName) : undefined}
           />

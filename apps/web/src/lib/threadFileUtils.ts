@@ -17,6 +17,12 @@ import {
   THREAD_FILE_VERSION,
   THREAD_FILE_EXTENSION,
 } from '@/types/threadFile';
+import {
+  validateImportFileExtension,
+  validateImportFileSize,
+  preParseJsonCheck,
+  sanitizeImportData,
+} from '@/lib/importFileSecurity';
 
 /**
  * Default export options
@@ -207,11 +213,29 @@ export function validateThreadFile(data: unknown): ThreadFileValidationResult {
 
 /**
  * Parse and validate a thread file from a string
+ * Includes pre-parse security checks and content sanitization
  */
 export function parseThreadFile(content: string): ThreadFileValidationResult {
   try {
+    // Pre-parse security check
+    const preParseResult = preParseJsonCheck(content);
+    if (!preParseResult.valid) {
+      return { valid: false, error: preParseResult.error };
+    }
+
+    // Parse JSON
     const data = JSON.parse(content);
-    return validateThreadFile(data);
+
+    // Validate structure first
+    const validationResult = validateThreadFile(data);
+    if (!validationResult.valid) {
+      return validationResult;
+    }
+
+    // Sanitize content to remove potential XSS
+    const { sanitized } = sanitizeImportData(data);
+
+    return { valid: true, data: sanitized as unknown as ThreadFile };
   } catch (err) {
     return { valid: false, error: 'Invalid JSON format' };
   }
@@ -221,6 +245,18 @@ export function parseThreadFile(content: string): ThreadFileValidationResult {
  * Read a File object and parse it as a thread file
  */
 export async function readThreadFile(file: File): Promise<ThreadFileValidationResult> {
+  // Security validation: Check file extension
+  const extCheck = validateImportFileExtension(file.name, 'thread');
+  if (!extCheck.valid) {
+    return { valid: false, error: extCheck.error };
+  }
+
+  // Security validation: Check file size
+  const sizeCheck = validateImportFileSize(file);
+  if (!sizeCheck.valid) {
+    return { valid: false, error: sizeCheck.error };
+  }
+
   return new Promise((resolve) => {
     const reader = new FileReader();
 

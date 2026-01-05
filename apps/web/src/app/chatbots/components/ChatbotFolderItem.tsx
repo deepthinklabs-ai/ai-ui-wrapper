@@ -34,7 +34,6 @@ type ChatbotFolderItemProps = {
   onStartChatbotThread?: (chatbotId: string, chatbotName: string) => void;
   onEditChatbot?: (id: string) => void;
   onDuplicateChatbot?: (id: string) => void;
-  onExportChatbot?: (id: string) => void;
 };
 
 export function ChatbotFolderItem({
@@ -58,7 +57,6 @@ export function ChatbotFolderItem({
   onStartChatbotThread,
   onEditChatbot,
   onDuplicateChatbot,
-  onExportChatbot,
 }: ChatbotFolderItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(folder.name);
@@ -392,7 +390,6 @@ export function ChatbotFolderItem({
               onStartChatbotThread={onStartChatbotThread}
               onEditChatbot={onEditChatbot}
               onDuplicateChatbot={onDuplicateChatbot}
-              onExportChatbot={onExportChatbot}
             />
           ))}
 
@@ -406,7 +403,6 @@ export function ChatbotFolderItem({
               onStartThread={onStartChatbotThread ? () => onStartChatbotThread(chatbot.id, chatbot.name) : undefined}
               onEdit={onEditChatbot ? () => onEditChatbot(chatbot.id) : undefined}
               onDuplicate={onDuplicateChatbot ? () => onDuplicateChatbot(chatbot.id) : undefined}
-              onExport={onExportChatbot ? () => onExportChatbot(chatbot.id) : undefined}
               onDelete={() => onDeleteChatbot(chatbot.id)}
               onRename={(newName) => onRenameChatbot(chatbot.id, newName)}
               depth={depth + 1}
