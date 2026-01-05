@@ -92,17 +92,24 @@ export default function UploadWizard({
 
   // Fetch user's threads and canvases
   useEffect(() => {
-    if (!user?.id) return;
+    console.log('[UploadWizard] Fetch effect triggered', { userId: user?.id, preselectedThreadId });
+    if (!user?.id) {
+      console.log('[UploadWizard] No user ID, skipping fetch');
+      return;
+    }
 
     const fetchOptions = async () => {
       setLoadingOptions(true);
+      console.log('[UploadWizard] Starting fetch for user:', user.id);
       try {
         // Fetch threads
-        const { data: threadsData } = await supabase
+        const { data: threadsData, error: threadsError } = await supabase
           .from('threads')
           .select('id, title, model, system_prompt, created_at')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false });
+
+        console.log('[UploadWizard] Threads fetch result:', { count: threadsData?.length, error: threadsError });
 
         let allThreads = threadsData || [];
 
@@ -455,27 +462,49 @@ export default function UploadWizard({
           {/* Step 1: Details */}
           {step === 'details' && (
             <div className="space-y-4">
+              {/* Show source thread when pre-selected */}
+              {preselectedThreadId && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground/80 mb-2">
+                    Source Thread
+                  </label>
+                  <div className="w-full rounded-lg border border-white/40 bg-foreground/5 px-4 py-2 text-foreground">
+                    {loadingOptions ? (
+                      <span className="text-foreground/50">Loading...</span>
+                    ) : selectedThread ? (
+                      <div className="flex items-center justify-between">
+                        <span>{selectedThread.title || 'Untitled Thread'}</span>
+                        {selectedThread.model && (
+                          <span className="text-xs text-foreground/50 bg-foreground/10 px-2 py-0.5 rounded">
+                            {selectedThread.model}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-red-500">Thread not found</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-1">
+                    This thread's config will be shared
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-2">
-                  Title <span className="text-red-500">*</span>
+                  Post Title <span className="text-red-500">*</span>
                 </label>
-                {preselectedThreadId ? (
-                  <>
-                    <div className="w-full rounded-lg border border-white/40 bg-foreground/5 px-4 py-2 text-foreground">
-                      {title || 'Loading...'}
-                    </div>
-                    <p className="text-xs text-foreground/50 mt-1">
-                      Title is set from your thread name
-                    </p>
-                  </>
-                ) : (
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="My Awesome Chatbot"
-                    className="w-full rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
-                  />
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="My Awesome Chatbot"
+                  className="w-full rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
+                />
+                {preselectedThreadId && (
+                  <p className="text-xs text-foreground/50 mt-1">
+                    Pre-filled from thread name. You can change it.
+                  </p>
                 )}
               </div>
               <div>
