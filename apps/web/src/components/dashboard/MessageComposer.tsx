@@ -1,6 +1,6 @@
 "use client";
 
-import React, { KeyboardEvent, useRef, useCallback, useEffect } from "react";
+import React, { KeyboardEvent, useRef, useCallback, useEffect, useState } from "react";
 import TextConversionButtons from "./TextConversionButtons";
 import ModelDropdown from "./ModelDropdown";
 import WorkflowSelector from "./WorkflowSelector";
@@ -12,6 +12,7 @@ import type { ExposedWorkflow } from "@/app/canvas/features/master-trigger/types
 import type { FeatureId } from "@/types/features";
 import type { Chatbot } from "@/types/chatbot";
 import { getFileUploadWarning } from "@/lib/modelCapabilities";
+import { quickValidateFile } from "@/lib/fileUploadSecurity";
 import { useResizableComposer } from "@/hooks/useResizableComposer";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
@@ -101,6 +102,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   chatbotsLoading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [securityErrors, setSecurityErrors] = useState<string[]>([]);
 
   // Check if voice input feature is enabled (defaults to true if not provided)
   const voiceInputEnabled = isFeatureEnabled ? isFeatureEnabled('voice_input') : true;
@@ -234,7 +236,32 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0 && onFilesChange) {
       const newFiles = Array.from(e.target.files);
-      onFilesChange([...attachedFiles, ...newFiles]);
+
+      // Security validation for each file
+      const validFiles: File[] = [];
+      const errors: string[] = [];
+
+      for (const file of newFiles) {
+        const validation = quickValidateFile(file);
+        if (validation.valid) {
+          validFiles.push(file);
+        } else {
+          errors.push(`${file.name}: ${validation.error}`);
+        }
+      }
+
+      // Update security errors state
+      if (errors.length > 0) {
+        setSecurityErrors(errors);
+        // Auto-clear errors after 10 seconds
+        setTimeout(() => setSecurityErrors([]), 10000);
+      }
+
+      // Only add valid files
+      if (validFiles.length > 0) {
+        onFilesChange([...attachedFiles, ...validFiles]);
+      }
+
       // Reset input so the same file can be selected again
       e.target.value = "";
     }
@@ -258,6 +285,42 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
 
   return (
     <div className="border-t border-white/30 bg-white/40 backdrop-blur-md px-4 py-3">
+      {/* Security Validation Errors */}
+      {securityErrors.length > 0 && (
+        <div className="mb-3 rounded-md border border-red-600 bg-red-600/10 px-3 py-2 text-xs text-red-400">
+          <div className="flex items-start gap-2">
+            <svg
+              className="h-4 w-4 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">File(s) blocked for security:</span>
+              {securityErrors.map((error, index) => (
+                <span key={index} className="text-red-300">• {error}</span>
+              ))}
+            </div>
+            <button
+              onClick={() => setSecurityErrors([])}
+              className="ml-auto p-1 hover:bg-red-600/20 rounded"
+              title="Dismiss"
+            >
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* File Upload Warning */}
       {fileWarning && (
         <div className="mb-3 rounded-md border border-amber-600 bg-amber-600/10 px-3 py-2 text-xs text-amber-400">

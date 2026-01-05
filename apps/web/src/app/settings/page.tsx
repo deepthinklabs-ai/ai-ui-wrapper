@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import SubscriptionManagement from "@/components/settings/SubscriptionManagement";
 import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal";
 import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
-import MCPServerSettings from "@/components/settings/MCPServerSettings";
-import MCPMigrationBanner from "@/components/settings/MCPMigrationBanner";
 import EncryptionSettings from "@/components/settings/EncryptionSettings";
 import BYOKSettings from "@/components/settings/BYOKSettings";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -17,7 +15,7 @@ function SettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthSession();
-  const { tier, daysRemaining, isExpired, canUseServices, refreshTier } = useUserTier(user?.id);
+  const { tier, refreshTier } = useUserTier(user?.id);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
 
@@ -122,9 +120,6 @@ function SettingsPageContent() {
             </div>
           )}
 
-          {/* MCP Credentials Migration Banner */}
-          <MCPMigrationBanner />
-
           {/* BYOK API Keys Section - Primary for BYOK model */}
           <BYOKSettings />
 
@@ -133,98 +128,12 @@ function SettingsPageContent() {
             priceId={process.env.NEXT_PUBLIC_STRIPE_PRICE_ID}
           />
 
-          {/* Account Status Section */}
-          <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-foreground">Account Status</h2>
-              <p className="mt-2 text-sm text-foreground/60">
-                Your subscription status and usage tier.
-              </p>
-            </div>
-
-            {/* Trial tier status */}
-            {tier === 'trial' && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-                <div className="flex items-center gap-3">
-                  <svg className="h-6 w-6 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                  </svg>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-amber-700">7-Day Free Trial</div>
-                    <div className="text-xs text-amber-600 mt-1">
-                      {daysRemaining > 0
-                        ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining. Configure your API keys above to start chatting.`
-                        : 'Your trial has expired. Subscribe to continue using the service.'
-                      }
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-foreground/60">
-                  Use your own API keys from: OpenAI, Claude, Grok, Gemini
-                </div>
-              </div>
-            )}
-
-            {/* Pro tier status */}
-            {tier === 'pro' && (
-              <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
-                <div className="flex items-center gap-3">
-                  <svg className="h-6 w-6 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-green-700">Pro Subscription Active</div>
-                    <div className="text-xs text-green-600 mt-1">
-                      You have full access to all features with higher rate limits.
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-foreground/60">
-                  Use your own API keys from: OpenAI, Claude, Grok, Gemini
-                </div>
-              </div>
-            )}
-
-            {/* Expired tier status */}
-            {tier === 'expired' && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                <div className="flex items-center gap-3">
-                  <svg className="h-6 w-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-red-700">Trial Expired</div>
-                    <div className="text-xs text-red-600 mt-1">
-                      Your free trial has ended. Subscribe to Pro to continue using all features.
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <button
-                    onClick={() => {
-                      // Scroll to subscription section
-                      document.querySelector('[data-subscription-section]')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
-                  >
-                    Subscribe Now - $5/month
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
-
           {/* Encryption Settings Section */}
           <EncryptionSettings userEmail={user?.email} />
 
           {/* Push-to-Talk Settings Section */}
           <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
             <PushToTalkSettings />
-          </section>
-
-          {/* MCP Servers Section */}
-          <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
-            <MCPServerSettings />
           </section>
 
         </div>

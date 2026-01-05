@@ -2,6 +2,7 @@
  * Chatbot File Utilities
  *
  * Functions for serializing, deserializing, and validating .chatbot files.
+ * Includes security validations to prevent XSS and malicious content.
  */
 
 import type { Chatbot } from "@/types/chatbot";
@@ -13,6 +14,10 @@ import type {
   CHATBOT_FILE_VERSION,
   CHATBOT_FILE_EXTENSION,
 } from "@/types/chatbotFile";
+import {
+  preParseJsonCheck,
+  sanitizeImportData,
+} from "@/lib/importFileSecurity";
 
 export const CURRENT_CHATBOT_FILE_VERSION = "1.0.0";
 export const CHATBOT_FILE_EXT = ".chatbot";
@@ -158,11 +163,29 @@ export function validateChatbotFile(data: unknown): ChatbotFileValidationResult 
 
 /**
  * Parse a JSON string and validate it as a ChatbotFile
+ * Includes pre-parse security checks and content sanitization
  */
 export function parseChatbotFile(jsonString: string): ChatbotFileValidationResult {
   try {
+    // Pre-parse security check
+    const preParseResult = preParseJsonCheck(jsonString);
+    if (!preParseResult.valid) {
+      return { valid: false, error: preParseResult.error };
+    }
+
+    // Parse JSON
     const parsed = JSON.parse(jsonString);
-    return validateChatbotFile(parsed);
+
+    // Validate structure first
+    const validationResult = validateChatbotFile(parsed);
+    if (!validationResult.valid) {
+      return validationResult;
+    }
+
+    // Sanitize content to remove potential XSS
+    const { sanitized } = sanitizeImportData(parsed);
+
+    return { valid: true, data: sanitized as unknown as ChatbotFile };
   } catch (err: any) {
     return {
       valid: false,

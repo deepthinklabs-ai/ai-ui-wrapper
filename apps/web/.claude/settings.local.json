@@ -103,7 +103,12 @@
       "Bash(gh pr merge:*)",
       "Bash(gh issue list:*)",
       "Bash(gh run list:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(ls:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && head -30 {} && echo')",
+      "Bash(git ls-tree:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)"
     ],
     "deny": [],
     "ask": []

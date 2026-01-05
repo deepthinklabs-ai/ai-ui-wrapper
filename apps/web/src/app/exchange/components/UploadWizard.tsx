@@ -7,13 +7,18 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthSession } from '@/hooks/useAuthSession';
+import { useCSRF } from '@/hooks/useCSRF';
+import { useEncryption } from '@/contexts/EncryptionContext';
+import { validateDecryption, isDecryptionSuccess } from '@/lib/decryptionValidator';
 import { supabase } from '@/lib/supabaseClient';
 import type { ExchangeCategory } from '../types';
 
 interface UploadWizardProps {
   categories: ExchangeCategory[];
+  /** Pre-selected thread ID from "Share to Exchange" button */
+  preselectedThreadId?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -21,8 +26,7 @@ interface UploadWizardProps {
 interface ThreadOption {
   id: string;
   title: string;
-  model: string | null;
-  system_prompt: string | null;
+  chatbot_id: string | null;
   created_at: string;
 }
 
@@ -37,10 +41,13 @@ type Step = 'details' | 'content' | 'categories' | 'review';
 
 export default function UploadWizard({
   categories,
+  preselectedThreadId,
   onClose,
   onSuccess,
 }: UploadWizardProps) {
   const { user } = useAuthSession();
+  const { csrfFetch } = useCSRF();
+  const { decryptText, state: encryptionState } = useEncryption();
   const [step, setStep] = useState<Step>('details');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +55,7 @@ export default function UploadWizard({
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(preselectedThreadId || null);
   const [selectedCanvasId, setSelectedCanvasId] = useState<string | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -59,21 +66,56 @@ export default function UploadWizard({
   const [canvases, setCanvases] = useState<CanvasOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
+  // Track if we've already pre-filled the title (to prevent re-filling when user clears it)
+  const hasPrefilledTitle = useRef(false);
+
   // Fetch user's threads and canvases
   useEffect(() => {
-    if (!user?.id) return;
+    console.log('[UploadWizard] Fetch effect triggered', { userId: user?.id, preselectedThreadId });
+    if (!user?.id) {
+      console.log('[UploadWizard] No user ID, skipping fetch');
+      return;
+    }
 
     const fetchOptions = async () => {
       setLoadingOptions(true);
+      console.log('[UploadWizard] Starting fetch for user:', user.id);
       try {
         // Fetch threads
-        const { data: threadsData } = await supabase
+        const { data: threadsData, error: threadsError } = await supabase
           .from('threads')
-          .select('id, title, model, system_prompt, created_at')
+          .select('id, title, chatbot_id, created_at')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false });
 
-        setThreads(threadsData || []);
+        console.log('[UploadWizard] Threads fetch result:', { count: threadsData?.length, error: threadsError });
+
+        let allThreads = threadsData || [];
+
+        // If we have a preselected thread, ensure it's in the list
+        if (preselectedThreadId) {
+          const preselectedInList = allThreads.find((t) => t.id === preselectedThreadId);
+          if (!preselectedInList) {
+            // Fetch the preselected thread directly
+            console.log('[UploadWizard] Preselected thread not in list, fetching directly:', preselectedThreadId);
+            const { data: preselectedData, error: preselectedError } = await supabase
+              .from('threads')
+              .select('id, title, chatbot_id, created_at')
+              .eq('id', preselectedThreadId)
+              .eq('user_id', user.id)
+              .single();
+
+            if (preselectedData && !preselectedError) {
+              // Add to the beginning of the list
+              allThreads = [preselectedData, ...allThreads];
+              console.log('[UploadWizard] Preselected thread fetched:', preselectedData.title);
+            } else {
+              console.error('[UploadWizard] Failed to fetch preselected thread:', preselectedError);
+            }
+          }
+        }
+
+        setThreads(allThreads);
 
         // Fetch canvases
         const { data: canvasesData } = await supabase
@@ -91,7 +133,19 @@ export default function UploadWizard({
     };
 
     fetchOptions();
-  }, [user?.id]);
+  }, [user?.id, preselectedThreadId]);
+
+  // Pre-fill title from pre-selected thread when threads are loaded (only once)
+  useEffect(() => {
+    if (preselectedThreadId && threads.length > 0 && !hasPrefilledTitle.current) {
+      const preselectedThread = threads.find((t) => t.id === preselectedThreadId);
+      if (preselectedThread?.title) {
+        setTitle(preselectedThread.title);
+        hasPrefilledTitle.current = true;
+        console.log('[UploadWizard] Pre-filled title from thread:', preselectedThread.title);
+      }
+    }
+  }, [preselectedThreadId, threads]);
 
   // Close on escape
   useEffect(() => {
@@ -147,7 +201,12 @@ export default function UploadWizard({
   const nextStep = () => {
     switch (step) {
       case 'details':
-        setStep('content');
+        // Skip content step if thread is pre-selected
+        if (preselectedThreadId) {
+          setStep('categories');
+        } else {
+          setStep('content');
+        }
         break;
       case 'content':
         setStep('categories');
@@ -164,7 +223,12 @@ export default function UploadWizard({
         setStep('details');
         break;
       case 'categories':
-        setStep('content');
+        // Skip content step if thread is pre-selected
+        if (preselectedThreadId) {
+          setStep('details');
+        } else {
+          setStep('content');
+        }
         break;
       case 'review':
         setStep('categories');
@@ -172,149 +236,230 @@ export default function UploadWizard({
     }
   };
 
+  // ============================================================================
+  // THREAD FILE SUBMISSION HELPERS (Segmented for debugging)
+  // ============================================================================
+
+  /**
+   * Fetches thread data directly from the database
+   * This ensures we get the thread even if it wasn't in the initial fetch
+   */
+  const fetchThreadData = async (threadId: string): Promise<ThreadOption | null> => {
+    if (!user?.id) {
+      console.error('[UploadWizard] Cannot fetch thread: no user ID');
+      return null;
+    }
+
+    console.log('[UploadWizard] Fetching thread data for:', threadId, 'user:', user.id);
+
+    const { data, error } = await supabase
+      .from('threads')
+      .select('id, title, chatbot_id, created_at')
+      .eq('id', threadId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (error) {
+      console.error('[UploadWizard] Error fetching thread:', error);
+      return null;
+    }
+
+    console.log('[UploadWizard] Thread data fetched:', data);
+    return data;
+  };
+
+  /**
+   * Decrypt a single message content
+   * Returns plaintext if decryption succeeds, or original content if not encrypted
+   */
+  const decryptMessageContent = useCallback(async (content: string): Promise<string> => {
+    // If encryption isn't set up or not unlocked, return content as-is
+    if (!encryptionState.hasEncryption || !encryptionState.isUnlocked) {
+      return content;
+    }
+
+    const result = await validateDecryption(content, decryptText, { itemType: 'export' });
+
+    if (isDecryptionSuccess(result)) {
+      return result.data;
+    }
+
+    // If decryption fails, return original (might already be plaintext)
+    return content;
+  }, [decryptText, encryptionState.hasEncryption, encryptionState.isUnlocked]);
+
+  /**
+   * Fetches messages for a thread
+   */
+  const fetchThreadMessages = async (threadId: string) => {
+    console.log('[UploadWizard] Fetching messages for thread:', threadId);
+
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select('role, content, model, created_at, attachments, input_tokens, output_tokens, total_tokens')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('[UploadWizard] Error fetching messages:', error);
+      return [];
+    }
+
+    console.log('[UploadWizard] Fetched', messages?.length || 0, 'messages');
+    return messages || [];
+  };
+
+  /**
+   * Builds the thread file object for the Exchange post
+   * Includes DECRYPTED messages for the conversation history
+   *
+   * IMPORTANT: Messages are decrypted before sharing so other users
+   * can import and view them without needing the original encryption key.
+   */
+  const buildThreadFile = async (thread: ThreadOption, postTitle: string, postDescription: string) => {
+    console.log('[UploadWizard] Building thread file from:', thread);
+
+    // Fetch messages for the thread
+    const messages = await fetchThreadMessages(thread.id);
+
+    // Format and DECRYPT messages for the thread file
+    // This ensures shared content is readable by other users
+    const formattedMessages = await Promise.all(messages.map(async (msg: any) => ({
+      role: msg.role,
+      content: await decryptMessageContent(msg.content), // Decrypt before sharing
+      model: msg.model || null,
+      created_at: msg.created_at,
+      attachments: msg.attachments || null,
+      input_tokens: msg.input_tokens || null,
+      output_tokens: msg.output_tokens || null,
+      total_tokens: msg.total_tokens || null,
+    })));
+
+    console.log('[UploadWizard] Decrypted', formattedMessages.length, 'messages for sharing');
+
+    return {
+      version: '1.0.0',
+      type: 'thread',
+      metadata: {
+        name: postTitle,
+        description: postDescription || undefined,
+        original_thread_id: thread.id,
+        original_thread_title: thread.title,
+        chatbot_id: thread.chatbot_id,
+        created_at: thread.created_at,
+        exported_at: new Date().toISOString(),
+        message_count: formattedMessages.length,
+      },
+      messages: formattedMessages,
+    };
+  };
+
+  /**
+   * Submits the post to the Exchange API
+   */
+  const submitToExchange = async (
+    userId: string,
+    postTitle: string,
+    postDescription: string,
+    threadFile: any,
+    categoryIds: string[],
+    tagNames: string[]
+  ) => {
+    console.log('[UploadWizard] Submitting to Exchange API:', {
+      title: postTitle,
+      categoryIds,
+      tagNames,
+    });
+
+    // Use csrfFetch to include CSRF token automatically
+    const response = await csrfFetch('/api/exchange/posts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId,
+      },
+      body: JSON.stringify({
+        title: postTitle,
+        description: postDescription || undefined,
+        thread_file: threadFile,
+        category_ids: categoryIds,
+        tag_names: tagNames,
+      }),
+    });
+
+    const data = await response.json();
+    console.log('[UploadWizard] API response:', { ok: response.ok, data });
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create post');
+    }
+
+    return data;
+  };
+
+  /**
+   * Main submit handler - orchestrates the thread file submission
+   */
   const handleSubmit = async () => {
-    if (!user?.id || !selectedThreadId) return;
+    console.log('[UploadWizard] handleSubmit called', {
+      userId: user?.id,
+      selectedThreadId,
+      title,
+      selectedCategoryIds,
+    });
+
+    if (!user?.id || !selectedThreadId) {
+      console.error('[UploadWizard] Missing required data:', { userId: user?.id, selectedThreadId });
+      return;
+    }
+
+    // Check if encryption is enabled but not unlocked
+    // This would result in sharing encrypted (unreadable) content
+    if (encryptionState.hasEncryption && !encryptionState.isUnlocked) {
+      setError('Please unlock encryption before sharing. Your messages are encrypted and cannot be shared without unlocking.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      // Get the selected thread's details
-      const selectedThread = threads.find((t) => t.id === selectedThreadId);
-      if (!selectedThread) {
-        throw new Error('Selected thread not found');
+      // Step 1: Fetch thread data directly from database
+      const threadData = await fetchThreadData(selectedThreadId);
+      if (!threadData) {
+        throw new Error('Thread not found. Please try again or select a different thread.');
       }
 
-      // Build chatbot file from thread settings
-      const chatbotFile = {
-        version: '1.0.0',
-        type: 'chatbot',
-        metadata: {
-          name: title,
-          description: description || undefined,
-          created_at: new Date().toISOString(),
-          exported_at: new Date().toISOString(),
-        },
-        config: {
-          model: {
-            provider: getProviderFromModel(selectedThread.model || 'gpt-4o'),
-            model_name: selectedThread.model || 'gpt-4o',
-          },
-          system_prompt: selectedThread.system_prompt || 'You are a helpful assistant.',
-        },
-      };
+      // Step 2: Build the thread file (includes fetching messages)
+      const threadFile = await buildThreadFile(threadData, title, description);
+      console.log('[UploadWizard] Thread file built with', threadFile.messages?.length || 0, 'messages');
 
-      // Get canvas data if selected
-      let canvasFile = null;
-      if (selectedCanvasId) {
-        const { data: canvasData } = await supabase
-          .from('canvases')
-          .select('*')
-          .eq('id', selectedCanvasId)
-          .single();
+      // Step 3: Submit to Exchange
+      await submitToExchange(
+        user.id,
+        title,
+        description,
+        threadFile,
+        selectedCategoryIds,
+        tags
+      );
 
-        if (canvasData) {
-          // Get canvas nodes and edges
-          const { data: nodesData } = await supabase
-            .from('canvas_nodes')
-            .select('*')
-            .eq('canvas_id', selectedCanvasId);
-
-          const { data: edgesData } = await supabase
-            .from('canvas_edges')
-            .select('*')
-            .eq('canvas_id', selectedCanvasId);
-
-          canvasFile = {
-            version: '1.0.0',
-            type: 'canvas',
-            metadata: {
-              name: canvasData.name,
-              description: canvasData.description,
-              mode: canvasData.mode,
-              created_at: canvasData.created_at,
-              exported_at: new Date().toISOString(),
-              node_count: nodesData?.length || 0,
-              edge_count: edgesData?.length || 0,
-            },
-            nodes: (nodesData || []).map((node: any) => ({
-              type: node.type,
-              position: node.position,
-              label: node.label,
-              config: sanitizeConfig(node.config || {}),
-              original_id: node.id,
-            })),
-            edges: (edgesData || []).map((edge: any) => ({
-              from_node_ref: edge.source_node_id,
-              to_node_ref: edge.target_node_id,
-              label: edge.label,
-              animated: edge.animated,
-            })),
-          };
-        }
-      }
-
-      // Create the post via API
-      const response = await fetch('/api/exchange/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': user.id,
-        },
-        body: JSON.stringify({
-          title,
-          description: description || undefined,
-          chatbot_file: chatbotFile,
-          canvas_file: canvasFile,
-          category_ids: selectedCategoryIds,
-          tag_names: tags,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create post');
-      }
-
+      console.log('[UploadWizard] Post created successfully');
       onSuccess();
     } catch (err: any) {
+      console.error('[UploadWizard] Submit error:', err);
       setError(err.message || 'Failed to create post');
     } finally {
       setLoading(false);
     }
   };
 
-  const getProviderFromModel = (model: string): string => {
-    if (model.includes('gpt') || model.includes('o1') || model.includes('o3')) return 'openai';
-    if (model.includes('claude')) return 'claude';
-    if (model.includes('grok')) return 'grok';
-    if (model.includes('gemini')) return 'gemini';
-    return 'openai';
-  };
-
-  const sanitizeConfig = (config: Record<string, any>): Record<string, any> => {
-    const sensitiveFields = [
-      'access_token', 'refresh_token', 'oauth_tokens', 'credentials',
-      'api_key', 'secret', 'password', 'token',
-    ];
-
-    const sanitized: Record<string, any> = {};
-    for (const [key, value] of Object.entries(config)) {
-      if (sensitiveFields.some((f) => key.toLowerCase().includes(f))) {
-        continue;
-      }
-      if (typeof value === 'object' && value !== null) {
-        sanitized[key] = sanitizeConfig(value);
-      } else {
-        sanitized[key] = value;
-      }
-    }
-    return sanitized;
-  };
-
+  // Derived state for UI display
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const selectedCanvas = canvases.find((c) => c.id === selectedCanvasId);
+
+  // Note: Threads don't have system_prompt directly - it's on the chatbot
+  // For now, we just show a general security reminder
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
@@ -337,17 +482,20 @@ export default function UploadWizard({
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-2 border-b border-white/30 px-6 py-3">
-          {(['details', 'content', 'categories', 'review'] as Step[]).map((s, i) => (
+          {(preselectedThreadId
+            ? (['details', 'categories', 'review'] as Step[])
+            : (['details', 'content', 'categories', 'review'] as Step[])
+          ).map((s, i, arr) => (
             <React.Fragment key={s}>
               <div
                 className={`flex items-center gap-2 ${
-                  step === s ? 'text-sky' : 'text-foreground/50'
+                  step === s ? 'text-black' : 'text-foreground/50'
                 }`}
               >
                 <div
                   className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium ${
                     step === s
-                      ? 'bg-sky text-white'
+                      ? 'bg-sky text-black'
                       : 'bg-foreground/10 text-foreground/60'
                   }`}
                 >
@@ -355,7 +503,7 @@ export default function UploadWizard({
                 </div>
                 <span className="text-sm capitalize hidden sm:inline">{s}</span>
               </div>
-              {i < 3 && <div className="h-px w-8 bg-foreground/20" />}
+              {i < arr.length - 1 && <div className="h-px w-8 bg-foreground/20" />}
             </React.Fragment>
           ))}
         </div>
@@ -365,9 +513,30 @@ export default function UploadWizard({
           {/* Step 1: Details */}
           {step === 'details' && (
             <div className="space-y-4">
+              {/* Show source thread when pre-selected */}
+              {preselectedThreadId && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground/80 mb-2">
+                    Source Thread
+                  </label>
+                  <div className="w-full rounded-lg border border-white/40 bg-foreground/5 px-4 py-2 text-foreground">
+                    {loadingOptions ? (
+                      <span className="text-foreground/50">Loading...</span>
+                    ) : selectedThread ? (
+                      <span>{selectedThread.title || 'Untitled Thread'}</span>
+                    ) : (
+                      <span className="text-red-500">Thread not found</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-1">
+                    This thread's config will be shared
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-2">
-                  Title <span className="text-red-500">*</span>
+                  Post Title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -376,6 +545,11 @@ export default function UploadWizard({
                   placeholder="My Awesome Chatbot"
                   className="w-full rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                 />
+                {preselectedThreadId && (
+                  <p className="text-xs text-foreground/50 mt-1">
+                    Pre-filled from thread name. You can change it.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-2">
@@ -425,8 +599,7 @@ export default function UploadWizard({
                           {thread.title || 'Untitled Thread'}
                         </div>
                         <div className="text-xs text-foreground/60 mt-1">
-                          Model: {thread.model || 'Default'} | Created:{' '}
-                          {new Date(thread.created_at).toLocaleDateString()}
+                          Created: {new Date(thread.created_at).toLocaleDateString()}
                         </div>
                       </button>
                     ))}
@@ -496,7 +669,7 @@ export default function UploadWizard({
                       onClick={() => toggleCategory(category.id)}
                       className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         selectedCategoryIds.includes(category.id)
-                          ? 'bg-sky text-white'
+                          ? 'bg-sky text-black'
                           : 'bg-foreground/10 text-foreground/80 hover:bg-foreground/20'
                       }`}
                     >
@@ -560,6 +733,21 @@ export default function UploadWizard({
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-foreground">Review Your Post</h3>
 
+              {/* Security Reminder */}
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/50 px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <svg className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-amber-700">Security Reminder</p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      Your thread metadata will be shared publicly. Please ensure your post does not reference API keys, passwords, personal information, or other sensitive data.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="rounded-lg border border-white/30 bg-foreground/5 p-4 space-y-3">
                 <div>
                   <span className="text-sm text-foreground/60">Title:</span>
@@ -573,19 +761,13 @@ export default function UploadWizard({
                   </div>
                 )}
 
+                {/* Show which thread is being shared */}
                 <div>
-                  <span className="text-sm text-foreground/60">Chatbot Config:</span>
+                  <span className="text-sm text-foreground/60">Source Thread:</span>
                   <p className="text-foreground/80 text-sm">
-                    {selectedThread?.title || 'Untitled Thread'} ({selectedThread?.model || 'Default model'})
+                    {selectedThread?.title || 'Untitled Thread'}
                   </p>
                 </div>
-
-                {selectedCanvas && (
-                  <div>
-                    <span className="text-sm text-foreground/60">Canvas:</span>
-                    <p className="text-foreground/80 text-sm">{selectedCanvas.name}</p>
-                  </div>
-                )}
 
                 <div>
                   <span className="text-sm text-foreground/60">Categories:</span>
@@ -643,7 +825,7 @@ export default function UploadWizard({
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-black hover:bg-sky/80 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Publishing...' : 'Publish to Exchange'}
             </button>
@@ -651,7 +833,7 @@ export default function UploadWizard({
             <button
               onClick={nextStep}
               disabled={!canProceed()}
-              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-sky px-6 py-2 text-sm font-medium text-black hover:bg-sky/80 disabled:opacity-50 transition-colors"
             >
               Next
             </button>

@@ -10,6 +10,7 @@
 import React, { useState, KeyboardEvent, useRef } from "react";
 import type { AIModel } from "@/lib/apiKeyStorage";
 import { getFileUploadWarning } from "@/lib/modelCapabilities";
+import { quickValidateFile } from "@/lib/fileUploadSecurity";
 
 type ContextMessage = {
   role: "user" | "assistant";
@@ -49,6 +50,7 @@ const ContextPanel: React.FC<ContextPanelProps> = ({
   const [messages, setMessages] = useState<ContextMessage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [securityErrors, setSecurityErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if current model supports the attached files
@@ -95,7 +97,32 @@ const ContextPanel: React.FC<ContextPanelProps> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      setAttachedFiles((prev) => [...prev, ...newFiles]);
+
+      // Security validation for each file
+      const validFiles: File[] = [];
+      const errors: string[] = [];
+
+      for (const file of newFiles) {
+        const validation = quickValidateFile(file);
+        if (validation.valid) {
+          validFiles.push(file);
+        } else {
+          errors.push(`${file.name}: ${validation.error}`);
+        }
+      }
+
+      // Update security errors state
+      if (errors.length > 0) {
+        setSecurityErrors(errors);
+        // Auto-clear errors after 10 seconds
+        setTimeout(() => setSecurityErrors([]), 10000);
+      }
+
+      // Only add valid files
+      if (validFiles.length > 0) {
+        setAttachedFiles((prev) => [...prev, ...validFiles]);
+      }
+
       e.target.value = "";
     }
   };
@@ -316,6 +343,42 @@ const ContextPanel: React.FC<ContextPanelProps> = ({
 
         {/* Input Area */}
         <div className="border-t border-slate-700 bg-slate-900 px-4 py-3">
+          {/* Security Validation Errors */}
+          {securityErrors.length > 0 && (
+            <div className="mb-3 rounded-md border border-red-600 bg-red-600/10 px-3 py-2 text-xs text-red-400">
+              <div className="flex items-start gap-2">
+                <svg
+                  className="h-4 w-4 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium">File(s) blocked for security:</span>
+                  {securityErrors.map((error, index) => (
+                    <span key={index} className="text-red-300">• {error}</span>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setSecurityErrors([])}
+                  className="ml-auto p-1 hover:bg-red-600/20 rounded"
+                  title="Dismiss"
+                >
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* File Upload Warning */}
           {fileWarning && (
             <div className="mb-3 rounded-md border border-amber-600 bg-amber-600/10 px-3 py-2 text-xs text-amber-400">

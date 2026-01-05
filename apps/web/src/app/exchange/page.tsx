@@ -6,8 +6,8 @@
 
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useExchangeCategories } from './hooks/useExchangeCategories';
 import { useExchangePosts } from './hooks/useExchangePosts';
 import ExchangeFilters from './components/ExchangeFilters';
@@ -15,10 +15,28 @@ import ExchangeGrid from './components/ExchangeGrid';
 import PostDetailModal from './components/PostDetailModal';
 import UploadWizard from './components/UploadWizard';
 
-export default function ExchangePage() {
+/**
+ * Inner component that uses useSearchParams (requires Suspense boundary)
+ */
+function ExchangePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [showUploadWizard, setShowUploadWizard] = useState(false);
+  const [preselectedThreadId, setPreselectedThreadId] = useState<string | null>(null);
+
+  // Check for share query parameters (e.g., from "Share to Exchange" button)
+  useEffect(() => {
+    const shareType = searchParams.get('share');
+    const threadId = searchParams.get('threadId');
+
+    if (shareType === 'thread' && threadId) {
+      setPreselectedThreadId(threadId);
+      setShowUploadWizard(true);
+      // Clean up the URL without triggering a navigation
+      window.history.replaceState({}, '', '/exchange');
+    }
+  }, [searchParams]);
 
   // Fetch categories
   const {
@@ -129,14 +147,34 @@ export default function ExchangePage() {
       {showUploadWizard && (
         <UploadWizard
           categories={categories}
-          onClose={() => setShowUploadWizard(false)}
+          preselectedThreadId={preselectedThreadId}
+          onClose={() => {
+            setShowUploadWizard(false);
+            setPreselectedThreadId(null);
+          }}
           onSuccess={() => {
             setShowUploadWizard(false);
+            setPreselectedThreadId(null);
             // Refresh posts after successful upload
             setFilter({ ...filter });
           }}
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Exchange Page wrapper with Suspense boundary for useSearchParams
+ */
+export default function ExchangePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-foreground/60">Loading...</div>
+      </div>
+    }>
+      <ExchangePageContent />
+    </Suspense>
   );
 }

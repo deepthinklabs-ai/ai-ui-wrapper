@@ -23,12 +23,9 @@ import { useFeatureToggles } from "@/hooks/useFeatureToggles";
 import { useSplitView } from "@/hooks/useSplitView";
 import { useThreadContext } from "@/hooks/useThreadContext";
 import { useResizableSidebar } from "@/hooks/useResizableSidebar";
-import { useMCPServers } from "@/hooks/useMCPServers";
 import { useExposedWorkflows } from "@/hooks/useExposedWorkflows";
-import { useThreadExport } from "@/hooks/useThreadExport";
-import { useEncryption } from "@/contexts/EncryptionContext";
 import { useBYOKStatus } from "@/hooks/useBYOKStatus";
-import { useChatbots, useChatbotFolders, useActiveChatbot, useChatbotExport } from "@/app/chatbots/hooks";
+import { useChatbots, useChatbotFolders, useActiveChatbot } from "@/app/chatbots/hooks";
 import type { CreateChatbotInput } from "@/types/chatbot";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
 import { verifySubscriptionWithRetry, RETRY_STRATEGIES } from "@/lib/services/subscriptionService";
@@ -37,7 +34,6 @@ import Sidebar from "@/components/dashboard/Sidebar";
 import ChatHeader from "@/components/dashboard/ChatHeader";
 import MessageList from "@/components/dashboard/MessageList";
 import MessageComposer from "@/components/dashboard/MessageComposer";
-import MCPServerIndicator from "@/components/dashboard/MCPServerIndicator";
 import RevertUndoButton from "@/components/dashboard/RevertUndoButton";
 import RevertWithDraftUndoButton from "@/components/dashboard/RevertWithDraftUndoButton";
 import ContextWindowIndicator from "@/components/dashboard/ContextWindowIndicator";
@@ -82,11 +78,6 @@ export default function DashboardPage() {
 
   // Draft config for real-time preview while editing chatbot settings
   const [previewConfig, setPreviewConfig] = useState<import("@/types/chatbotFile").ChatbotFileConfig | null>(null);
-
-  // Get encryption function for importing threads
-  const { encryptText, isReady: isEncryptionReadyForImport, state: encryptionState } = useEncryption();
-  // Only provide encryption function if encryption is set up and unlocked
-  const encryptForImport = isEncryptionReadyForImport && encryptionState.isUnlocked ? encryptText : undefined;
 
   useEffect(() => {
     const verifyUpgrade = async () => {
@@ -189,23 +180,8 @@ export default function DashboardPage() {
     [threadContextSections]
   );
 
-  // MCP servers
-  const { connections, tools, isConnecting, servers, isEnabled } = useMCPServers();
-
   // Resizable sidebar
   const { isResizing, handleMouseDown: handleSidebarResize, sidebarStyle } = useResizableSidebar();
-
-  // Thread export
-  const { exportThread, isExporting: isExportingThread } = useThreadExport({
-    userId: user?.id,
-    userEmail: user?.email || undefined,
-    onExportComplete: (filename) => {
-      console.log(`[Dashboard] Thread exported: ${filename}`);
-    },
-    onExportError: (error) => {
-      console.error(`[Dashboard] Export failed: ${error}`);
-    },
-  });
 
   // Exposed workflows for Master Trigger feature
   const {
@@ -245,20 +221,6 @@ export default function DashboardPage() {
   } = useChatbotFolders(user?.id, chatbots, {
     onChatbotMoved: refreshChatbots,
   });
-
-  // Chatbot export
-  const { exportChatbot } = useChatbotExport();
-
-  // Debug MCP status
-  useEffect(() => {
-    console.log('[Dashboard MCP Status]', {
-      isEnabled,
-      serversConfigured: servers.length,
-      connections: connections.length,
-      tools: tools.length,
-      isConnecting
-    });
-  }, [isEnabled, servers.length, connections.length, tools.length, isConnecting]);
 
   useEffect(() => {
     if (!loadingUser && !user) {
@@ -334,14 +296,6 @@ export default function DashboardPage() {
   const handleDuplicateChatbot = useCallback(async (id: string) => {
     await duplicateChatbot(id);
   }, [duplicateChatbot]);
-
-  // Handle exporting a chatbot
-  const handleExportChatbot = useCallback((id: string) => {
-    const chatbot = getChatbotById(id);
-    if (chatbot) {
-      exportChatbot(chatbot);
-    }
-  }, [getChatbotById, exportChatbot]);
 
   // Handle deleting a chatbot
   const handleDeleteChatbot = useCallback(async (id: string) => {
@@ -834,18 +788,8 @@ export default function DashboardPage() {
           // Thread context props
           threadContextIds={threadContextIds}
           onAddThreadToContext={handleAddThreadToContext}
-          // Export prop
-          onExportThread={exportThread}
           // Thread info prop
           onShowThreadInfo={setThreadInfoId}
-          // Import props
-          userId={user?.id}
-          onThreadImported={async () => {
-            await refreshThreads();
-            await refreshFolders();
-          }}
-          // Encryption props for importing threads
-          encryptForStorage={encryptForImport}
           // Chatbot props
           chatbots={chatbots}
           chatbotFolderTree={chatbotFolderTree}
@@ -854,7 +798,6 @@ export default function DashboardPage() {
           onCreateChatbot={handleCreateChatbot}
           onEditChatbot={handleEditChatbot}
           onDuplicateChatbot={handleDuplicateChatbot}
-          onExportChatbot={handleExportChatbot}
           onDeleteChatbot={handleDeleteChatbot}
           onRenameChatbot={handleRenameChatbot}
           onUpdateChatbotConfig={handleUpdateChatbotConfig}
@@ -916,7 +859,7 @@ export default function DashboardPage() {
             {/* Centered chat area, like ChatGPT */}
             <div className="flex h-full w-full justify-center overflow-hidden">
               <div className="flex h-full w-3/4 flex-col gap-3 px-4 py-4 overflow-hidden">
-                {/* Header at top of chat column with Split View button and MCP indicator */}
+                {/* Header at top of chat column with Split View button */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1">
                     <ChatHeader
@@ -926,11 +869,6 @@ export default function DashboardPage() {
                       activeChatbot={previewChatbot}
                       onEditChatbot={handleEditActiveChatbot}
                       isEditingChatbot={isEditingChatbot}
-                    />
-                    <MCPServerIndicator
-                      connections={connections}
-                      tools={tools}
-                      isConnecting={isConnecting}
                     />
                   </div>
                   {selectedThreadId && (

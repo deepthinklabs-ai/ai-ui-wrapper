@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Thread } from "@/types/chat";
@@ -15,8 +16,8 @@ type ThreadItemProps = {
   onDelete: () => Promise<void>;
   onUpdateTitle: (newTitle: string) => Promise<void>;
   onAddToContext?: () => void;
-  onExport?: () => void;
   onShowInfo?: () => void;
+  showShareToExchange?: boolean;
   depth: number;
 };
 
@@ -30,10 +31,11 @@ export function ThreadItem({
   onDelete,
   onUpdateTitle,
   onAddToContext,
-  onExport,
   onShowInfo,
+  showShareToExchange = true,
   depth,
 }: ThreadItemProps) {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(thread.title || "New thread");
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -121,18 +123,17 @@ export function ThreadItem({
     }
   };
 
-  const handleExport = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onExport) {
-      onExport();
-    }
-  };
-
   const handleShowInfo = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onShowInfo) {
       onShowInfo();
     }
+  };
+
+  const handleShareToExchange = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Navigate to exchange page with thread pre-selected
+    router.push(`/exchange?share=thread&threadId=${thread.id}`);
   };
 
   // Determine styling based on selection state
@@ -235,23 +236,6 @@ export function ThreadItem({
                 </svg>
               </button>
             )}
-            {/* Export Button */}
-            {onExport && (
-              <button
-                type="button"
-                onClick={handleExport}
-                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-mint"
-                title="Export thread"
-              >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-            )}
             {/* Info Button */}
             {onShowInfo && (
               <button
@@ -266,6 +250,19 @@ export function ThreadItem({
                     d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                     clipRule="evenodd"
                   />
+                </svg>
+              </button>
+            )}
+            {/* Share to Exchange Button */}
+            {showShareToExchange && (
+              <button
+                type="button"
+                onClick={handleShareToExchange}
+                className="rounded p-1 hover:bg-white/40 text-foreground/40 hover:text-emerald-500"
+                title="Share to Exchange"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                 </svg>
               </button>
             )}

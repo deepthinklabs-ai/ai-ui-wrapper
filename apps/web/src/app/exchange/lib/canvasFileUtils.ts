@@ -23,6 +23,12 @@ import {
   SENSITIVE_CONFIG_FIELDS,
   OAUTH_REQUIREMENT_FIELDS,
 } from '@/types/canvasFile';
+import {
+  validateImportFileExtension,
+  validateImportFileSize,
+  preParseJsonCheck,
+  sanitizeImportData,
+} from '@/lib/importFileSecurity';
 
 /**
  * Default export options
@@ -340,11 +346,29 @@ export function validateCanvasFile(data: unknown): CanvasFileValidationResult {
 
 /**
  * Parse and validate a canvas file from a string
+ * Includes pre-parse security checks and content sanitization
  */
 export function parseCanvasFile(content: string): CanvasFileValidationResult {
   try {
+    // Pre-parse security check
+    const preParseResult = preParseJsonCheck(content);
+    if (!preParseResult.valid) {
+      return { valid: false, error: preParseResult.error };
+    }
+
+    // Parse JSON
     const data = JSON.parse(content);
-    return validateCanvasFile(data);
+
+    // Validate structure first
+    const validationResult = validateCanvasFile(data);
+    if (!validationResult.valid) {
+      return validationResult;
+    }
+
+    // Sanitize content to remove potential XSS
+    const { sanitized } = sanitizeImportData(data);
+
+    return { valid: true, data: sanitized as unknown as CanvasFile };
   } catch (err) {
     return { valid: false, error: 'Invalid JSON format' };
   }
@@ -354,6 +378,18 @@ export function parseCanvasFile(content: string): CanvasFileValidationResult {
  * Read a File object and parse it as a canvas file
  */
 export async function readCanvasFile(file: File): Promise<CanvasFileValidationResult> {
+  // Security validation: Check file extension
+  const extCheck = validateImportFileExtension(file.name, 'canvas');
+  if (!extCheck.valid) {
+    return { valid: false, error: extCheck.error };
+  }
+
+  // Security validation: Check file size
+  const sizeCheck = validateImportFileSize(file);
+  if (!sizeCheck.valid) {
+    return { valid: false, error: sizeCheck.error };
+  }
+
   return new Promise((resolve) => {
     const reader = new FileReader();
 

@@ -7,10 +7,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useExchangePost } from '../hooks/useExchangePost';
 import { useExchangeSandbox } from '../hooks/useExchangeSandbox';
 import { useBotToBot } from '../hooks/useBotToBot';
+import { useExchangeImport } from '../hooks/useExchangeImport';
 import SandboxChat from './SandboxChat';
 import BotToBotPanel from './BotToBotPanel';
 import type { ExchangePostDetail } from '../types';
@@ -20,12 +22,13 @@ interface PostDetailModalProps {
   onClose: () => void;
 }
 
-type Tab = 'details' | 'test' | 'query' | 'download';
+type Tab = 'details' | 'test' | 'query' | 'import';
 
 export default function PostDetailModal({
   postId,
   onClose,
 }: PostDetailModalProps) {
+  const router = useRouter();
   const { user } = useAuthSession();
   const { post, loading: postLoading, error: postError } = useExchangePost(postId);
   const {
@@ -51,8 +54,25 @@ export default function PostDetailModal({
     clearResult: clearBotQueryResult,
   } = useBotToBot();
 
+  // Import functionality
+  const {
+    importThread,
+    isImporting,
+    error: importError,
+    clearError: clearImportError,
+    lastResult: importResult,
+    clearResult: clearImportResult,
+  } = useExchangeImport({
+    userId: user?.id,
+    onImportComplete: (result) => {
+      console.log('[PostDetailModal] Import complete:', result);
+    },
+    onImportError: (error) => {
+      console.error('[PostDetailModal] Import error:', error);
+    },
+  });
+
   const [activeTab, setActiveTab] = useState<Tab>('details');
-  const [downloadLoading, setDownloadLoading] = useState<string | null>(null);
 
   // Wrapper for sendBotQuery that includes the target post ID
   const handleBotQuery = useCallback(
@@ -89,60 +109,26 @@ export default function PostDetailModal({
     }
   };
 
-  const handleDownload = async (fileType: 'chatbot' | 'canvas' | 'thread' | 'bundle') => {
+  /**
+   * Handle importing a thread from this Exchange post
+   */
+  const handleImportThread = async () => {
     if (!user?.id) return;
 
-    setDownloadLoading(fileType);
+    clearImportError();
+    clearImportResult();
 
-    try {
-      const res = await fetch(
-        `/api/exchange/posts/${postId}/download?type=${fileType}`,
-        {
-          headers: {
-            'x-user-id': user.id,
-          },
-        }
-      );
+    const result = await importThread(postId);
+    // Result handling is done via the hook's callbacks
+  };
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Download failed');
-      }
-
-      // Get filename from Content-Disposition header
-      const contentDisposition = res.headers.get('Content-Disposition');
-      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-      let filename = filenameMatch?.[1] || `download.${fileType}`;
-
-      // Security: Sanitize filename to prevent path traversal and invalid characters
-      filename = filename
-        .replace(/[/\\]/g, '_')           // Replace path separators
-        .replace(/[<>:"|?*]/g, '_')       // Replace Windows invalid chars
-        .replace(/\.\./g, '_')            // Prevent path traversal
-        .slice(0, 255);                   // Limit length
-
-      // Download file
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-
-      // Security: Verify this is a blob URL (createObjectURL always returns blob: URLs)
-      if (!url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
-        throw new Error('Invalid download URL');
-      }
-
-      // Security: Create anchor without appending to DOM to avoid XSS vector (CWE-79)
-      // Modern browsers support click() on detached elements for downloads
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error('Download error:', err);
-      alert(err.message || 'Download failed');
-    } finally {
-      setDownloadLoading(null);
+  /**
+   * Navigate to the imported thread in the dashboard
+   */
+  const handleGoToThread = () => {
+    if (importResult?.thread_id) {
+      router.push(`/dashboard?thread=${importResult.thread_id}`);
+      onClose();
     }
   };
 
@@ -263,14 +249,14 @@ export default function PostDetailModal({
             Query
           </button>
           <button
-            onClick={() => setActiveTab('download')}
+            onClick={() => setActiveTab('import')}
             className={`px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'download'
+              activeTab === 'import'
                 ? 'border-b-2 border-sky text-sky'
                 : 'text-foreground/60 hover:text-foreground'
             }`}
           >
-            Download
+            Import
           </button>
         </div>
 
@@ -389,6 +375,55 @@ export default function PostDetailModal({
                 </div>
               )}
 
+              {/* Chat History Preview */}
+              {post.thread_file && (post.thread_file as any).messages && (post.thread_file as any).messages.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-foreground/80 mb-2">
+                    Conversation Preview
+                    <span className="text-xs font-normal text-foreground/50 ml-2">
+                      ({(post.thread_file as any).messages.length} messages)
+                    </span>
+                  </h3>
+                  <div className="rounded-lg border border-white/30 bg-foreground/5 max-h-96 overflow-y-auto">
+                    <div className="p-3 space-y-3">
+                      {((post.thread_file as any).messages as any[]).map((msg, index) => (
+                        <div
+                          key={index}
+                          className={`flex gap-3 ${msg.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'}`}
+                        >
+                          <div
+                            className={`flex-shrink-0 h-7 w-7 rounded-full flex items-center justify-center text-xs ${
+                              msg.role === 'assistant'
+                                ? 'bg-sky/20 text-sky'
+                                : 'bg-lavender/20 text-lavender'
+                            }`}
+                          >
+                            {msg.role === 'assistant' ? '🤖' : '👤'}
+                          </div>
+                          <div
+                            className={`flex-1 rounded-lg px-3 py-2 text-sm ${
+                              msg.role === 'assistant'
+                                ? 'bg-white/60 text-foreground/80'
+                                : 'bg-lavender/10 text-foreground/80'
+                            }`}
+                          >
+                            <div className="whitespace-pre-wrap">
+                              {msg.content}
+                            </div>
+                            {msg.model && (
+                              <div className="text-xs text-foreground/40 mt-1">{msg.model}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-2">
+                    Scroll to view the full conversation. Import to add to your dashboard.
+                  </p>
+                </div>
+              )}
+
               {/* Quick Actions */}
               <div className="flex gap-3 pt-4">
                 <button
@@ -399,10 +434,11 @@ export default function PostDetailModal({
                   {sandboxLoading ? 'Starting...' : 'Test Chatbot'}
                 </button>
                 <button
-                  onClick={() => setActiveTab('download')}
-                  className="flex-1 rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/80 transition-colors"
+                  onClick={() => setActiveTab('import')}
+                  disabled={!post.thread_file}
+                  className="flex-1 rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/80 disabled:opacity-50 transition-colors"
                 >
-                  Download Files
+                  Import to My Threads
                 </button>
               </div>
             </div>
@@ -484,110 +520,154 @@ export default function PostDetailModal({
             </div>
           )}
 
-          {/* Download Tab */}
-          {activeTab === 'download' && (
+          {/* Import Tab */}
+          {activeTab === 'import' && (
             <div className="h-full overflow-y-auto p-6">
-              <div className="space-y-4">
-                {/* Individual Files */}
-                <div>
-                  <h3 className="text-sm font-medium text-foreground/80 mb-3">Individual Files</h3>
-                  <div className="space-y-2">
-                    {post.chatbot_file && (
+              <div className="space-y-6">
+                {/* Success State */}
+                {importResult?.success && (
+                  <div className="rounded-lg bg-green-500/10 border border-green-500/50 p-6 text-center">
+                    <div className="mx-auto h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
+                      <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-green-700 mb-2">Import Successful!</h3>
+                    <p className="text-sm text-green-600 mb-4">
+                      "{importResult.title}" has been added to your threads
+                      {importResult.message_count && importResult.message_count > 0
+                        ? ` with ${importResult.message_count} messages`
+                        : ''}.
+                    </p>
+                    <div className="flex gap-3 justify-center">
                       <button
-                        onClick={() => handleDownload('chatbot')}
-                        disabled={downloadLoading === 'chatbot'}
-                        className="w-full flex items-center justify-between rounded-lg border border-white/40 bg-white/60 px-4 py-3 hover:bg-white/80 transition-colors disabled:opacity-50"
+                        onClick={handleGoToThread}
+                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl">🤖</span>
-                          <div className="text-left">
-                            <div className="text-sm font-medium text-foreground">{post.title}.chatbot</div>
-                            <div className="text-xs text-foreground/60">Chatbot configuration</div>
-                          </div>
-                        </div>
-                        {downloadLoading === 'chatbot' ? (
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
-                        ) : (
-                          <svg className="h-5 w-5 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                        )}
+                        Open Thread
                       </button>
-                    )}
-
-                    {post.canvas_file && (
                       <button
-                        onClick={() => handleDownload('canvas')}
-                        disabled={downloadLoading === 'canvas'}
-                        className="w-full flex items-center justify-between rounded-lg border border-white/40 bg-white/60 px-4 py-3 hover:bg-white/80 transition-colors disabled:opacity-50"
+                        onClick={() => {
+                          clearImportResult();
+                        }}
+                        className="rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-sm font-medium text-foreground hover:bg-white/80 transition-colors"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl">🎨</span>
-                          <div className="text-left">
-                            <div className="text-sm font-medium text-foreground">{post.title}.canvas</div>
-                            <div className="text-xs text-foreground/60">Canvas workflow</div>
-                          </div>
-                        </div>
-                        {downloadLoading === 'canvas' ? (
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
-                        ) : (
-                          <svg className="h-5 w-5 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                        )}
+                        Import Another
                       </button>
-                    )}
-
-                    {post.thread_file && (
-                      <button
-                        onClick={() => handleDownload('thread')}
-                        disabled={downloadLoading === 'thread'}
-                        className="w-full flex items-center justify-between rounded-lg border border-white/40 bg-white/60 px-4 py-3 hover:bg-white/80 transition-colors disabled:opacity-50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl">💬</span>
-                          <div className="text-left">
-                            <div className="text-sm font-medium text-foreground">{post.title}.thread</div>
-                            <div className="text-xs text-foreground/60">Conversation thread</div>
-                          </div>
-                        </div>
-                        {downloadLoading === 'thread' ? (
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
-                        ) : (
-                          <svg className="h-5 w-5 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                        )}
-                      </button>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Bundle Download */}
-                {(post.chatbot_file || post.canvas_file || post.thread_file) && (
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground/80 mb-3">Bundle</h3>
-                    <button
-                      onClick={() => handleDownload('bundle')}
-                      disabled={downloadLoading === 'bundle'}
-                      className="w-full flex items-center justify-between rounded-lg border-2 border-sky/50 bg-sky/10 px-4 py-4 hover:bg-sky/20 transition-colors disabled:opacity-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">📦</span>
-                        <div className="text-left">
-                          <div className="text-sm font-medium text-foreground">{post.title}.aiuiw</div>
-                          <div className="text-xs text-foreground/60">All files bundled together</div>
+                {/* Error State */}
+                {importError && (
+                  <div className="rounded-lg bg-red-500/10 border border-red-500/50 p-4">
+                    <div className="flex items-start gap-3">
+                      <svg className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-red-700">Import Failed</p>
+                        <p className="text-xs text-red-600 mt-1">{importError}</p>
+                      </div>
+                      <button
+                        onClick={clearImportError}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Import Options (only show if no success result) */}
+                {!importResult?.success && (
+                  <>
+                    {/* Thread Import */}
+                    {post.thread_file ? (
+                      <div>
+                        <h3 className="text-sm font-medium text-foreground/80 mb-3">Import Thread</h3>
+                        <div className="rounded-lg border-2 border-sky/50 bg-sky/5 p-6">
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="h-12 w-12 rounded-lg bg-sky/20 flex items-center justify-center">
+                              <span className="text-2xl">💬</span>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-foreground">{post.title}</div>
+                              <div className="text-xs text-foreground/60">
+                                Import this thread directly to your dashboard
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-foreground/50 mb-4">
+                            This will create a new thread in your account with the content from this Exchange post.
+                            The thread will appear in your sidebar under "Threads".
+                          </p>
+                          <button
+                            onClick={handleImportThread}
+                            disabled={isImporting || !user}
+                            className="w-full rounded-lg bg-sky px-4 py-3 text-sm font-medium text-white hover:bg-sky/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                          >
+                            {isImporting ? (
+                              <>
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                Importing...
+                              </>
+                            ) : (
+                              <>
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Import to My Threads
+                              </>
+                            )}
+                          </button>
+                          {!user && (
+                            <p className="text-xs text-amber-600 mt-2 text-center">
+                              Please log in to import threads
+                            </p>
+                          )}
                         </div>
                       </div>
-                      {downloadLoading === 'bundle' ? (
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-sky border-t-transparent" />
-                      ) : (
-                        <svg className="h-5 w-5 text-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="mx-auto h-12 w-12 rounded-full bg-foreground/10 flex items-center justify-center mb-4">
+                          <svg className="h-6 w-6 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-foreground mb-2">No Thread Available</h3>
+                        <p className="text-sm text-foreground/60">
+                          This post does not contain a thread file to import.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Future: Chatbot/Canvas import options could go here */}
+                    {(post.chatbot_file || post.canvas_file) && (
+                      <div className="border-t border-white/30 pt-4">
+                        <h3 className="text-sm font-medium text-foreground/80 mb-3">Other Files</h3>
+                        <p className="text-xs text-foreground/50 mb-3">
+                          This post also contains the following files. Direct import for these file types is coming soon.
+                        </p>
+                        <div className="flex gap-2">
+                          {post.chatbot_file && (
+                            <div className="flex items-center gap-2 rounded-lg bg-foreground/5 px-3 py-2">
+                              <span className="text-lg">🤖</span>
+                              <span className="text-xs text-foreground/60">.chatbot</span>
+                            </div>
+                          )}
+                          {post.canvas_file && (
+                            <div className="flex items-center gap-2 rounded-lg bg-foreground/5 px-3 py-2">
+                              <span className="text-lg">🎨</span>
+                              <span className="text-xs text-foreground/60">.canvas</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

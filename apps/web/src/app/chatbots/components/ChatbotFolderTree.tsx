@@ -44,7 +44,6 @@ type ChatbotFolderTreeProps = {
   onStartChatbotThread?: (chatbotId: string, chatbotName: string) => void;
   onEditChatbot?: (id: string) => void;
   onDuplicateChatbot?: (id: string) => void;
-  onExportChatbot?: (id: string) => void;
 };
 
 type DragItem = {
@@ -75,7 +74,6 @@ export function ChatbotFolderTree({
   onStartChatbotThread,
   onEditChatbot,
   onDuplicateChatbot,
-  onExportChatbot,
 }: ChatbotFolderTreeProps) {
   const [activeItem, setActiveItem] = useState<DragItem | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -395,7 +393,6 @@ export function ChatbotFolderTree({
               onStartChatbotThread={onStartChatbotThread}
               onEditChatbot={onEditChatbot}
               onDuplicateChatbot={onDuplicateChatbot}
-              onExportChatbot={onExportChatbot}
             />
           ))}
 
@@ -409,7 +406,6 @@ export function ChatbotFolderTree({
               onStartThread={onStartChatbotThread ? () => onStartChatbotThread(chatbot.id, chatbot.name) : undefined}
               onEdit={onEditChatbot ? () => onEditChatbot(chatbot.id) : undefined}
               onDuplicate={onDuplicateChatbot ? () => onDuplicateChatbot(chatbot.id) : undefined}
-              onExport={onExportChatbot ? () => onExportChatbot(chatbot.id) : undefined}
               onDelete={() => onDeleteChatbot(chatbot.id)}
               onRename={(newName) => onRenameChatbot(chatbot.id, newName)}
               depth={0}

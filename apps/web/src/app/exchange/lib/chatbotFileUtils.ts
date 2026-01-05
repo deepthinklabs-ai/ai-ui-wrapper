@@ -21,6 +21,12 @@ import {
   CHATBOT_FILE_EXTENSION,
 } from '@/types/chatbotFile';
 import type { AIModel } from '@/lib/apiKeyStorage';
+import {
+  validateImportFileExtension,
+  validateImportFileSize,
+  preParseJsonCheck,
+  sanitizeImportData,
+} from '@/lib/importFileSecurity';
 
 /**
  * Default export options
@@ -239,11 +245,29 @@ export function validateChatbotFile(data: unknown): ChatbotFileValidationResult 
 
 /**
  * Parse and validate a chatbot file from a string
+ * Includes pre-parse security checks and content sanitization
  */
 export function parseChatbotFile(content: string): ChatbotFileValidationResult {
   try {
+    // Pre-parse security check
+    const preParseResult = preParseJsonCheck(content);
+    if (!preParseResult.valid) {
+      return { valid: false, error: preParseResult.error };
+    }
+
+    // Parse JSON
     const data = JSON.parse(content);
-    return validateChatbotFile(data);
+
+    // Validate structure first
+    const validationResult = validateChatbotFile(data);
+    if (!validationResult.valid) {
+      return validationResult;
+    }
+
+    // Sanitize content to remove potential XSS
+    const { sanitized } = sanitizeImportData(data);
+
+    return { valid: true, data: sanitized as unknown as ChatbotFile };
   } catch (err) {
     return { valid: false, error: 'Invalid JSON format' };
   }
@@ -251,8 +275,21 @@ export function parseChatbotFile(content: string): ChatbotFileValidationResult {
 
 /**
  * Read a File object and parse it as a chatbot file
+ * Includes security validation for extension and size
  */
 export async function readChatbotFile(file: File): Promise<ChatbotFileValidationResult> {
+  // Security validation: Check file extension
+  const extCheck = validateImportFileExtension(file.name, 'chatbot');
+  if (!extCheck.valid) {
+    return { valid: false, error: extCheck.error };
+  }
+
+  // Security validation: Check file size
+  const sizeCheck = validateImportFileSize(file);
+  if (!sizeCheck.valid) {
+    return { valid: false, error: sizeCheck.error };
+  }
+
   return new Promise((resolve) => {
     const reader = new FileReader();
 

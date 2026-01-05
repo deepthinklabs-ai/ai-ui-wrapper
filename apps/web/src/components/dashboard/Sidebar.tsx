@@ -6,8 +6,7 @@ import type { Thread, FolderWithChildren } from "@/types/chat";
 import type { Chatbot, ChatbotFolderWithChildren } from "@/types/chatbot";
 import { FolderTree } from "./FolderTree";
 import NewThreadModal from "./NewThreadModal";
-import { ThreadImportButton } from "./ThreadImportButton";
-import { ChatbotFolderTree, NewChatbotModal, ChatbotImportButton, ChatbotSettingsPanel } from "@/app/chatbots/components";
+import { ChatbotFolderTree, NewChatbotModal, ChatbotSettingsPanel } from "@/app/chatbots/components";
 import type { CreateChatbotInput } from "@/types/chatbot";
 import type { ChatbotFileConfig } from "@/types/chatbotFile";
 
@@ -36,15 +35,8 @@ type SidebarProps = {
   // Context panel props
   threadContextIds?: Set<string>;
   onAddThreadToContext?: (threadId: string, threadTitle: string) => void;
-  // Export/import props
-  onExportThread?: (threadId: string) => void;
   // Thread info props
   onShowThreadInfo?: (threadId: string) => void;
-  // Import props
-  userId?: string;
-  onThreadImported?: () => void;
-  // Encryption props
-  encryptForStorage?: (plaintext: string) => Promise<string>;
   // Chatbot props
   chatbots?: Chatbot[];
   chatbotFolderTree?: ChatbotFolderWithChildren[];
@@ -53,7 +45,6 @@ type SidebarProps = {
   onCreateChatbot?: (input: CreateChatbotInput) => Promise<void>;
   onEditChatbot?: (id: string) => void;
   onDuplicateChatbot?: (id: string) => Promise<void>;
-  onExportChatbot?: (id: string) => void;
   onDeleteChatbot?: (id: string) => Promise<void>;
   onRenameChatbot?: (id: string, newName: string) => Promise<void>;
   onUpdateChatbotConfig?: (id: string, config: ChatbotFileConfig) => Promise<void>;
@@ -96,11 +87,7 @@ export default function Sidebar({
   onToggleFolderCollapse,
   threadContextIds,
   onAddThreadToContext,
-  onExportThread,
   onShowThreadInfo,
-  userId,
-  onThreadImported,
-  encryptForStorage,
   // Chatbot props
   chatbots = [],
   chatbotFolderTree = [],
@@ -109,7 +96,6 @@ export default function Sidebar({
   onCreateChatbot,
   onEditChatbot,
   onDuplicateChatbot,
-  onExportChatbot,
   onDeleteChatbot,
   onRenameChatbot,
   onUpdateChatbotConfig,
@@ -353,7 +339,7 @@ export default function Sidebar({
           <img
             src="/logo.png"
             alt="aiuiw"
-            className="h-12 w-auto"
+            className="h-12 w-auto brightness-90"
           />
         </div>
 
@@ -453,16 +439,6 @@ export default function Sidebar({
           >
             + New .thread
           </button>
-          {userId && (
-            <ThreadImportButton
-              userId={userId}
-              folderId={defaultFolderId}
-              onImportComplete={onThreadImported}
-              encryptForStorage={encryptForStorage}
-              compact
-              className="border border-white/50 bg-white/60 text-foreground hover:bg-white/80 shadow-sm"
-            />
-          )}
         </div>
 
         {/* Thread limit warning - only shown for expired tier */}
@@ -567,12 +543,6 @@ export default function Sidebar({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </button>
-              <ChatbotImportButton
-                onImport={onCreateChatbot}
-                folderId={chatbotDefaultFolderId}
-                compact
-                className="text-foreground-secondary/70 hover:bg-white/40 hover:text-foreground"
-              />
             </div>
           </div>
 
@@ -595,7 +565,6 @@ export default function Sidebar({
                 onStartChatbotThread={handleStartChatbotThread}
                 onEditChatbot={handleOpenChatbotSettingsLocal}
                 onDuplicateChatbot={onDuplicateChatbot}
-                onExportChatbot={onExportChatbot}
               />
             </div>
           )}
@@ -637,7 +606,6 @@ export default function Sidebar({
             onToggleFolderCollapse={onToggleFolderCollapse}
             threadContextIds={threadContextIds}
             onAddThreadToContext={onAddThreadToContext}
-            onExportThread={onExportThread}
             onShowThreadInfo={onShowThreadInfo}
           />
         ) : (

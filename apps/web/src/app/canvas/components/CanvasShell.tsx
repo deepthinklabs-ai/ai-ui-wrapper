@@ -35,7 +35,6 @@ export default function CanvasShell() {
   // UI state
   const [showNodePalette, setShowNodePalette] = useState(true);
   const [showInspector, setShowInspector] = useState(true);
-  const [workflowMode, setWorkflowMode] = useState(false);
   const [activeTab, setActiveTab] = useState<CanvasTab>('canvas');
 
   // Phase 3, Fix #2: Centralized event handlers
@@ -75,8 +74,6 @@ export default function CanvasShell() {
               onCreateCanvas={canvas.create}
               onUpdateCanvas={canvas.update}
               onDeleteCanvas={canvas.delete}
-              workflowMode={workflowMode}
-              onToggleWorkflowMode={() => setWorkflowMode(!workflowMode)}
               onToggleNodePalette={() => setShowNodePalette(!showNodePalette)}
               onToggleInspector={() => setShowInspector(!showInspector)}
               showNodePalette={showNodePalette}
@@ -150,7 +147,6 @@ export default function CanvasShell() {
                     onNodesChange={handleNodesChange}
                     onEdgesChange={handleEdgesChange}
                     onConnect={handleConnect}
-                    workflowMode={workflowMode}
                     isAdmin={isAdmin}
                   />
 

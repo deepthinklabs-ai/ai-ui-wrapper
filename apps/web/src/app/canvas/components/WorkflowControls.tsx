@@ -18,8 +18,6 @@ interface WorkflowControlsProps {
   onCreateCanvas: () => void;
   onUpdateCanvas: (id: CanvasId, updates: Partial<Canvas>) => Promise<boolean>;
   onDeleteCanvas: (id: CanvasId) => Promise<boolean>;
-  workflowMode: boolean;
-  onToggleWorkflowMode: () => void;
   onToggleNodePalette: () => void;
   onToggleInspector: () => void;
   showNodePalette: boolean;
@@ -33,8 +31,6 @@ export default function WorkflowControls({
   onCreateCanvas,
   onUpdateCanvas,
   onDeleteCanvas,
-  workflowMode,
-  onToggleWorkflowMode,
   onToggleNodePalette,
   onToggleInspector,
   showNodePalette,
@@ -42,23 +38,6 @@ export default function WorkflowControls({
 }: WorkflowControlsProps) {
   const [showCanvasMenu, setShowCanvasMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
-
-  const handleRunWorkflow = () => {
-    if (!currentCanvas) return;
-
-    setIsRunning(true);
-    // TODO: Implement workflow execution
-    setTimeout(() => {
-      setIsRunning(false);
-      alert('Workflow execution will be implemented in Phase 4');
-    }, 1000);
-  };
-
-  const handleStopWorkflow = () => {
-    setIsRunning(false);
-    // TODO: Implement workflow stop
-  };
 
   const handleDeleteCanvas = async () => {
     if (!currentCanvas) return;
@@ -187,46 +166,6 @@ export default function WorkflowControls({
           </div>
         )}
       </div>
-
-      {/* Center Section - Workflow Controls */}
-      {currentCanvas && (
-        <div className="flex items-center gap-2">
-          {/* Run/Stop */}
-          {!isRunning ? (
-            <button
-              onClick={handleRunWorkflow}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-500 transition-colors"
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-              Run Workflow
-            </button>
-          ) : (
-            <button
-              onClick={handleStopWorkflow}
-              className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors"
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="6" width="12" height="12" />
-              </svg>
-              Stop
-            </button>
-          )}
-
-          {/* Workflow Mode Toggle */}
-          <button
-            onClick={onToggleWorkflowMode}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              workflowMode
-                ? 'bg-sky text-white'
-                : 'border border-foreground/30 bg-white/60 text-foreground/60 hover:bg-white/80'
-            }`}
-          >
-            {workflowMode ? '⚡ Workflow Mode' : '✏️ Edit Mode'}
-          </button>
-        </div>
-      )}
 
       {/* Right Section - View Toggles */}
       <div className="flex items-center gap-2">
