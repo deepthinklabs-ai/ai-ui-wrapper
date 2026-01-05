@@ -266,10 +266,47 @@ export default function UploadWizard({
   };
 
   /**
-   * Builds the thread file object for the Exchange post
+   * Fetches messages for a thread
    */
-  const buildThreadFile = (thread: ThreadOption, postTitle: string, postDescription: string) => {
+  const fetchThreadMessages = async (threadId: string) => {
+    console.log('[UploadWizard] Fetching messages for thread:', threadId);
+
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select('role, content, model, created_at, attachments, input_tokens, output_tokens, total_tokens')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('[UploadWizard] Error fetching messages:', error);
+      return [];
+    }
+
+    console.log('[UploadWizard] Fetched', messages?.length || 0, 'messages');
+    return messages || [];
+  };
+
+  /**
+   * Builds the thread file object for the Exchange post
+   * Includes messages for the conversation history
+   */
+  const buildThreadFile = async (thread: ThreadOption, postTitle: string, postDescription: string) => {
     console.log('[UploadWizard] Building thread file from:', thread);
+
+    // Fetch messages for the thread
+    const messages = await fetchThreadMessages(thread.id);
+
+    // Format messages for the thread file
+    const formattedMessages = messages.map((msg: any) => ({
+      role: msg.role,
+      content: msg.content,
+      model: msg.model || null,
+      created_at: msg.created_at,
+      attachments: msg.attachments || null,
+      input_tokens: msg.input_tokens || null,
+      output_tokens: msg.output_tokens || null,
+      total_tokens: msg.total_tokens || null,
+    }));
 
     return {
       version: '1.0.0',
@@ -282,7 +319,9 @@ export default function UploadWizard({
         chatbot_id: thread.chatbot_id,
         created_at: thread.created_at,
         exported_at: new Date().toISOString(),
+        message_count: formattedMessages.length,
       },
+      messages: formattedMessages,
     };
   };
 
@@ -355,8 +394,9 @@ export default function UploadWizard({
         throw new Error('Thread not found. Please try again or select a different thread.');
       }
 
-      // Step 2: Build the thread file
-      const threadFile = buildThreadFile(threadData, title, description);
+      // Step 2: Build the thread file (includes fetching messages)
+      const threadFile = await buildThreadFile(threadData, title, description);
+      console.log('[UploadWizard] Thread file built with', threadFile.messages?.length || 0, 'messages');
 
       // Step 3: Submit to Exchange
       await submitToExchange(

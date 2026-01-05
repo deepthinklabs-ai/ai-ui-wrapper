@@ -375,6 +375,60 @@ export default function PostDetailModal({
                 </div>
               )}
 
+              {/* Chat History Preview */}
+              {post.thread_file && (post.thread_file as any).messages && (post.thread_file as any).messages.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-foreground/80 mb-2">
+                    Conversation Preview
+                    <span className="text-xs font-normal text-foreground/50 ml-2">
+                      ({(post.thread_file as any).messages.length} messages)
+                    </span>
+                  </h3>
+                  <div className="rounded-lg border border-white/30 bg-foreground/5 max-h-64 overflow-y-auto">
+                    <div className="p-3 space-y-3">
+                      {((post.thread_file as any).messages as any[]).slice(0, 10).map((msg, index) => (
+                        <div
+                          key={index}
+                          className={`flex gap-3 ${msg.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'}`}
+                        >
+                          <div
+                            className={`flex-shrink-0 h-7 w-7 rounded-full flex items-center justify-center text-xs ${
+                              msg.role === 'assistant'
+                                ? 'bg-sky/20 text-sky'
+                                : 'bg-lavender/20 text-lavender'
+                            }`}
+                          >
+                            {msg.role === 'assistant' ? '🤖' : '👤'}
+                          </div>
+                          <div
+                            className={`flex-1 rounded-lg px-3 py-2 text-sm ${
+                              msg.role === 'assistant'
+                                ? 'bg-white/60 text-foreground/80'
+                                : 'bg-lavender/10 text-foreground/80'
+                            }`}
+                          >
+                            <div className="line-clamp-3 whitespace-pre-wrap">
+                              {msg.content}
+                            </div>
+                            {msg.model && (
+                              <div className="text-xs text-foreground/40 mt-1">{msg.model}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {(post.thread_file as any).messages.length > 10 && (
+                        <div className="text-center text-xs text-foreground/50 py-2">
+                          + {(post.thread_file as any).messages.length - 10} more messages
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-2">
+                    Import this thread to see the full conversation in your dashboard.
+                  </p>
+                </div>
+              )}
+
               {/* Quick Actions */}
               <div className="flex gap-3 pt-4">
                 <button
