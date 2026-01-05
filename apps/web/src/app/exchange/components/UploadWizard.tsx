@@ -195,147 +195,148 @@ export default function UploadWizard({
     }
   };
 
+  // ============================================================================
+  // THREAD FILE SUBMISSION HELPERS (Segmented for debugging)
+  // ============================================================================
+
+  /**
+   * Fetches thread data directly from the database
+   * This ensures we get the thread even if it wasn't in the initial fetch
+   */
+  const fetchThreadData = async (threadId: string): Promise<ThreadOption | null> => {
+    console.log('[UploadWizard] Fetching thread data for:', threadId);
+
+    const { data, error } = await supabase
+      .from('threads')
+      .select('id, title, model, system_prompt, created_at')
+      .eq('id', threadId)
+      .single();
+
+    if (error) {
+      console.error('[UploadWizard] Error fetching thread:', error);
+      return null;
+    }
+
+    console.log('[UploadWizard] Thread data fetched:', data);
+    return data;
+  };
+
+  /**
+   * Builds the thread file object for the Exchange post
+   */
+  const buildThreadFile = (thread: ThreadOption, postTitle: string, postDescription: string) => {
+    console.log('[UploadWizard] Building thread file from:', thread);
+
+    return {
+      version: '1.0.0',
+      type: 'thread',
+      metadata: {
+        name: postTitle,
+        description: postDescription || undefined,
+        original_thread_id: thread.id,
+        original_thread_title: thread.title,
+        created_at: thread.created_at,
+        exported_at: new Date().toISOString(),
+      },
+      config: {
+        model: thread.model || 'gpt-4o',
+        system_prompt: thread.system_prompt || 'You are a helpful assistant.',
+      },
+    };
+  };
+
+  /**
+   * Submits the post to the Exchange API
+   */
+  const submitToExchange = async (
+    userId: string,
+    postTitle: string,
+    postDescription: string,
+    threadFile: any,
+    categoryIds: string[],
+    tagNames: string[]
+  ) => {
+    console.log('[UploadWizard] Submitting to Exchange API:', {
+      title: postTitle,
+      categoryIds,
+      tagNames,
+    });
+
+    const response = await fetch('/api/exchange/posts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId,
+      },
+      body: JSON.stringify({
+        title: postTitle,
+        description: postDescription || undefined,
+        thread_file: threadFile,
+        category_ids: categoryIds,
+        tag_names: tagNames,
+      }),
+    });
+
+    const data = await response.json();
+    console.log('[UploadWizard] API response:', { ok: response.ok, data });
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create post');
+    }
+
+    return data;
+  };
+
+  /**
+   * Main submit handler - orchestrates the thread file submission
+   */
   const handleSubmit = async () => {
-    if (!user?.id || !selectedThreadId) return;
+    console.log('[UploadWizard] handleSubmit called', {
+      userId: user?.id,
+      selectedThreadId,
+      title,
+      selectedCategoryIds,
+    });
+
+    if (!user?.id || !selectedThreadId) {
+      console.error('[UploadWizard] Missing required data:', { userId: user?.id, selectedThreadId });
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      // Get the selected thread's details
-      const selectedThread = threads.find((t) => t.id === selectedThreadId);
-      if (!selectedThread) {
-        throw new Error('Selected thread not found');
+      // Step 1: Fetch thread data directly from database
+      const threadData = await fetchThreadData(selectedThreadId);
+      if (!threadData) {
+        throw new Error('Thread not found. Please try again or select a different thread.');
       }
 
-      // Build chatbot file from thread settings
-      const chatbotFile = {
-        version: '1.0.0',
-        type: 'chatbot',
-        metadata: {
-          name: title,
-          description: description || undefined,
-          created_at: new Date().toISOString(),
-          exported_at: new Date().toISOString(),
-        },
-        config: {
-          model: {
-            provider: getProviderFromModel(selectedThread.model || 'gpt-4o'),
-            model_name: selectedThread.model || 'gpt-4o',
-          },
-          system_prompt: selectedThread.system_prompt || 'You are a helpful assistant.',
-        },
-      };
+      // Step 2: Build the thread file
+      const threadFile = buildThreadFile(threadData, title, description);
 
-      // Get canvas data if selected
-      let canvasFile = null;
-      if (selectedCanvasId) {
-        const { data: canvasData } = await supabase
-          .from('canvases')
-          .select('*')
-          .eq('id', selectedCanvasId)
-          .single();
+      // Step 3: Submit to Exchange
+      await submitToExchange(
+        user.id,
+        title,
+        description,
+        threadFile,
+        selectedCategoryIds,
+        tags
+      );
 
-        if (canvasData) {
-          // Get canvas nodes and edges
-          const { data: nodesData } = await supabase
-            .from('canvas_nodes')
-            .select('*')
-            .eq('canvas_id', selectedCanvasId);
-
-          const { data: edgesData } = await supabase
-            .from('canvas_edges')
-            .select('*')
-            .eq('canvas_id', selectedCanvasId);
-
-          canvasFile = {
-            version: '1.0.0',
-            type: 'canvas',
-            metadata: {
-              name: canvasData.name,
-              description: canvasData.description,
-              mode: canvasData.mode,
-              created_at: canvasData.created_at,
-              exported_at: new Date().toISOString(),
-              node_count: nodesData?.length || 0,
-              edge_count: edgesData?.length || 0,
-            },
-            nodes: (nodesData || []).map((node: any) => ({
-              type: node.type,
-              position: node.position,
-              label: node.label,
-              config: sanitizeConfig(node.config || {}),
-              original_id: node.id,
-            })),
-            edges: (edgesData || []).map((edge: any) => ({
-              from_node_ref: edge.source_node_id,
-              to_node_ref: edge.target_node_id,
-              label: edge.label,
-              animated: edge.animated,
-            })),
-          };
-        }
-      }
-
-      // Create the post via API
-      const response = await fetch('/api/exchange/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': user.id,
-        },
-        body: JSON.stringify({
-          title,
-          description: description || undefined,
-          chatbot_file: chatbotFile,
-          canvas_file: canvasFile,
-          category_ids: selectedCategoryIds,
-          tag_names: tags,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create post');
-      }
-
+      console.log('[UploadWizard] Post created successfully');
       onSuccess();
     } catch (err: any) {
+      console.error('[UploadWizard] Submit error:', err);
       setError(err.message || 'Failed to create post');
     } finally {
       setLoading(false);
     }
   };
 
-  const getProviderFromModel = (model: string): string => {
-    if (model.includes('gpt') || model.includes('o1') || model.includes('o3')) return 'openai';
-    if (model.includes('claude')) return 'claude';
-    if (model.includes('grok')) return 'grok';
-    if (model.includes('gemini')) return 'gemini';
-    return 'openai';
-  };
-
-  const sanitizeConfig = (config: Record<string, any>): Record<string, any> => {
-    const sensitiveFields = [
-      'access_token', 'refresh_token', 'oauth_tokens', 'credentials',
-      'api_key', 'secret', 'password', 'token',
-    ];
-
-    const sanitized: Record<string, any> = {};
-    for (const [key, value] of Object.entries(config)) {
-      if (sensitiveFields.some((f) => key.toLowerCase().includes(f))) {
-        continue;
-      }
-      if (typeof value === 'object' && value !== null) {
-        sanitized[key] = sanitizeConfig(value);
-      } else {
-        sanitized[key] = value;
-      }
-    }
-    return sanitized;
-  };
-
+  // Derived state for UI display
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const selectedCanvas = canvases.find((c) => c.id === selectedCanvasId);
 
@@ -596,20 +597,6 @@ export default function UploadWizard({
                   <div>
                     <span className="text-sm text-foreground/60">Description:</span>
                     <p className="text-foreground/80 text-sm">{description}</p>
-                  </div>
-                )}
-
-                <div>
-                  <span className="text-sm text-foreground/60">Chatbot Config:</span>
-                  <p className="text-foreground/80 text-sm">
-                    {selectedThread?.title || 'Untitled Thread'} ({selectedThread?.model || 'Default model'})
-                  </p>
-                </div>
-
-                {selectedCanvas && (
-                  <div>
-                    <span className="text-sm text-foreground/60">Canvas:</span>
-                    <p className="text-foreground/80 text-sm">{selectedCanvas.name}</p>
                   </div>
                 )}
 
