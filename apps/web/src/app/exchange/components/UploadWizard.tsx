@@ -37,6 +37,34 @@ interface CanvasOption {
 
 type Step = 'details' | 'content' | 'categories' | 'review';
 
+// Patterns that might indicate sensitive data in the system prompt
+const SENSITIVE_PATTERNS = [
+  { pattern: /sk-[a-zA-Z0-9]{20,}/i, name: 'OpenAI API key' },
+  { pattern: /sk-ant-[a-zA-Z0-9-]{20,}/i, name: 'Anthropic API key' },
+  { pattern: /xai-[a-zA-Z0-9]{20,}/i, name: 'xAI API key' },
+  { pattern: /Bearer\s+[a-zA-Z0-9._-]{20,}/i, name: 'Bearer token' },
+  { pattern: /api[_-]?key['":\s=]+[a-zA-Z0-9_-]{16,}/i, name: 'API key' },
+  { pattern: /password['":\s=]+[^\s'"]{8,}/i, name: 'Password' },
+  { pattern: /secret['":\s=]+[a-zA-Z0-9_-]{16,}/i, name: 'Secret' },
+  { pattern: /ghp_[a-zA-Z0-9]{36}/i, name: 'GitHub token' },
+  { pattern: /gho_[a-zA-Z0-9]{36}/i, name: 'GitHub OAuth token' },
+  { pattern: /AKIA[A-Z0-9]{16}/i, name: 'AWS access key' },
+];
+
+/**
+ * Checks if text contains patterns that might indicate sensitive data
+ */
+function detectSensitiveData(text: string | null | undefined): string[] {
+  if (!text) return [];
+  const found: string[] = [];
+  for (const { pattern, name } of SENSITIVE_PATTERNS) {
+    if (pattern.test(text)) {
+      found.push(name);
+    }
+  }
+  return found;
+}
+
 export default function UploadWizard({
   categories,
   preselectedThreadId,
@@ -204,12 +232,18 @@ export default function UploadWizard({
    * This ensures we get the thread even if it wasn't in the initial fetch
    */
   const fetchThreadData = async (threadId: string): Promise<ThreadOption | null> => {
-    console.log('[UploadWizard] Fetching thread data for:', threadId);
+    if (!user?.id) {
+      console.error('[UploadWizard] Cannot fetch thread: no user ID');
+      return null;
+    }
+
+    console.log('[UploadWizard] Fetching thread data for:', threadId, 'user:', user.id);
 
     const { data, error } = await supabase
       .from('threads')
       .select('id, title, model, system_prompt, created_at')
       .eq('id', threadId)
+      .eq('user_id', user.id)
       .single();
 
     if (error) {
@@ -340,6 +374,9 @@ export default function UploadWizard({
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
   const selectedCanvas = canvases.find((c) => c.id === selectedCanvasId);
 
+  // Check for sensitive data in the system prompt
+  const sensitiveDataFound = detectSensitiveData(selectedThread?.system_prompt);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
       <div className="w-full max-w-2xl max-h-[90vh] rounded-lg border border-white/30 bg-white/80 backdrop-blur-md flex flex-col overflow-hidden">
@@ -396,13 +433,24 @@ export default function UploadWizard({
                 <label className="block text-sm font-medium text-foreground/80 mb-2">
                   Title <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="My Awesome Chatbot"
-                  className="w-full rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
-                />
+                {preselectedThreadId ? (
+                  <>
+                    <div className="w-full rounded-lg border border-white/40 bg-foreground/5 px-4 py-2 text-foreground">
+                      {title || 'Loading...'}
+                    </div>
+                    <p className="text-xs text-foreground/50 mt-1">
+                      Title is set from your thread name
+                    </p>
+                  </>
+                ) : (
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="My Awesome Chatbot"
+                    className="w-full rounded-lg border border-white/40 bg-white/60 px-4 py-2 text-foreground placeholder-foreground/50 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-2">
@@ -586,6 +634,39 @@ export default function UploadWizard({
           {step === 'review' && (
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-foreground">Review Your Post</h3>
+
+              {/* Security Warning - Red if sensitive data detected, amber otherwise */}
+              {sensitiveDataFound.length > 0 ? (
+                <div className="rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <svg className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-red-700">Potential Sensitive Data Detected!</p>
+                      <p className="text-xs text-red-600 mt-1">
+                        Your system prompt may contain: <strong>{sensitiveDataFound.join(', ')}</strong>.
+                        Please remove any API keys, passwords, or secrets before publishing.
+                        Your system prompt will be visible to everyone who downloads this chatbot.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-amber-500/10 border border-amber-500/50 px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <svg className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-amber-700">Security Reminder</p>
+                      <p className="text-xs text-amber-600 mt-1">
+                        Your thread's system prompt will be shared publicly. Please ensure it does not contain API keys, passwords, personal information, or other sensitive data.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="rounded-lg border border-white/30 bg-foreground/5 p-4 space-y-3">
                 <div>
