@@ -599,8 +599,7 @@ export default function UploadWizard({
                           {thread.title || 'Untitled Thread'}
                         </div>
                         <div className="text-xs text-foreground/60 mt-1">
-                          Model: {thread.model || 'Default'} | Created:{' '}
-                          {new Date(thread.created_at).toLocaleDateString()}
+                          Created: {new Date(thread.created_at).toLocaleDateString()}
                         </div>
                       </button>
                     ))}
