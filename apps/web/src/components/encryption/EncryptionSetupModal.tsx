@@ -164,13 +164,13 @@ export default function EncryptionSetupModal({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40" />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="relative w-full max-w-2xl rounded-2xl border border-white/40 bg-white/90 backdrop-blur-md shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="border-b border-slate-800 px-6 py-5 flex-shrink-0">
+          <div className="border-b border-foreground/10 px-6 py-5 flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600">
                 <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,8 +178,8 @@ export default function EncryptionSetupModal({
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-100">Set Up Message Encryption</h2>
-                <p className="text-sm text-slate-400">
+                <h2 className="text-xl font-bold text-foreground">Set Up Message Encryption</h2>
+                <p className="text-sm text-foreground/60">
                   {step === 'password' && 'Step 1 of 3: Create encryption password'}
                   {step === 'recovery-codes' && 'Step 2 of 3: Save your recovery codes'}
                   {step === 'confirm' && 'Step 3 of 3: Confirm setup'}
@@ -189,9 +189,9 @@ export default function EncryptionSetupModal({
 
             {/* Progress bar */}
             <div className="mt-4 flex gap-2">
-              <div className={`h-1.5 flex-1 rounded-full ${step === 'password' ? 'bg-green-500' : 'bg-green-500'}`} />
-              <div className={`h-1.5 flex-1 rounded-full ${step === 'recovery-codes' || step === 'confirm' ? 'bg-green-500' : 'bg-slate-700'}`} />
-              <div className={`h-1.5 flex-1 rounded-full ${step === 'confirm' ? 'bg-green-500' : 'bg-slate-700'}`} />
+              <div className={`h-1.5 flex-1 rounded-full ${step === 'password' ? 'bg-emerald-500' : 'bg-emerald-500'}`} />
+              <div className={`h-1.5 flex-1 rounded-full ${step === 'recovery-codes' || step === 'confirm' ? 'bg-emerald-500' : 'bg-foreground/20'}`} />
+              <div className={`h-1.5 flex-1 rounded-full ${step === 'confirm' ? 'bg-emerald-500' : 'bg-foreground/20'}`} />
             </div>
           </div>
 
@@ -200,14 +200,14 @@ export default function EncryptionSetupModal({
             {/* Step 1: Password */}
             {step === 'password' && (
               <>
-                <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+                <div className="rounded-lg border border-sky/30 bg-sky/10 p-4">
                   <div className="flex items-start gap-3">
-                    <svg className="h-6 w-6 flex-shrink-0 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-6 w-6 flex-shrink-0 text-sky mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-blue-200">End-to-End Encryption</p>
-                      <p className="mt-1 text-sm text-slate-300">
+                      <p className="text-sm font-semibold text-sky">End-to-End Encryption</p>
+                      <p className="mt-1 text-sm text-foreground/70">
                         Your messages will be encrypted before leaving your device. We cannot read your messages - only you can, with this password.
                       </p>
                     </div>
@@ -216,7 +216,7 @@ export default function EncryptionSetupModal({
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-foreground/80 mb-2">
                       Encryption Password
                     </label>
                     <div className="relative">
@@ -225,12 +225,12 @@ export default function EncryptionSetupModal({
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Create a strong password (12+ characters)"
-                        className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 pr-10 text-slate-100 placeholder-slate-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-full rounded-lg border border-foreground/20 bg-white/80 px-4 py-3 pr-10 text-foreground placeholder-foreground/40 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/60"
                         tabIndex={-1}
                       >
                         {showPassword ? (
@@ -248,7 +248,7 @@ export default function EncryptionSetupModal({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-foreground/80 mb-2">
                       Confirm Password
                     </label>
                     <div className="relative">
@@ -257,12 +257,12 @@ export default function EncryptionSetupModal({
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Confirm your password"
-                        className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 pr-10 text-slate-100 placeholder-slate-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-full rounded-lg border border-foreground/20 bg-white/80 px-4 py-3 pr-10 text-foreground placeholder-foreground/40 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/60"
                         tabIndex={-1}
                       >
                         {showConfirmPassword ? (
@@ -281,21 +281,21 @@ export default function EncryptionSetupModal({
 
                   {passwordError && (
                     <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-                      <p className="text-sm text-red-300">{passwordError}</p>
+                      <p className="text-sm text-red-600">{passwordError}</p>
                     </div>
                   )}
 
-                  <div className="text-xs text-slate-500 space-y-1">
-                    <p className={password.length >= 12 ? 'text-green-400' : ''}>
+                  <div className="text-xs text-foreground/50 space-y-1">
+                    <p className={password.length >= 12 ? 'text-emerald-600' : ''}>
                       {password.length >= 12 ? '✓' : '○'} At least 12 characters
                     </p>
-                    <p className={/[A-Z]/.test(password) ? 'text-green-400' : ''}>
+                    <p className={/[A-Z]/.test(password) ? 'text-emerald-600' : ''}>
                       {/[A-Z]/.test(password) ? '✓' : '○'} One uppercase letter
                     </p>
-                    <p className={/[a-z]/.test(password) ? 'text-green-400' : ''}>
+                    <p className={/[a-z]/.test(password) ? 'text-emerald-600' : ''}>
                       {/[a-z]/.test(password) ? '✓' : '○'} One lowercase letter
                     </p>
-                    <p className={/[0-9]/.test(password) ? 'text-green-400' : ''}>
+                    <p className={/[0-9]/.test(password) ? 'text-emerald-600' : ''}>
                       {/[0-9]/.test(password) ? '✓' : '○'} One number
                     </p>
                   </div>
@@ -303,12 +303,12 @@ export default function EncryptionSetupModal({
 
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
                   <div className="flex items-start gap-3">
-                    <svg className="h-6 w-6 flex-shrink-0 text-amber-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-6 w-6 flex-shrink-0 text-amber-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-amber-200">Remember This Password</p>
-                      <p className="mt-1 text-sm text-slate-300">
+                      <p className="text-sm font-semibold text-amber-700">Remember This Password</p>
+                      <p className="mt-1 text-sm text-foreground/70">
                         This is separate from your login password. If you forget it, you'll need recovery codes to access your messages.
                       </p>
                     </div>
@@ -320,14 +320,14 @@ export default function EncryptionSetupModal({
             {/* Step 2: Recovery Codes */}
             {step === 'recovery-codes' && (
               <>
-                <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
                   <div className="flex items-start gap-3">
-                    <svg className="h-6 w-6 flex-shrink-0 text-green-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-6 w-6 flex-shrink-0 text-emerald-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-green-200">Encryption Password Set!</p>
-                      <p className="mt-1 text-sm text-slate-300">
+                      <p className="text-sm font-semibold text-emerald-700">Encryption Password Set!</p>
+                      <p className="mt-1 text-sm text-foreground/70">
                         Now save your recovery codes. These are your backup if you forget your encryption password.
                       </p>
                     </div>
@@ -335,14 +335,14 @@ export default function EncryptionSetupModal({
                 </div>
 
                 {/* Recovery Codes Grid */}
-                <div className="rounded-lg border border-slate-600 bg-slate-800/50 p-4">
+                <div className="rounded-lg border border-foreground/20 bg-foreground/5 p-4">
                   <div className="grid grid-cols-3 gap-2">
                     {recoveryCodes.map((code, index) => (
                       <div
                         key={index}
-                        className="rounded bg-slate-900 px-3 py-2 font-mono text-sm text-slate-200 text-center"
+                        className="rounded bg-white/80 border border-foreground/10 px-3 py-2 font-mono text-sm text-foreground text-center"
                       >
-                        <span className="text-slate-500 text-xs mr-2">{index + 1}.</span>
+                        <span className="text-foreground/50 text-xs mr-2">{index + 1}.</span>
                         {code}
                       </div>
                     ))}
@@ -351,28 +351,28 @@ export default function EncryptionSetupModal({
 
                 {/* Delivery Options */}
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-slate-200">Save your codes securely:</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Save your codes securely:</h3>
 
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={handleDownloadPDF}
                       className={`flex items-center gap-3 rounded-lg border p-4 text-left transition-all ${
                         deliveryMethod === 'download_pdf'
-                          ? 'border-green-500 bg-green-500/10'
-                          : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                          ? 'border-emerald-500 bg-emerald-500/10'
+                          : 'border-foreground/20 bg-white/60 hover:border-foreground/30'
                       }`}
                     >
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20">
-                        <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-200">Download PDF</p>
-                        <p className="text-xs text-slate-400">Save to your device</p>
+                        <p className="text-sm font-medium text-foreground">Download PDF</p>
+                        <p className="text-xs text-foreground/60">Save to your device</p>
                       </div>
                       {deliveryMethod === 'download_pdf' && (
-                        <svg className="h-5 w-5 text-green-400 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-5 w-5 text-emerald-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
@@ -382,21 +382,21 @@ export default function EncryptionSetupModal({
                       onClick={handlePrint}
                       className={`flex items-center gap-3 rounded-lg border p-4 text-left transition-all ${
                         deliveryMethod === 'print'
-                          ? 'border-green-500 bg-green-500/10'
-                          : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                          ? 'border-emerald-500 bg-emerald-500/10'
+                          : 'border-foreground/20 bg-white/60 hover:border-foreground/30'
                       }`}
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/20">
-                        <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky/20">
+                        <svg className="h-5 w-5 text-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-200">Print</p>
-                        <p className="text-xs text-slate-400">Physical backup</p>
+                        <p className="text-sm font-medium text-foreground">Print</p>
+                        <p className="text-xs text-foreground/60">Physical backup</p>
                       </div>
                       {deliveryMethod === 'print' && (
-                        <svg className="h-5 w-5 text-green-400 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-5 w-5 text-emerald-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
@@ -406,37 +406,37 @@ export default function EncryptionSetupModal({
                       onClick={handleCopyToClipboard}
                       className={`flex items-center gap-3 rounded-lg border p-4 text-left transition-all ${
                         deliveryMethod === 'copy'
-                          ? 'border-green-500 bg-green-500/10'
-                          : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                          ? 'border-emerald-500 bg-emerald-500/10'
+                          : 'border-foreground/20 bg-white/60 hover:border-foreground/30'
                       }`}
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/20">
-                        <svg className="h-5 w-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-lavender/20">
+                        <svg className="h-5 w-5 text-lavender" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-200">
+                        <p className="text-sm font-medium text-foreground">
                           {codesCopied ? 'Copied!' : 'Copy to Clipboard'}
                         </p>
-                        <p className="text-xs text-slate-400">Paste to password manager</p>
+                        <p className="text-xs text-foreground/60">Paste to password manager</p>
                       </div>
                       {deliveryMethod === 'copy' && (
-                        <svg className="h-5 w-5 text-green-400 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-5 w-5 text-emerald-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
                     </button>
 
-                    <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 p-4 opacity-50 cursor-not-allowed">
+                    <div className="flex items-center gap-3 rounded-lg border border-foreground/10 bg-foreground/5 p-4 opacity-50 cursor-not-allowed">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/20">
-                        <svg className="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-200">Email (Enterprise)</p>
-                        <p className="text-xs text-slate-400">Coming soon</p>
+                        <p className="text-sm font-medium text-foreground">Email (Enterprise)</p>
+                        <p className="text-xs text-foreground/60">Coming soon</p>
                       </div>
                     </div>
                   </div>
@@ -444,12 +444,12 @@ export default function EncryptionSetupModal({
 
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
                   <div className="flex items-start gap-3">
-                    <svg className="h-6 w-6 flex-shrink-0 text-amber-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-6 w-6 flex-shrink-0 text-amber-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-amber-200">Keep These Safe!</p>
-                      <p className="mt-1 text-sm text-slate-300">
+                      <p className="text-sm font-semibold text-amber-700">Keep These Safe!</p>
+                      <p className="mt-1 text-sm text-foreground/70">
                         Each code can only be used once. Store them somewhere secure, like a password manager or a safe.
                       </p>
                     </div>
@@ -461,14 +461,14 @@ export default function EncryptionSetupModal({
             {/* Step 3: Confirm */}
             {step === 'confirm' && (
               <>
-                <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
                   <div className="flex items-start gap-3">
-                    <svg className="h-6 w-6 flex-shrink-0 text-green-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-6 w-6 flex-shrink-0 text-emerald-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-green-200">Almost Done!</p>
-                      <p className="mt-1 text-sm text-slate-300">
+                      <p className="text-sm font-semibold text-emerald-700">Almost Done!</p>
+                      <p className="mt-1 text-sm text-foreground/70">
                         Please confirm you've saved your recovery codes before we enable encryption.
                       </p>
                     </div>
@@ -476,23 +476,23 @@ export default function EncryptionSetupModal({
                 </div>
 
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-slate-600 bg-slate-800/50 p-4">
-                    <h4 className="text-sm font-medium text-slate-200 mb-3">Summary:</h4>
-                    <ul className="space-y-2 text-sm text-slate-300">
+                  <div className="rounded-lg border border-foreground/20 bg-foreground/5 p-4">
+                    <h4 className="text-sm font-medium text-foreground mb-3">Summary:</h4>
+                    <ul className="space-y-2 text-sm text-foreground/70">
                       <li className="flex items-center gap-2">
-                        <svg className="h-4 w-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-4 w-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                         Encryption password created
                       </li>
                       <li className="flex items-center gap-2">
-                        <svg className="h-4 w-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-4 w-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                         12 recovery codes generated
                       </li>
                       <li className="flex items-center gap-2">
-                        <svg className="h-4 w-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-4 w-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                         Codes saved via: {deliveryMethod === 'download_pdf' ? 'PDF Download' : deliveryMethod === 'print' ? 'Print' : deliveryMethod === 'copy' ? 'Clipboard' : 'Email'}
@@ -505,23 +505,23 @@ export default function EncryptionSetupModal({
                       type="checkbox"
                       checked={consentChecked}
                       onChange={(e) => setConsentChecked(e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-800 text-green-500 focus:ring-green-500 focus:ring-offset-0"
+                      className="mt-1 h-4 w-4 rounded border-foreground/20 bg-white/80 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
                     />
-                    <span className="text-sm text-slate-300">
+                    <span className="text-sm text-foreground/70">
                       I understand that if I lose both my encryption password and all recovery codes,
-                      <span className="text-amber-400 font-medium"> my encrypted messages cannot be recovered by anyone, including the service provider</span>.
+                      <span className="text-amber-600 font-medium"> my encrypted messages cannot be recovered by anyone, including the service provider</span>.
                     </span>
                   </label>
                 </div>
 
                 <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                   <div className="flex items-start gap-3">
-                    <svg className="h-6 w-6 flex-shrink-0 text-red-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-6 w-6 flex-shrink-0 text-red-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-red-200">No Recovery Possible</p>
-                      <p className="mt-1 text-sm text-slate-300">
+                      <p className="text-sm font-semibold text-red-600">No Recovery Possible</p>
+                      <p className="mt-1 text-sm text-foreground/70">
                         This is a zero-knowledge encryption system. We do not have access to your encryption key and cannot reset or recover your messages.
                       </p>
                     </div>
@@ -532,19 +532,19 @@ export default function EncryptionSetupModal({
           </div>
 
           {/* Footer */}
-          <div className="border-t border-slate-800 px-6 py-4 flex-shrink-0">
+          <div className="border-t border-foreground/10 px-6 py-4 flex-shrink-0">
             {step === 'password' && (
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 rounded-lg border border-slate-600 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+                  className="flex-1 rounded-lg border border-foreground/20 px-4 py-3 text-sm font-medium text-foreground/70 hover:bg-foreground/5 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handlePasswordSubmit}
                   disabled={isGenerating || !password || !confirmPassword}
-                  className="flex-1 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:from-emerald-400 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGenerating ? 'Generating...' : 'Continue'}
                 </button>
@@ -555,14 +555,14 @@ export default function EncryptionSetupModal({
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep('password')}
-                  className="flex-1 rounded-lg border border-slate-600 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+                  className="flex-1 rounded-lg border border-foreground/20 px-4 py-3 text-sm font-medium text-foreground/70 hover:bg-foreground/5 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => setStep('confirm')}
                   disabled={!codesDelivered}
-                  className="flex-1 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:from-emerald-400 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   I've Saved My Codes
                 </button>
@@ -573,14 +573,14 @@ export default function EncryptionSetupModal({
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep('recovery-codes')}
-                  className="flex-1 rounded-lg border border-slate-600 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+                  className="flex-1 rounded-lg border border-foreground/20 px-4 py-3 text-sm font-medium text-foreground/70 hover:bg-foreground/5 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleComplete}
                   disabled={!consentChecked || isCompleting}
-                  className="flex-1 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:from-emerald-400 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isCompleting ? 'Enabling Encryption...' : 'Enable Encryption'}
                 </button>
