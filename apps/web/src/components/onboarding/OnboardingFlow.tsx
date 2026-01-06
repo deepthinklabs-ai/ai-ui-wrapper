@@ -6,9 +6,7 @@
  * 1. Email Verification (2FA setup)
  * 2. Encryption Welcome - Educate about privacy and encryption
  * 3. Encryption Setup - Set password and save recovery codes
- * 4. Plan Selection (7-day Trial or Pro)
- * 5. If Trial -> Redirect to dashboard (trial includes API access)
- * 6. If Pro -> Redirect to Stripe checkout ($50/month)
+ * 4. Complete onboarding and redirect to settings to add API keys
  *
  * The flow automatically detects completed steps and resumes from the correct point.
  */
@@ -20,8 +18,6 @@ import { useRouter } from 'next/navigation';
 import EmailVerification from './EmailVerification';
 import EncryptionWelcome from './EncryptionWelcome';
 import EncryptionSetupOnboarding from './EncryptionSetupOnboarding';
-import PlanSelection from './PlanSelection';
-import { useStripeCheckout } from '@/hooks/useStripeCheckout';
 import { useEncryption } from '@/contexts/EncryptionContext';
 import { supabase } from '@/lib/supabaseClient';
 import type { EncryptionKeyBundle, RecoveryCodeBundle } from '@/lib/encryption';
@@ -33,7 +29,7 @@ type OnboardingFlowProps = {
   onLogout?: () => void;
 };
 
-type OnboardingStep = 'loading' | 'email-verification' | 'encryption-welcome' | 'encryption-setup' | 'plan-selection';
+type OnboardingStep = 'loading' | 'email-verification' | 'encryption-welcome' | 'encryption-setup';
 
 export default function OnboardingFlow({ userId, userEmail, onComplete, onLogout }: OnboardingFlowProps) {
   const router = useRouter();
@@ -41,17 +37,6 @@ export default function OnboardingFlow({ userId, userEmail, onComplete, onLogout
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { saveEncryptionSetup, setDataKey, state: encryptionState } = useEncryption();
-
-  // Get Stripe price ID from environment
-  const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
-
-  // DEBUG: Log the price ID from client
-  console.log('[OnboardingFlow] Price ID from env:', priceId);
-
-  const { startCheckout, isUpgrading } = useStripeCheckout({
-    userId,
-    priceId,
-  });
 
   // Determine initial step based on what's already completed
   useEffect(() => {
@@ -86,8 +71,8 @@ export default function OnboardingFlow({ userId, userEmail, onComplete, onLogout
         }
 
         if (email2FAComplete && encryptionComplete) {
-          // Both complete - go to plan selection
-          setStep('plan-selection');
+          // Both complete - finish onboarding and go to settings
+          await completeOnboardingAndRedirect();
         } else if (email2FAComplete) {
           // Email done, encryption not done - go to encryption welcome
           setStep('encryption-welcome');
@@ -106,6 +91,21 @@ export default function OnboardingFlow({ userId, userEmail, onComplete, onLogout
     }
   }, [userId, encryptionState.hasEncryption, encryptionState.isLoading]);
 
+  // Complete onboarding and redirect to settings
+  const completeOnboardingAndRedirect = useCallback(async () => {
+    setIsProcessing(true);
+    try {
+      // Mark onboarding as complete
+      await onComplete();
+
+      // Redirect to settings page so user can add their API keys
+      router.push('/settings?onboarding=true');
+    } catch (error) {
+      console.error('[Onboarding] Failed to complete onboarding:', error);
+      setIsProcessing(false);
+    }
+  }, [onComplete, router]);
+
   // Step 1: Email verification complete, move to encryption welcome
   const handleEmailVerificationComplete = useCallback(() => {
     setStep('encryption-welcome');
@@ -116,7 +116,7 @@ export default function OnboardingFlow({ userId, userEmail, onComplete, onLogout
     setStep('encryption-setup');
   }, []);
 
-  // Step 2: Encryption setup complete, move to plan selection
+  // Step 3: Encryption setup complete, finish onboarding and redirect to settings
   const handleEncryptionSetupComplete = useCallback(async (
     keyBundle: EncryptionKeyBundle,
     recoveryBundle: RecoveryCodeBundle,
@@ -130,54 +130,22 @@ export default function OnboardingFlow({ userId, userEmail, onComplete, onLogout
       // Set the data key in context (unlocks encryption)
       setDataKey(dataKey);
 
-      // Move to plan selection
-      setStep('plan-selection');
+      // Complete onboarding and redirect to settings
+      await completeOnboardingAndRedirect();
     } catch (error) {
       console.error('[Onboarding] Failed to save encryption setup:', error);
       throw error;
     }
-  }, [saveEncryptionSetup, setDataKey]);
-
-  // Step 3a: User selected trial plan (7-day free trial with credit card)
-  const handleSelectFreePlan = async () => {
-    setIsProcessing(true);
-    try {
-      // DO NOT mark onboarding complete here - wait for Stripe webhook
-      // This prevents users from bypassing payment by clicking back
-      // The webhook will set onboarding_completed: true after successful checkout
-
-      // Redirect to Stripe checkout with 7-day trial
-      await startCheckout(7);
-    } catch (err) {
-      console.error('Error starting trial:', err);
-      setIsProcessing(false);
-    }
-  };
-
-  // Step 3b: User selected pro plan (immediate billing, no trial)
-  const handleSelectProPlan = async () => {
-    setIsProcessing(true);
-    try {
-      // DO NOT mark onboarding complete here - wait for Stripe webhook
-      // This prevents users from bypassing payment by clicking back
-      // The webhook will set onboarding_completed: true after successful checkout
-
-      // Redirect to Stripe checkout (no trial, immediate billing)
-      await startCheckout();
-    } catch (err) {
-      console.error('Error starting Pro upgrade:', err);
-      setIsProcessing(false);
-    }
-  };
+  }, [saveEncryptionSetup, setDataKey, completeOnboardingAndRedirect]);
 
   // Render current step
   switch (step) {
     case 'loading':
       return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-950">
+        <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
-            <p className="mt-4 text-slate-400">Loading...</p>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-sky border-r-transparent"></div>
+            <p className="mt-4 text-foreground/60">Loading...</p>
           </div>
         </div>
       );
@@ -205,16 +173,6 @@ export default function OnboardingFlow({ userId, userEmail, onComplete, onLogout
           userEmail={userEmail}
           onComplete={handleEncryptionSetupComplete}
           onBack={() => setStep('encryption-welcome')}
-        />
-      );
-
-    case 'plan-selection':
-      return (
-        <PlanSelection
-          onSelectFreePlan={handleSelectFreePlan}
-          onSelectProPlan={handleSelectProPlan}
-          onLogout={onLogout}
-          loading={isProcessing || isUpgrading}
         />
       );
 

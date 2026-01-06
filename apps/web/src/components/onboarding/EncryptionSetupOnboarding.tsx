@@ -163,48 +163,48 @@ export default function EncryptionSetupOnboarding({
   }, [keyBundle, recoveryBundle, deliveryMethod, dataKey, onComplete]);
 
   return (
-    <div className="h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 overflow-y-auto">
+    <div className="h-screen overflow-y-auto">
       <div className="flex items-center justify-center p-4 py-12">
         <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-4 shadow-lg shadow-green-500/25">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 mb-4 shadow-lg shadow-emerald-500/25">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             {step === 'password' && 'Create Your Encryption Password'}
             {step === 'recovery-codes' && 'Save Your Recovery Codes'}
             {step === 'confirm' && 'Confirm Setup'}
           </h1>
-          <p className="text-slate-400">
+          <p className="text-foreground/60">
             Step {step === 'password' ? '1' : step === 'recovery-codes' ? '2' : '3'} of 3
           </p>
 
           {/* Progress bar */}
           <div className="mt-4 flex gap-2 max-w-xs mx-auto">
-            <div className={`h-1.5 flex-1 rounded-full ${step === 'password' ? 'bg-green-500' : 'bg-green-500'}`} />
-            <div className={`h-1.5 flex-1 rounded-full ${step === 'recovery-codes' || step === 'confirm' ? 'bg-green-500' : 'bg-slate-700'}`} />
-            <div className={`h-1.5 flex-1 rounded-full ${step === 'confirm' ? 'bg-green-500' : 'bg-slate-700'}`} />
+            <div className={`h-1.5 flex-1 rounded-full ${step === 'password' ? 'bg-emerald-500' : 'bg-emerald-500'}`} />
+            <div className={`h-1.5 flex-1 rounded-full ${step === 'recovery-codes' || step === 'confirm' ? 'bg-emerald-500' : 'bg-foreground/20'}`} />
+            <div className={`h-1.5 flex-1 rounded-full ${step === 'confirm' ? 'bg-emerald-500' : 'bg-foreground/20'}`} />
           </div>
         </div>
 
         {/* Main Card */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-8">
+        <div className="bg-white/80 backdrop-blur-md border border-white/40 rounded-2xl p-8">
           {/* Step 1: Password */}
           {step === 'password' && (
             <div className="space-y-6">
-              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                <p className="text-sm text-blue-200">
+              <div className="p-4 bg-sky/10 border border-sky/30 rounded-xl">
+                <p className="text-sm text-foreground/80">
                   This password encrypts all your messages. It's separate from your login password for maximum security.
-                  <span className="text-blue-300 font-semibold"> Choose something memorable but strong.</span>
+                  <span className="text-sky font-semibold"> Choose something memorable but strong.</span>
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground/80 mb-2">
                     Encryption Password
                   </label>
                   <div className="relative">
@@ -214,12 +214,12 @@ export default function EncryptionSetupOnboarding({
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Create a strong password (12+ characters)"
                       autoFocus
-                      className="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3.5 pr-10 text-slate-100 placeholder-slate-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                      className="w-full rounded-xl border border-foreground/20 bg-white/80 px-4 py-3.5 pr-10 text-foreground placeholder-foreground/40 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/60"
                       tabIndex={-1}
                     >
                       {showPassword ? (
@@ -237,7 +237,7 @@ export default function EncryptionSetupOnboarding({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground/80 mb-2">
                     Confirm Password
                   </label>
                   <div className="relative">
@@ -246,12 +246,12 @@ export default function EncryptionSetupOnboarding({
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Confirm your password"
-                      className="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3.5 pr-10 text-slate-100 placeholder-slate-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                      className="w-full rounded-xl border border-foreground/20 bg-white/80 px-4 py-3.5 pr-10 text-foreground placeholder-foreground/40 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground/60"
                       tabIndex={-1}
                     >
                       {showConfirmPassword ? (
@@ -270,22 +270,22 @@ export default function EncryptionSetupOnboarding({
 
                 {passwordError && (
                   <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <p className="text-sm text-red-300">{passwordError}</p>
+                    <p className="text-sm text-red-600">{passwordError}</p>
                   </div>
                 )}
 
                 {/* Password strength indicators */}
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className={`flex items-center gap-2 ${password.length >= 12 ? 'text-green-400' : 'text-slate-500'}`}>
+                  <div className={`flex items-center gap-2 ${password.length >= 12 ? 'text-emerald-600' : 'text-foreground/50'}`}>
                     {password.length >= 12 ? '✓' : '○'} 12+ characters
                   </div>
-                  <div className={`flex items-center gap-2 ${/[A-Z]/.test(password) ? 'text-green-400' : 'text-slate-500'}`}>
+                  <div className={`flex items-center gap-2 ${/[A-Z]/.test(password) ? 'text-emerald-600' : 'text-foreground/50'}`}>
                     {/[A-Z]/.test(password) ? '✓' : '○'} Uppercase letter
                   </div>
-                  <div className={`flex items-center gap-2 ${/[a-z]/.test(password) ? 'text-green-400' : 'text-slate-500'}`}>
+                  <div className={`flex items-center gap-2 ${/[a-z]/.test(password) ? 'text-emerald-600' : 'text-foreground/50'}`}>
                     {/[a-z]/.test(password) ? '✓' : '○'} Lowercase letter
                   </div>
-                  <div className={`flex items-center gap-2 ${/[0-9]/.test(password) ? 'text-green-400' : 'text-slate-500'}`}>
+                  <div className={`flex items-center gap-2 ${/[0-9]/.test(password) ? 'text-emerald-600' : 'text-foreground/50'}`}>
                     {/[0-9]/.test(password) ? '✓' : '○'} Number
                   </div>
                 </div>
@@ -295,14 +295,14 @@ export default function EncryptionSetupOnboarding({
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={onBack}
-                  className="flex-1 py-3.5 px-4 rounded-xl border border-slate-600 text-slate-300 font-medium hover:bg-slate-700 transition-colors"
+                  className="flex-1 py-3.5 px-4 rounded-xl border border-foreground/20 text-foreground/70 font-medium hover:bg-foreground/5 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={handlePasswordSubmit}
                   disabled={isGenerating || !password || !confirmPassword}
-                  className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold hover:from-emerald-400 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGenerating ? 'Generating...' : 'Continue'}
                 </button>
@@ -313,22 +313,22 @@ export default function EncryptionSetupOnboarding({
           {/* Step 2: Recovery Codes */}
           {step === 'recovery-codes' && (
             <div className="space-y-6">
-              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-                <p className="text-sm text-green-200">
-                  <span className="font-semibold">Your encryption password is set!</span> Now save these recovery codes.
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                <p className="text-sm text-foreground/80">
+                  <span className="font-semibold text-emerald-700">Your encryption password is set!</span> Now save these recovery codes.
                   They're your only backup if you forget your password.
                 </p>
               </div>
 
               {/* Recovery Codes Grid */}
-              <div className="p-4 bg-slate-900 border border-slate-600 rounded-xl">
+              <div className="p-4 bg-foreground/5 border border-foreground/20 rounded-xl">
                 <div className="grid grid-cols-3 gap-2">
                   {recoveryCodes.map((code, index) => (
                     <div
                       key={index}
-                      className="bg-slate-800 rounded px-3 py-2 font-mono text-sm text-slate-200 text-center"
+                      className="bg-white/80 border border-foreground/10 rounded px-3 py-2 font-mono text-sm text-foreground text-center"
                     >
-                      <span className="text-slate-500 text-xs mr-1">{index + 1}.</span>
+                      <span className="text-foreground/50 text-xs mr-1">{index + 1}.</span>
                       {code}
                     </div>
                   ))}
@@ -337,22 +337,22 @@ export default function EncryptionSetupOnboarding({
 
               {/* Delivery Options */}
               <div className="space-y-3">
-                <p className="text-sm font-medium text-slate-300">Save your codes:</p>
+                <p className="text-sm font-medium text-foreground">Save your codes:</p>
                 <div className="grid grid-cols-3 gap-3">
                   <button
                     onClick={handleDownloadPDF}
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
                       deliveryMethod === 'download_pdf'
-                        ? 'border-green-500 bg-green-500/10'
-                        : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : 'border-foreground/20 bg-white/60 hover:border-foreground/30'
                     }`}
                   >
-                    <svg className="w-6 h-6 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-sm text-slate-200">Download PDF</span>
+                    <span className="text-sm text-foreground">Download PDF</span>
                     {deliveryMethod === 'download_pdf' && (
-                      <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
@@ -362,16 +362,16 @@ export default function EncryptionSetupOnboarding({
                     onClick={handlePrint}
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
                       deliveryMethod === 'print'
-                        ? 'border-green-500 bg-green-500/10'
-                        : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : 'border-foreground/20 bg-white/60 hover:border-foreground/30'
                     }`}
                   >
-                    <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
-                    <span className="text-sm text-slate-200">Print</span>
+                    <span className="text-sm text-foreground">Print</span>
                     {deliveryMethod === 'print' && (
-                      <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
@@ -381,16 +381,16 @@ export default function EncryptionSetupOnboarding({
                     onClick={handleCopyToClipboard}
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
                       deliveryMethod === 'copy'
-                        ? 'border-green-500 bg-green-500/10'
-                        : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : 'border-foreground/20 bg-white/60 hover:border-foreground/30'
                     }`}
                   >
-                    <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-lavender" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                     </svg>
-                    <span className="text-sm text-slate-200">{codesCopied ? 'Copied!' : 'Copy'}</span>
+                    <span className="text-sm text-foreground">{codesCopied ? 'Copied!' : 'Copy'}</span>
                     {deliveryMethod === 'copy' && (
-                      <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
@@ -399,8 +399,8 @@ export default function EncryptionSetupOnboarding({
               </div>
 
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                <p className="text-sm text-amber-200">
-                  <span className="font-semibold">Keep these safe!</span> Each code can only be used once.
+                <p className="text-sm text-foreground/70">
+                  <span className="font-semibold text-amber-700">Keep these safe!</span> Each code can only be used once.
                   Store them in a password manager or a secure location.
                 </p>
               </div>
@@ -409,14 +409,14 @@ export default function EncryptionSetupOnboarding({
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setStep('password')}
-                  className="flex-1 py-3.5 px-4 rounded-xl border border-slate-600 text-slate-300 font-medium hover:bg-slate-700 transition-colors"
+                  className="flex-1 py-3.5 px-4 rounded-xl border border-foreground/20 text-foreground/70 font-medium hover:bg-foreground/5 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => setStep('confirm')}
                   disabled={!codesDelivered}
-                  className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold hover:from-emerald-400 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   I've Saved My Codes
                 </button>
@@ -427,23 +427,23 @@ export default function EncryptionSetupOnboarding({
           {/* Step 3: Confirm */}
           {step === 'confirm' && (
             <div className="space-y-6">
-              <div className="p-4 bg-slate-900 border border-slate-600 rounded-xl">
-                <h3 className="text-sm font-medium text-slate-200 mb-3">Setup Summary:</h3>
-                <ul className="space-y-2 text-sm text-slate-300">
+              <div className="p-4 bg-foreground/5 border border-foreground/20 rounded-xl">
+                <h3 className="text-sm font-medium text-foreground mb-3">Setup Summary:</h3>
+                <ul className="space-y-2 text-sm text-foreground/70">
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     Encryption password created
                   </li>
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     12 recovery codes generated
                   </li>
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     Codes saved via: {deliveryMethod === 'download_pdf' ? 'PDF Download' : deliveryMethod === 'print' ? 'Print' : 'Clipboard'}
@@ -451,26 +451,26 @@ export default function EncryptionSetupOnboarding({
                 </ul>
               </div>
 
-              <label className="flex items-start gap-4 cursor-pointer p-4 bg-slate-900 border border-slate-600 rounded-xl hover:border-slate-500 transition-colors">
+              <label className="flex items-start gap-4 cursor-pointer p-4 bg-foreground/5 border border-foreground/20 rounded-xl hover:border-foreground/30 transition-colors">
                 <input
                   type="checkbox"
                   checked={consentChecked}
                   onChange={(e) => setConsentChecked(e.target.checked)}
-                  className="mt-0.5 h-5 w-5 rounded border-slate-500 bg-slate-700 text-green-500 focus:ring-green-500 focus:ring-offset-0"
+                  className="mt-0.5 h-5 w-5 rounded border-foreground/20 bg-white/80 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
                 />
-                <span className="text-sm text-slate-200 leading-relaxed">
+                <span className="text-sm text-foreground/80 leading-relaxed">
                   I understand that if I lose both my encryption password and all recovery codes,
-                  <span className="text-amber-400 font-semibold"> my encrypted messages cannot be recovered by anyone</span>, including the service provider.
+                  <span className="text-amber-600 font-semibold"> my encrypted messages cannot be recovered by anyone</span>, including the service provider.
                 </span>
               </label>
 
               <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  <p className="text-sm text-slate-300">
-                    <span className="text-red-300 font-semibold">This is zero-knowledge encryption.</span> We do not store your encryption key and cannot recover your messages. This is by design - it's what keeps your data truly private.
+                  <p className="text-sm text-foreground/70">
+                    <span className="text-red-600 font-semibold">This is zero-knowledge encryption.</span> We do not store your encryption key and cannot recover your messages. This is by design - it's what keeps your data truly private.
                   </p>
                 </div>
               </div>
@@ -479,14 +479,14 @@ export default function EncryptionSetupOnboarding({
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setStep('recovery-codes')}
-                  className="flex-1 py-3.5 px-4 rounded-xl border border-slate-600 text-slate-300 font-medium hover:bg-slate-700 transition-colors"
+                  className="flex-1 py-3.5 px-4 rounded-xl border border-foreground/20 text-foreground/70 font-medium hover:bg-foreground/5 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleComplete}
                   disabled={!consentChecked || isCompleting}
-                  className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold hover:from-emerald-400 hover:to-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isCompleting ? 'Completing...' : 'Complete Setup'}
                 </button>
