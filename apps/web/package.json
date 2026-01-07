@@ -15,7 +15,7 @@
     "@elevenlabs/elevenlabs-js": "^2.27.0",
     "@google-cloud/secret-manager": "^6.1.1",
     "@google/generative-ai": "^0.24.1",
-    "@modelcontextprotocol/sdk": "^1.22.0",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@modelcontextprotocol/server-github": "^2025.4.8",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
