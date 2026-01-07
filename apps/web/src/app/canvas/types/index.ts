@@ -40,6 +40,7 @@ export interface Canvas {
 
 export type CanvasNodeType =
   | 'GENESIS_BOT'
+  | 'SSM_AGENT'
   | 'TRAINING_SESSION'
   | 'BOARDROOM'
   | 'CABLE_CHANNEL'
@@ -647,3 +648,9 @@ export interface UseWorkflowRunnerResult {
   stopWorkflow: () => Promise<void>;
   resumeWorkflow: () => Promise<void>;
 }
+
+// ============================================================================
+// SSM (STATE-SPACE MODEL) TYPES
+// ============================================================================
+
+export * from './ssm';
