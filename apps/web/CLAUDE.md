@@ -42,6 +42,21 @@ gh pr list --state all -L 5   # Recent pull requests
 - **Development branch:** `staging`
 - PRs merge to `staging` first, then to `main`
 
+### 7. Git Workflow for AI Assistants
+**IMPORTANT:** Always automatically commit and push changes to `staging` after completing any code modifications. Do not wait for the user to ask - push immediately after:
+1. Completing a feature or fix
+2. Verifying the build passes
+3. Creating any new files or modifications
+
+```bash
+# Standard workflow after making changes:
+git add -A
+git commit -m "Description of changes"
+git push origin staging
+```
+
+Only create PRs to `main` when explicitly requested by the user.
+
 ---
 
 ## Project Overview
