@@ -8,9 +8,10 @@
  */
 
 import React, { useState } from 'react';
-import type { CanvasNode, GenesisBotNodeConfig } from '../types';
+import type { CanvasNode, GenesisBotNodeConfig, SSMAgentNodeConfig } from '../types';
 import { NODE_DEFINITIONS } from '../lib/nodeRegistry';
 import GenesisBotConfigPanel from './config/GenesisBotConfigPanel';
+import { SSMAgentConfigPanel } from '../features/ssm-agent';
 import { useCanvasContext } from '../context/CanvasStateContext';
 import { useAskAnswer, QueryInput, QueryReviewPanel, AskAnswerToggle } from '../features/ask-answer';
 import { findEdgeBetweenNodes } from '../features/ask-answer/lib/validation';
@@ -182,8 +183,19 @@ export default function NodeInspector({
               />
             )}
 
+            {/* SSM Agent Configuration */}
+            {node.type === 'SSM_AGENT' && (
+              <SSMAgentConfigPanel
+                config={node.config as SSMAgentNodeConfig}
+                onUpdate={async (updates) => {
+                  onUpdateNode({ config: { ...node.config, ...updates } });
+                  return true;
+                }}
+              />
+            )}
+
             {/* Placeholder for other node types */}
-            {node.type !== 'GENESIS_BOT' && (
+            {node.type !== 'GENESIS_BOT' && node.type !== 'SSM_AGENT' && (
               <div className="rounded-lg border border-white/40 bg-white/40 p-4">
                 <p className="text-xs text-foreground/60">
                   Configuration panel for {definition.label} nodes will be displayed here.
