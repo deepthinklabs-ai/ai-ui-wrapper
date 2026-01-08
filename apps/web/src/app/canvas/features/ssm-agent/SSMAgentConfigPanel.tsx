@@ -218,8 +218,13 @@ export default function SSMAgentConfigPanel({
             <label className="block text-xs text-foreground/60 mb-1">Name</label>
             <input
               type="text"
-              value={currentConfig.name}
-              onChange={(e) => onUpdate({ name: e.target.value })}
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onBlur={() => {
+                if (formData.name !== config.name) {
+                  onUpdate({ name: formData.name });
+                }
+              }}
               className="w-full px-3 py-2 border border-foreground/20 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
@@ -237,8 +242,13 @@ export default function SSMAgentConfigPanel({
               Describe what you want to monitor for:
             </label>
             <textarea
-              value={currentConfig.monitoring_description}
-              onChange={(e) => onUpdate({ monitoring_description: e.target.value })}
+              value={formData.monitoring_description}
+              onChange={(e) => setFormData(prev => ({ ...prev, monitoring_description: e.target.value }))}
+              onBlur={() => {
+                if (formData.monitoring_description !== config.monitoring_description) {
+                  onUpdate({ monitoring_description: formData.monitoring_description });
+                }
+              }}
               rows={3}
               className="w-full px-3 py-2 border border-foreground/20 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
               placeholder="e.g., Detect phishing attempts, suspicious links, and urgent money transfer requests..."
@@ -253,7 +263,10 @@ export default function SSMAgentConfigPanel({
                 <button
                   key={example.title}
                   type="button"
-                  onClick={() => onUpdate({ monitoring_description: example.description })}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, monitoring_description: example.description }));
+                    onUpdate({ monitoring_description: example.description });
+                  }}
                   className="text-xs px-2 py-1 bg-foreground/5 hover:bg-foreground/10 rounded-full text-foreground/70 transition-colors"
                 >
                   {example.title}
