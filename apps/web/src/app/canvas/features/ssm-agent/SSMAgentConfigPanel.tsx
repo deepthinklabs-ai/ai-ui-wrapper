@@ -23,8 +23,6 @@ import type {
 } from '../../types/ssm';
 import {
   DEFAULT_SSM_CONFIG,
-  EVENT_SOURCE_OPTIONS,
-  POLLING_SOURCE_OPTIONS,
   AI_PROVIDER_OPTIONS,
   MONITORING_EXAMPLES,
   hasRulesConfigured,
@@ -828,32 +826,6 @@ export default function SSMAgentConfigPanel({
           </div>
         </section>
       )}
-
-      {/* Section: Event Source */}
-      <section>
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <span>📡</span> Event Source
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
-          {EVENT_SOURCE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onUpdate({ event_source_type: option.value })}
-              className={`
-                flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors text-left
-                ${currentConfig.event_source_type === option.value
-                  ? 'border-teal-500 bg-teal-50 text-teal-700'
-                  : 'border-foreground/20 hover:border-foreground/30 bg-white'
-                }
-              `}
-            >
-              <span>{option.icon}</span>
-              <span className="text-xs">{option.label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
 
       {/* Runtime Stats */}
       {(currentConfig.events_processed || 0) > 0 && (
