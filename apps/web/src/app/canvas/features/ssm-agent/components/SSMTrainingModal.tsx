@@ -14,6 +14,7 @@
 'use client';
 
 import React, { useEffect, useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { SSMChatMessages } from './SSMChatMessages';
 import { SSMChatInput } from './SSMChatInput';
 import type {
@@ -122,6 +123,14 @@ export function SSMTrainingModal({
   onFinalize,
   onReset,
 }: SSMTrainingModalProps) {
+  // Track if mounted (for SSR safety with portal)
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   // Handle ESC key to close
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -161,11 +170,13 @@ export function SSMTrainingModal({
     await onFinalize();
   }, [onFinalize]);
 
-  if (!isOpen) return null;
+  // Don't render until mounted (SSR safety) or if not open
+  if (!mounted || !isOpen) return null;
 
-  return (
+  // Use portal to render modal at document.body level (outside sidebar)
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
       <div
@@ -305,6 +316,9 @@ export function SSMTrainingModal({
       </div>
     </div>
   );
+
+  // Render via portal to escape sidebar constraints
+  return createPortal(modalContent, document.body);
 }
 
 // ============================================================================

@@ -155,15 +155,21 @@ async function generateRulesWithAI(
 
 async function generateWithClaude(prompt: string): Promise<GenerationResult> {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      console.error('[SSM Finalize] Missing ANTHROPIC_API_KEY');
+      return { success: false, error: 'Claude API key not configured' };
+    }
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-haiku-latest',
+        model: 'claude-3-haiku-20240307',
         max_tokens: 2000,
         messages: [
           { role: 'user', content: prompt },
@@ -172,8 +178,9 @@ async function generateWithClaude(prompt: string): Promise<GenerationResult> {
     });
 
     if (!response.ok) {
-      console.error('[SSM Finalize] Claude API error:', await response.text());
-      return { success: false, error: 'Claude API error' };
+      const errorText = await response.text();
+      console.error('[SSM Finalize] Claude API error:', response.status, errorText);
+      return { success: false, error: `Claude API error: ${response.status}` };
     }
 
     const data = await response.json();

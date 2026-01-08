@@ -184,7 +184,7 @@ async function generateWithClaude(prompt: string): Promise<SSMGenerateRulesRespo
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-haiku-latest', // Use cheap model for rule generation
+        model: 'claude-3-haiku-20240307', // Use cheap model for rule generation
         max_tokens: 2000,
         messages: [
           {
