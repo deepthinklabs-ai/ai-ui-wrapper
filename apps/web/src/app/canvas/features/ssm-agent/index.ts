@@ -13,6 +13,13 @@ export { default as SSMAgentConfigPanel } from './SSMAgentConfigPanel';
 
 // Hooks
 export { useSSMConfig } from './hooks/useSSMConfig';
+export {
+  useSSMExecution,
+  type SSMExecutionStatus,
+  type SSMExecuteParams,
+  type SSMExecuteResult,
+  type UseSSMExecutionResult,
+} from './hooks/useSSMExecution';
 
 // Lib - Defaults
 export {

@@ -16,6 +16,7 @@ import { useCanvasContext } from '../context/CanvasStateContext';
 import { useAskAnswer, QueryInput, QueryReviewPanel, AskAnswerToggle } from '../features/ask-answer';
 import { findEdgeBetweenNodes } from '../features/ask-answer/lib/validation';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
+import { useAuthSession } from '@/hooks/useAuthSession';
 
 interface NodeInspectorProps {
   node: CanvasNode | null;
@@ -36,8 +37,9 @@ export default function NodeInspector({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Ask/Answer integration
-  const { nodes, edges } = useCanvasContext();
+  const { nodes, edges, canvas } = useCanvasContext();
   const askAnswer = useAskAnswer();
+  const { user } = useAuthSession();
 
   // Find ALL connected Genesis Bot nodes (for toggle section)
   const allGenesisBotConnections = node && node.type === 'GENESIS_BOT'
@@ -184,8 +186,11 @@ export default function NodeInspector({
             )}
 
             {/* SSM Agent Configuration */}
-            {node.type === 'SSM_AGENT' && (
+            {node.type === 'SSM_AGENT' && canvas.current && user && (
               <SSMAgentConfigPanel
+                nodeId={node.id}
+                canvasId={canvas.current.id}
+                userId={user.id}
                 config={node.config as SSMAgentNodeConfig}
                 onUpdate={async (updates) => {
                   onUpdateNode({ config: { ...node.config, ...updates } });

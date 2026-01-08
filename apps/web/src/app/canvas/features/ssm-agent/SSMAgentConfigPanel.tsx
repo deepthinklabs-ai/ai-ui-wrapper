@@ -11,12 +11,13 @@
  * 4. Event Source - How events are received
  * 5. Output - Format and alert settings
  * 6. State Management - Retention and checkpointing
+ * 7. Test Execution - Test the SSM with sample data
  */
 
 'use client';
 
-import React from 'react';
-import type { SSMAgentNodeConfig, SSMModelProvider } from '../../types/ssm';
+import React, { useState, useCallback } from 'react';
+import type { SSMAgentNodeConfig, SSMModelProvider, SSMAlert } from '../../types/ssm';
 import { useSSMConfig } from './hooks/useSSMConfig';
 import {
   SSM_MODEL_OPTIONS,
@@ -31,15 +32,31 @@ import {
 // ============================================================================
 
 interface SSMAgentConfigPanelProps {
+  nodeId: string;
+  canvasId: string;
+  userId: string;
   config: SSMAgentNodeConfig;
   onUpdate: (updates: Partial<SSMAgentNodeConfig>) => Promise<boolean>;
+}
+
+interface TestExecutionResult {
+  success: boolean;
+  requestId: string;
+  result?: {
+    type: string;
+    data: unknown;
+    tokensUsed?: number;
+  };
+  alert?: SSMAlert;
+  error?: string;
+  latencyMs: number;
 }
 
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-export default function SSMAgentConfigPanel({ config, onUpdate }: SSMAgentConfigPanelProps) {
+export default function SSMAgentConfigPanel({ nodeId, canvasId, userId, config, onUpdate }: SSMAgentConfigPanelProps) {
   const {
     config: formConfig,
     updateField,
@@ -57,6 +74,54 @@ export default function SSMAgentConfigPanel({ config, onUpdate }: SSMAgentConfig
     },
     autoSaveDelay: 500,
   });
+
+  // Test execution state
+  const [testEventContent, setTestEventContent] = useState('');
+  const [isTestRunning, setIsTestRunning] = useState(false);
+  const [testResult, setTestResult] = useState<TestExecutionResult | null>(null);
+
+  /**
+   * Execute a test with sample event content
+   */
+  const handleTestExecution = useCallback(async () => {
+    if (!testEventContent.trim()) {
+      setTestResult({
+        success: false,
+        requestId: '',
+        error: 'Please enter test event content',
+        latencyMs: 0,
+      });
+      return;
+    }
+
+    setIsTestRunning(true);
+    setTestResult(null);
+
+    try {
+      const response = await fetch('/api/canvas/ssm/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          canvasId,
+          nodeId,
+          userId,
+          eventContent: testEventContent,
+        }),
+      });
+
+      const result: TestExecutionResult = await response.json();
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
+        success: false,
+        requestId: '',
+        error: error instanceof Error ? error.message : 'Test execution failed',
+        latencyMs: 0,
+      });
+    } finally {
+      setIsTestRunning(false);
+    }
+  }, [canvasId, nodeId, userId, testEventContent]);
 
   return (
     <div className="space-y-6 p-4">
@@ -372,6 +437,133 @@ export default function SSMAgentConfigPanel({ config, onUpdate }: SSMAgentConfig
               <p className="text-xs text-foreground/50">Save SSM state periodically for recovery</p>
             </div>
           </label>
+        </div>
+      </section>
+
+      {/* Section: Test Execution */}
+      <section>
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <span>🧪</span> Test Execution
+        </h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-foreground/60 mb-1">Test Event Content</label>
+            <textarea
+              value={testEventContent}
+              onChange={(e) => setTestEventContent(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-foreground/20 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono text-xs"
+              placeholder="Enter sample event content to test the SSM monitoring...&#10;&#10;Example: User login from new IP address 192.168.1.100 at 2024-01-15 14:30:00"
+              disabled={isTestRunning}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleTestExecution}
+            disabled={isTestRunning || !testEventContent.trim()}
+            className={`
+              w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors
+              flex items-center justify-center gap-2
+              ${isTestRunning || !testEventContent.trim()
+                ? 'bg-foreground/10 text-foreground/50 cursor-not-allowed'
+                : 'bg-teal-500 text-white hover:bg-teal-600'
+              }
+            `}
+          >
+            {isTestRunning ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Running Test...
+              </>
+            ) : (
+              <>
+                <span>▶</span>
+                Run Test
+              </>
+            )}
+          </button>
+
+          {/* Test Result Display */}
+          {testResult && (
+            <div
+              className={`
+                p-3 rounded-lg border
+                ${testResult.success
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
+                }
+              `}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className={testResult.success ? 'text-green-600' : 'text-red-600'}>
+                  {testResult.success ? '✓' : '✕'}
+                </span>
+                <span className={`text-sm font-medium ${testResult.success ? 'text-green-700' : 'text-red-700'}`}>
+                  {testResult.success ? 'Test Successful' : 'Test Failed'}
+                </span>
+                {testResult.latencyMs > 0 && (
+                  <span className="text-xs text-foreground/50 ml-auto">
+                    {testResult.latencyMs}ms
+                  </span>
+                )}
+              </div>
+
+              {testResult.error && (
+                <p className="text-xs text-red-600">{testResult.error}</p>
+              )}
+
+              {testResult.success && testResult.result && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-foreground/60">Output Type:</span>
+                    <span className="text-foreground/80 capitalize">{testResult.result.type}</span>
+                    {testResult.result.tokensUsed && (
+                      <>
+                        <span className="text-foreground/40">|</span>
+                        <span className="text-foreground/60">Tokens:</span>
+                        <span className="text-foreground/80">{testResult.result.tokensUsed}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Alert Display */}
+                  {testResult.alert && (
+                    <div className={`
+                      p-2 rounded border text-xs
+                      ${testResult.alert.severity === 'critical' ? 'bg-red-100 border-red-300' :
+                        testResult.alert.severity === 'high' ? 'bg-orange-100 border-orange-300' :
+                        testResult.alert.severity === 'medium' ? 'bg-amber-100 border-amber-300' :
+                        'bg-blue-100 border-blue-300'}
+                    `}>
+                      <div className="flex items-center gap-2">
+                        <span className={`
+                          w-2 h-2 rounded-full
+                          ${testResult.alert.severity === 'critical' ? 'bg-red-500' :
+                            testResult.alert.severity === 'high' ? 'bg-orange-500' :
+                            testResult.alert.severity === 'medium' ? 'bg-amber-500' :
+                            'bg-blue-500'}
+                        `} />
+                        <span className="font-medium">{testResult.alert.title}</span>
+                        <span className="text-foreground/60 capitalize ml-auto">
+                          {testResult.alert.severity}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Raw Result Data */}
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-foreground/60 hover:text-foreground/80">
+                      View Raw Output
+                    </summary>
+                    <pre className="mt-2 p-2 bg-foreground/5 rounded overflow-x-auto max-h-32 overflow-y-auto">
+                      {JSON.stringify(testResult.result.data, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
