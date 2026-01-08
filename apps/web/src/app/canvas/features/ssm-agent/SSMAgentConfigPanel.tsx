@@ -140,13 +140,22 @@ export default function SSMAgentConfigPanel({
     alerts: SSMAlert[];
     error?: string;
   } | null>(null);
+  const [lastPollTime, setLastPollTime] = useState<Date | null>(null);
 
-  // Handle manual poll
-  const handlePollNow = useCallback(async () => {
-    if (isPolling || !isEnabled) return;
+  // Check if Gmail is connected
+  const isGmailConnected = currentConfig.gmail?.enabled && currentConfig.gmail?.connectionId;
+
+  // Automatic polling interval (60 seconds)
+  const POLL_INTERVAL_MS = 60 * 1000;
+
+  // Handle poll (used by both manual and automatic)
+  const executePoll = useCallback(async (isAutomatic = false) => {
+    if (isPolling || !isEnabled || !isGmailConnected) return;
 
     setIsPolling(true);
-    setPollResult(null);
+    if (!isAutomatic) {
+      setPollResult(null);
+    }
 
     try {
       const response = await apiClient.post<{
@@ -161,10 +170,15 @@ export default function SSMAgentConfigPanel({
         userId,
       });
 
+      setLastPollTime(new Date());
+
       if (response.ok && response.data) {
-        setPollResult(response.data);
+        // Only show result if alerts were generated or it's a manual poll
+        if (!isAutomatic || response.data.alertsGenerated > 0) {
+          setPollResult(response.data);
+        }
         // Refresh form data with updated stats
-        if (response.data.success) {
+        if (response.data.success && response.data.eventsProcessed > 0) {
           setFormData(prev => ({
             ...prev,
             events_processed: (prev.events_processed || 0) + response.data!.eventsProcessed,
@@ -172,7 +186,7 @@ export default function SSMAgentConfigPanel({
             last_event_at: new Date().toISOString(),
           }));
         }
-      } else {
+      } else if (!isAutomatic) {
         setPollResult({
           success: false,
           eventsProcessed: 0,
@@ -182,17 +196,39 @@ export default function SSMAgentConfigPanel({
         });
       }
     } catch (error) {
-      setPollResult({
-        success: false,
-        eventsProcessed: 0,
-        alertsGenerated: 0,
-        alerts: [],
-        error: 'Failed to connect to polling service',
-      });
+      if (!isAutomatic) {
+        setPollResult({
+          success: false,
+          eventsProcessed: 0,
+          alertsGenerated: 0,
+          alerts: [],
+          error: 'Failed to connect to polling service',
+        });
+      }
     } finally {
       setIsPolling(false);
     }
-  }, [canvasId, nodeId, userId, isEnabled, isPolling]);
+  }, [canvasId, nodeId, userId, isEnabled, isGmailConnected, isPolling]);
+
+  // Automatic polling when monitoring is enabled and Gmail is connected
+  useEffect(() => {
+    if (!isEnabled || !isGmailConnected) return;
+
+    // Initial poll when monitoring is enabled
+    executePoll(true);
+
+    // Set up interval for automatic polling
+    const intervalId = setInterval(() => {
+      executePoll(true);
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [isEnabled, isGmailConnected, executePoll]);
+
+  // Handle manual poll (just calls executePoll with isAutomatic=false)
+  const handlePollNow = useCallback(() => {
+    executePoll(false);
+  }, [executePoll]);
 
   const training = useSSMTraining({
     nodeId,
@@ -326,17 +362,24 @@ export default function SSMAgentConfigPanel({
       <section className="p-4 bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{isEnabled ? '🟢' : '⏸️'}</span>
+            <span className="text-2xl">{isEnabled && isGmailConnected ? '🟢' : isEnabled ? '🟡' : '⏸️'}</span>
             <div>
               <h3 className="text-sm font-semibold text-foreground">
-                {isEnabled ? 'Monitoring Active' : 'Monitoring Paused'}
+                {isEnabled && isGmailConnected
+                  ? 'Monitoring Active'
+                  : isEnabled
+                    ? 'Waiting for Gmail Connection'
+                    : 'Monitoring Paused'
+                }
               </h3>
               <p className="text-xs text-foreground/60">
                 {!isTrained
                   ? 'Complete training to enable monitoring'
-                  : isEnabled
-                    ? 'Processing incoming events'
-                    : 'Click to resume monitoring'
+                  : !isEnabled
+                    ? 'Click to start monitoring'
+                  : !isGmailConnected
+                    ? 'Connect Gmail below to start polling'
+                  : 'Auto-polling every 60 seconds'
                 }
               </p>
             </div>
@@ -359,8 +402,33 @@ export default function SSMAgentConfigPanel({
           </button>
         </div>
 
-        {/* Poll Now Button */}
-        {isEnabled && (
+        {/* Gmail Connection Warning */}
+        {isEnabled && !isGmailConnected && (
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-700 flex items-center gap-2">
+              <span>⚠️</span>
+              <span>Connect Gmail in the <strong>Data Source Integrations</strong> section below to enable automatic monitoring.</span>
+            </p>
+          </div>
+        )}
+
+        {/* Auto-polling Status */}
+        {isEnabled && isGmailConnected && (
+          <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-xs text-green-700">Auto-polling active</span>
+            </div>
+            {lastPollTime && (
+              <span className="text-xs text-green-600">
+                Last check: {lastPollTime.toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Manual Poll Button */}
+        {isEnabled && isGmailConnected && (
           <div className="pt-3 border-t border-gray-200">
             <button
               onClick={handlePollNow}
@@ -370,19 +438,19 @@ export default function SSMAgentConfigPanel({
                 flex items-center justify-center gap-2
                 ${isPolling
                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  : 'bg-teal-500 text-white hover:bg-teal-600'
+                  : 'bg-foreground/10 text-foreground hover:bg-foreground/20'
                 }
               `}
             >
               {isPolling ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Checking for new events...
+                  <div className="w-4 h-4 border-2 border-foreground/50 border-t-transparent rounded-full animate-spin" />
+                  Checking...
                 </>
               ) : (
                 <>
                   <span>🔄</span>
-                  Poll Now
+                  Check Now (Manual)
                 </>
               )}
             </button>
