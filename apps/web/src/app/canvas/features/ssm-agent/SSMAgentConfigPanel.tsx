@@ -13,7 +13,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   SSMAgentNodeConfig,
   SSMRulesConfig,
@@ -131,8 +131,9 @@ export default function SSMAgentConfigPanel({
     setFormData(prev => ({ ...prev, is_enabled: newState }));
   }, [isTrained, isEnabled, onUpdate]);
 
-  // Polling state
-  const [isPolling, setIsPolling] = useState(false);
+  // Polling state - use ref for isPolling to avoid dependency loops
+  const isPollingRef = useRef(false);
+  const [isPolling, setIsPolling] = useState(false); // For UI updates only
   const [pollResult, setPollResult] = useState<{
     success: boolean;
     eventsProcessed: number;
@@ -150,14 +151,18 @@ export default function SSMAgentConfigPanel({
 
   // Handle poll (used by both manual and automatic)
   const executePoll = useCallback(async (isAutomatic = false) => {
-    if (isPolling || !isEnabled || !isGmailConnected) return;
+    // Use ref to check polling state to avoid dependency loop
+    if (isPollingRef.current || !isEnabled || !isGmailConnected) return;
 
+    isPollingRef.current = true;
     setIsPolling(true);
     if (!isAutomatic) {
       setPollResult(null);
     }
 
     try {
+      console.log('[SSM Poll] Starting poll...', { canvasId, nodeId, userId, isAutomatic });
+
       const response = await apiClient.post<{
         success: boolean;
         eventsProcessed: number;
@@ -169,6 +174,8 @@ export default function SSMAgentConfigPanel({
         nodeId,
         userId,
       });
+
+      console.log('[SSM Poll] Response:', response);
 
       setLastPollTime(new Date());
 
@@ -186,16 +193,20 @@ export default function SSMAgentConfigPanel({
             last_event_at: new Date().toISOString(),
           }));
         }
-      } else if (!isAutomatic) {
-        setPollResult({
-          success: false,
-          eventsProcessed: 0,
-          alertsGenerated: 0,
-          alerts: [],
-          error: response.error || 'Failed to poll',
-        });
+      } else {
+        console.error('[SSM Poll] Error response:', response.error);
+        if (!isAutomatic) {
+          setPollResult({
+            success: false,
+            eventsProcessed: 0,
+            alertsGenerated: 0,
+            alerts: [],
+            error: response.error || 'Failed to poll',
+          });
+        }
       }
     } catch (error) {
+      console.error('[SSM Poll] Exception:', error);
       if (!isAutomatic) {
         setPollResult({
           success: false,
@@ -206,23 +217,33 @@ export default function SSMAgentConfigPanel({
         });
       }
     } finally {
+      isPollingRef.current = false;
       setIsPolling(false);
     }
-  }, [canvasId, nodeId, userId, isEnabled, isGmailConnected, isPolling]);
+  }, [canvasId, nodeId, userId, isEnabled, isGmailConnected]);
 
   // Automatic polling when monitoring is enabled and Gmail is connected
   useEffect(() => {
-    if (!isEnabled || !isGmailConnected) return;
+    if (!isEnabled || !isGmailConnected) {
+      console.log('[SSM Poll] Auto-polling disabled:', { isEnabled, isGmailConnected });
+      return;
+    }
+
+    console.log('[SSM Poll] Starting auto-polling...');
 
     // Initial poll when monitoring is enabled
     executePoll(true);
 
     // Set up interval for automatic polling
     const intervalId = setInterval(() => {
+      console.log('[SSM Poll] Interval poll triggered');
       executePoll(true);
     }, POLL_INTERVAL_MS);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      console.log('[SSM Poll] Cleaning up interval');
+      clearInterval(intervalId);
+    };
   }, [isEnabled, isGmailConnected, executePoll]);
 
   // Handle manual poll (just calls executePoll with isAutomatic=false)

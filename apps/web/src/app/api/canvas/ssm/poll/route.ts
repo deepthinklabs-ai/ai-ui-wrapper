@@ -54,14 +54,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
 
     // Validate required fields
     if (!canvasId || !nodeId || !userId) {
+      console.error('[SSM Poll] Missing fields:', { canvasId: !!canvasId, nodeId: !!nodeId, userId: !!userId });
       return NextResponse.json({
         success: false,
         eventsProcessed: 0,
         alertsGenerated: 0,
         alerts: [],
-        error: 'Missing required fields: canvasId, nodeId, userId',
+        error: `Missing required fields: ${!canvasId ? 'canvasId ' : ''}${!nodeId ? 'nodeId ' : ''}${!userId ? 'userId' : ''}`.trim(),
       }, { status: 400 });
     }
+
+    console.log('[SSM Poll] Processing request:', { canvasId, nodeId, userId });
 
     const supabase = getSupabaseAdmin();
 
@@ -74,6 +77,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       .single();
 
     if (nodeError || !node) {
+      console.error('[SSM Poll] Node not found:', { nodeId, canvasId, error: nodeError });
       return NextResponse.json({
         success: false,
         eventsProcessed: 0,
@@ -84,9 +88,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
     }
 
     const config = node.config as SSMAgentNodeConfig;
+    console.log('[SSM Poll] Node config:', {
+      is_enabled: config.is_enabled,
+      trained_at: config.trained_at,
+      gmail_enabled: config.gmail?.enabled,
+    });
 
     // Check if monitoring is enabled
     if (!config.is_enabled) {
+      console.error('[SSM Poll] Monitoring not enabled for node:', nodeId);
       return NextResponse.json({
         success: false,
         eventsProcessed: 0,
@@ -98,6 +108,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
 
     // Check if node has been trained
     if (!config.trained_at) {
+      console.error('[SSM Poll] Node not trained:', nodeId);
       return NextResponse.json({
         success: false,
         eventsProcessed: 0,
