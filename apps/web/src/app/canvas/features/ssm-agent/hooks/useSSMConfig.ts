@@ -1,18 +1,22 @@
 /**
  * useSSMConfig Hook
  *
- * Manages SSM Agent configuration state.
- * Provides:
- * - Local state management
+ * Manages Stream Monitor configuration state.
+ * Handles rules-based configuration with:
+ * - Auto-save with debouncing
  * - Validation integration
- * - Provider-aware model selection
- * - Debounced save callbacks
+ * - Rule generation state
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import type { SSMAgentNodeConfig, SSMModelProvider } from '../../../types/ssm';
+import type {
+  SSMAgentNodeConfig,
+  SSMRulesConfig,
+  SSMResponseTemplate,
+  SSMEventSourceType,
+} from '../../../types/ssm';
 import { validateSSMConfig, applySSMDefaults, type ValidationResult } from '../lib/ssmValidation';
-import { DEFAULT_SSM_CONFIG, getModelsForProvider, getDefaultModelForProvider } from '../lib/ssmDefaults';
+import { DEFAULT_SSM_CONFIG, DEFAULT_RESPONSE_TEMPLATES } from '../lib/ssmDefaults';
 
 // ============================================================================
 // TYPES
@@ -44,9 +48,17 @@ interface UseSSMConfigReturn {
    */
   updateField: <K extends keyof SSMAgentNodeConfig>(field: K, value: SSMAgentNodeConfig[K]) => void;
   /**
-   * Update the provider and reset model to first available
+   * Update the event source type
    */
-  updateProvider: (provider: SSMModelProvider) => void;
+  updateEventSource: (type: SSMEventSourceType) => void;
+  /**
+   * Update rules configuration
+   */
+  updateRules: (rules: SSMRulesConfig) => void;
+  /**
+   * Update response templates
+   */
+  updateTemplates: (templates: SSMResponseTemplate[]) => void;
   /**
    * Manually trigger save
    */
@@ -72,13 +84,17 @@ interface UseSSMConfigReturn {
    */
   validation: ValidationResult;
   /**
-   * Available models for current provider
-   */
-  availableModels: string[];
-  /**
    * Reset to initial config
    */
   reset: () => void;
+  /**
+   * Check if rules have been configured
+   */
+  hasRules: boolean;
+  /**
+   * Count of enabled rules
+   */
+  enabledRulesCount: number;
 }
 
 // ============================================================================
@@ -110,38 +126,56 @@ export function useSSMConfig({
   // Validation
   const validation = useMemo(() => validateSSMConfig(config), [config]);
 
-  // Available models for current provider
-  const availableModels = useMemo(
-    () => getModelsForProvider(config.model_provider),
-    [config.model_provider]
-  );
+  // Check if rules are configured
+  const hasRules = useMemo(() => {
+    const rules = config.rules;
+    return (
+      (rules?.keywords?.length || 0) > 0 ||
+      (rules?.patterns?.length || 0) > 0 ||
+      (rules?.conditions?.length || 0) > 0
+    );
+  }, [config.rules]);
+
+  // Count enabled rules
+  const enabledRulesCount = useMemo(() => {
+    const rules = config.rules;
+    return (
+      (rules?.keywords?.filter(r => r.enabled)?.length || 0) +
+      (rules?.patterns?.filter(r => r.enabled)?.length || 0) +
+      (rules?.conditions?.filter(r => r.enabled)?.length || 0)
+    );
+  }, [config.rules]);
 
   // Update a single field
   const updateField = useCallback(<K extends keyof SSMAgentNodeConfig>(
     field: K,
     value: SSMAgentNodeConfig[K]
   ) => {
-    setConfig(prev => {
-      const newConfig = { ...prev, [field]: value };
-      return newConfig;
-    });
+    setConfig(prev => ({ ...prev, [field]: value }));
     setIsDirty(true);
   }, []);
 
-  // Update provider and reset model
-  const updateProvider = useCallback((provider: SSMModelProvider) => {
-    const defaultModel = getDefaultModelForProvider(provider);
+  // Update event source
+  const updateEventSource = useCallback((type: SSMEventSourceType) => {
     setConfig(prev => ({
       ...prev,
-      model_provider: provider,
-      model_name: defaultModel,
-      // Reset endpoint to default when switching providers
-      model_endpoint: provider === 'ollama'
-        ? 'http://localhost:11434'
-        : provider === 'vllm'
-          ? 'http://localhost:8000'
-          : undefined,
+      event_source_type: type,
+      // Clear polling/webhook specific fields when switching
+      ...(type !== 'polling' ? { polling_source: undefined, polling_interval_seconds: undefined } : {}),
+      ...(type !== 'webhook' ? { webhook_secret: undefined } : {}),
     }));
+    setIsDirty(true);
+  }, []);
+
+  // Update rules
+  const updateRules = useCallback((rules: SSMRulesConfig) => {
+    setConfig(prev => ({ ...prev, rules }));
+    setIsDirty(true);
+  }, []);
+
+  // Update templates
+  const updateTemplates = useCallback((templates: SSMResponseTemplate[]) => {
+    setConfig(prev => ({ ...prev, response_templates: templates }));
     setIsDirty(true);
   }, []);
 
@@ -225,14 +259,17 @@ export function useSSMConfig({
   return {
     config,
     updateField,
-    updateProvider,
+    updateEventSource,
+    updateRules,
+    updateTemplates,
     save,
     isSaving,
     isDirty,
     errors: validation.errors,
     warnings: validation.warnings,
     validation,
-    availableModels,
     reset,
+    hasRules,
+    enabledRulesCount,
   };
 }

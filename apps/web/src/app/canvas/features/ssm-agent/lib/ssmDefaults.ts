@@ -1,142 +1,104 @@
 /**
  * SSM Agent Default Configurations
  *
- * Separated from component code for:
- * - Easy modification and testing
- * - Reusability across components
- * - Clear separation of concerns
+ * Default values for the rules-based SSM monitoring system.
+ *
+ * Architecture:
+ * - LLM used ONLY at setup time to generate rules
+ * - Runtime uses pure pattern matching ($0 cost)
  */
 
-import type { SSMAgentNodeConfig, SSMModelProvider } from '../../../types/ssm';
+import type {
+  SSMAgentNodeConfig,
+  SSMRulesConfig,
+  SSMResponseTemplate,
+  SSMEventSourceType,
+  SSMPollingSource,
+} from '../../../types/ssm';
 
 // ============================================================================
-// MODEL OPTIONS
+// DEFAULT RULES (Empty)
 // ============================================================================
 
-/**
- * Available models per provider
- * Organized by provider with display label and available models
- */
-export const SSM_MODEL_OPTIONS: Record<SSMModelProvider, { label: string; models: string[] }> = {
-  ollama: {
-    label: 'Ollama (Local)',
-    models: ['mamba', 'mamba-2.8b', 'granite-mamba'],
-  },
-  vllm: {
-    label: 'vLLM (Self-hosted)',
-    models: ['state-spaces/mamba-2.8b', 'ibm/bamba-9b'],
-  },
-  huggingface: {
-    label: 'Hugging Face',
-    models: ['state-spaces/mamba-130m', 'state-spaces/mamba-2.8b-slimpj'],
-  },
-  replicate: {
-    label: 'Replicate',
-    models: ['ibm/granite-4.0-tiny', 'ibm/granite-4.0-small'],
-  },
+export const DEFAULT_RULES: SSMRulesConfig = {
+  keywords: [],
+  patterns: [],
+  conditions: [],
 };
 
 // ============================================================================
-// MONITORING TYPE OPTIONS
+// DEFAULT RESPONSE TEMPLATES
 // ============================================================================
 
-/**
- * Monitoring type options with display labels and icons
- */
-export const MONITORING_TYPE_OPTIONS = [
+export const DEFAULT_RESPONSE_TEMPLATES: SSMResponseTemplate[] = [
   {
-    value: 'security_threat' as const,
-    label: 'Security Threat Detection',
-    icon: '🛡️',
-    description: 'Detect potential security threats in logs and activity streams',
+    severity: 'info',
+    title: 'Info: {matched_rule}',
+    message: 'Event logged from {sender}: {content_preview}',
+    action: 'log',
   },
   {
-    value: 'anomaly_detection' as const,
-    label: 'Anomaly Detection',
-    icon: '📈',
-    description: 'Identify unusual patterns or outliers in data streams',
+    severity: 'warning',
+    title: 'Warning: {matched_rule}',
+    message: 'Suspicious activity detected from {sender}: {content_preview}. Matched rules: {matched_keywords}',
+    action: 'alert',
   },
   {
-    value: 'classification' as const,
-    label: 'Classification',
-    icon: '🏷️',
-    description: 'Categorize incoming events into predefined labels',
-  },
-  {
-    value: 'summarization' as const,
-    label: 'Summarization',
-    icon: '📝',
-    description: 'Generate periodic summaries of activity streams',
-  },
-  {
-    value: 'custom' as const,
-    label: 'Custom Prompt',
-    icon: '⚙️',
-    description: 'Define custom monitoring logic with your own prompt',
+    severity: 'critical',
+    title: 'CRITICAL: {matched_rule}',
+    message: 'Immediate attention required! Source: {sender}. Details: {content_preview}. This matched critical rules: {matched_keywords}',
+    action: 'forward_to_ai',
   },
 ];
+
+// ============================================================================
+// DEFAULT NODE CONFIG
+// ============================================================================
+
+export const DEFAULT_SSM_CONFIG: SSMAgentNodeConfig = {
+  name: 'Stream Monitor',
+  description: '',
+  monitoring_description: '',
+  rules: DEFAULT_RULES,
+  response_templates: DEFAULT_RESPONSE_TEMPLATES,
+  event_source_type: 'canvas',
+  events_processed: 0,
+  alerts_triggered: 0,
+};
 
 // ============================================================================
 // EVENT SOURCE OPTIONS
 // ============================================================================
 
-/**
- * Event source type options
- */
-export const EVENT_SOURCE_OPTIONS = [
+export const EVENT_SOURCE_OPTIONS: Array<{
+  value: SSMEventSourceType;
+  label: string;
+  description: string;
+  icon: string;
+}> = [
   {
-    value: 'manual' as const,
-    label: 'Manual / Canvas',
-    icon: '👆',
-    description: 'Events triggered manually or from canvas connections',
-  },
-  {
-    value: 'webhook' as const,
-    label: 'Webhook',
+    value: 'canvas',
+    label: 'Canvas Connection',
+    description: 'Receive events from connected nodes',
     icon: '🔗',
-    description: 'Events pushed to this node via HTTP webhook',
   },
   {
-    value: 'polling' as const,
+    value: 'webhook',
+    label: 'Webhook',
+    description: 'Receive events via HTTP webhook',
+    icon: '🌐',
+  },
+  {
+    value: 'polling',
     label: 'Polling',
-    icon: '🔄',
     description: 'Periodically fetch events from a source',
+    icon: '🔄',
   },
   {
-    value: 'pubsub' as const,
-    label: 'Pub/Sub',
-    icon: '📡',
-    description: 'Subscribe to a Pub/Sub topic for real-time events',
-  },
-];
-
-// ============================================================================
-// OUTPUT FORMAT OPTIONS
-// ============================================================================
-
-/**
- * Output format options
- */
-export const OUTPUT_FORMAT_OPTIONS = [
-  {
-    value: 'alert' as const,
-    label: 'Alert (Structured)',
-    description: 'Structured alert object with severity, title, and details',
-  },
-  {
-    value: 'summary' as const,
-    label: 'Summary (Prose)',
-    description: 'Natural language summary of findings',
-  },
-  {
-    value: 'classification' as const,
-    label: 'Classification (Label)',
-    description: 'Single classification label output',
-  },
-  {
-    value: 'raw' as const,
-    label: 'Raw (JSON)',
-    description: 'Raw JSON response from the model',
+    value: 'manual',
+    label: 'Manual / Test',
+    description: 'Manually trigger events for testing',
+    icon: '✋',
   },
 ];
 
@@ -144,65 +106,96 @@ export const OUTPUT_FORMAT_OPTIONS = [
 // POLLING SOURCE OPTIONS
 // ============================================================================
 
-/**
- * Available polling sources
- */
-export const POLLING_SOURCE_OPTIONS = [
-  { value: 'gmail' as const, label: 'Gmail', icon: '📧' },
-  { value: 'slack' as const, label: 'Slack', icon: '💬' },
-  { value: 'custom_api' as const, label: 'Custom API', icon: '🔌' },
+export const POLLING_SOURCE_OPTIONS: Array<{
+  value: SSMPollingSource;
+  label: string;
+  icon: string;
+}> = [
+  { value: 'gmail', label: 'Gmail', icon: '📧' },
+  { value: 'slack', label: 'Slack', icon: '💬' },
+  { value: 'custom_api', label: 'Custom API', icon: '🔌' },
 ];
 
 // ============================================================================
-// DEFAULT CONFIGURATION
+// AI PROVIDER OPTIONS (for rule generation only)
 // ============================================================================
 
-/**
- * Default SSM agent node configuration
- * Used when creating new SSM nodes
- */
-export const DEFAULT_SSM_CONFIG: SSMAgentNodeConfig = {
-  name: 'SSM Monitor',
-  description: '',
-  model_provider: 'ollama',
-  model_name: 'mamba',
-  event_source_type: 'manual',
-  monitoring_type: 'classification',
-  output_format: 'alert',
-  state_retention_hours: 24,
-  checkpoint_enabled: true,
-  alert_threshold: 0.7,
-};
+export const AI_PROVIDER_OPTIONS: Array<{
+  value: 'claude' | 'openai';
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'claude',
+    label: 'Claude (Haiku)',
+    description: 'Fast and cost-effective',
+  },
+  {
+    value: 'openai',
+    label: 'OpenAI (GPT-4o-mini)',
+    description: 'Fast and cost-effective',
+  },
+];
+
+// ============================================================================
+// EXAMPLE MONITORING DESCRIPTIONS
+// ============================================================================
+
+export const MONITORING_EXAMPLES = [
+  {
+    title: 'Phishing Detection',
+    description: 'Detect phishing attempts, suspicious links, urgent money requests, and emails pretending to be from executives or known services.',
+  },
+  {
+    title: 'Security Alerts',
+    description: 'Monitor for failed login attempts, password reset requests, new device logins, and suspicious IP addresses.',
+  },
+  {
+    title: 'Compliance Monitoring',
+    description: 'Flag messages containing sensitive data like SSN, credit card numbers, or confidential information being shared externally.',
+  },
+  {
+    title: 'Customer Sentiment',
+    description: 'Identify angry or frustrated customer messages, complaints, escalation requests, and negative feedback.',
+  },
+];
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 /**
- * Get available models for a given provider
+ * Get event source info
  */
-export function getModelsForProvider(provider: SSMModelProvider): string[] {
-  return SSM_MODEL_OPTIONS[provider]?.models || [];
+export function getEventSourceInfo(type: SSMEventSourceType) {
+  return EVENT_SOURCE_OPTIONS.find(opt => opt.value === type);
 }
 
 /**
- * Get the display label for a provider
+ * Generate a unique rule ID
  */
-export function getProviderLabel(provider: SSMModelProvider): string {
-  return SSM_MODEL_OPTIONS[provider]?.label || provider;
+export function generateRuleId(prefix: 'kw' | 'pat' | 'cond'): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 }
 
 /**
- * Get monitoring type info by value
+ * Check if rules have been configured
  */
-export function getMonitoringTypeInfo(type: string) {
-  return MONITORING_TYPE_OPTIONS.find(opt => opt.value === type);
+export function hasRulesConfigured(rules: SSMRulesConfig): boolean {
+  return (
+    rules.keywords.length > 0 ||
+    rules.patterns.length > 0 ||
+    rules.conditions.length > 0
+  );
 }
 
 /**
- * Get default model for a provider
+ * Count total enabled rules
  */
-export function getDefaultModelForProvider(provider: SSMModelProvider): string {
-  const models = getModelsForProvider(provider);
-  return models[0] || '';
+export function countEnabledRules(rules: SSMRulesConfig): number {
+  return (
+    rules.keywords.filter(r => r.enabled).length +
+    rules.patterns.filter(r => r.enabled).length +
+    rules.conditions.filter(r => r.enabled).length
+  );
 }

@@ -1,13 +1,13 @@
 /**
  * SSMAgentNode Component
  *
- * Visual representation of an SSM (State-Space Model) node in the Canvas.
- * Displays model info, monitoring status, and provides access to configuration.
+ * Visual representation of a Stream Monitor node in the Canvas.
+ * Rules-based event monitoring with $0 runtime cost.
  *
- * Design notes:
- * - Teal color scheme to differentiate from other bot types
- * - Multiple output handles for different data types (alert, summary, classification)
- * - Status indicator showing monitoring state
+ * Features:
+ * - LLM generates rules at setup time (one-time cost)
+ * - Pure pattern matching at runtime ($0)
+ * - Three severity outputs: Info, Warning, Critical (→ AI Agent)
  */
 
 'use client';
@@ -16,7 +16,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { SSMAgentNodeConfig } from '../../types/ssm';
-import { SSM_MODEL_OPTIONS, MONITORING_TYPE_OPTIONS } from '../../features/ssm-agent/lib/ssmDefaults';
+import { getEventSourceInfo, hasRulesConfigured, countEnabledRules } from '../../features/ssm-agent/lib/ssmDefaults';
 
 // ============================================================================
 // TYPES
@@ -38,22 +38,33 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
   const [editName, setEditName] = useState(nodeData.config.name);
 
   // Get display info
-  const providerLabel = useMemo(() => {
-    return SSM_MODEL_OPTIONS[nodeData.config.model_provider]?.label || 'Unknown';
-  }, [nodeData.config.model_provider]);
+  const eventSourceInfo = useMemo(() => {
+    return getEventSourceInfo(nodeData.config.event_source_type);
+  }, [nodeData.config.event_source_type]);
 
-  const monitoringInfo = useMemo(() => {
-    return MONITORING_TYPE_OPTIONS.find(
-      opt => opt.value === nodeData.config.monitoring_type
-    );
-  }, [nodeData.config.monitoring_type]);
+  const rulesConfigured = useMemo(() => {
+    return hasRulesConfigured(nodeData.config.rules);
+  }, [nodeData.config.rules]);
+
+  const enabledRulesCount = useMemo(() => {
+    return countEnabledRules(nodeData.config.rules);
+  }, [nodeData.config.rules]);
 
   // Handle name editing
   const handleSaveName = useCallback(() => {
-    // For now, just update local state
-    // The actual save will happen through the config panel
     setIsEditing(false);
   }, []);
+
+  // Determine status based on rules configuration
+  const status = useMemo(() => {
+    if (!rulesConfigured) {
+      return { color: 'bg-gray-400', text: 'Setup Required', textColor: 'text-gray-600' };
+    }
+    if (enabledRulesCount === 0) {
+      return { color: 'bg-amber-400', text: 'No Active Rules', textColor: 'text-amber-600' };
+    }
+    return { color: 'bg-green-400 animate-pulse', text: 'Ready', textColor: 'text-green-600' };
+  }, [rulesConfigured, enabledRulesCount]);
 
   return (
     <div
@@ -109,90 +120,97 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
             </span>
           )}
         </div>
-        <p className="text-xs text-teal-600 mt-1">State-Space Model</p>
+        <p className="text-xs text-teal-600 mt-1">Stream Monitor</p>
       </div>
 
       {/* Body */}
       <div className="px-4 py-3 space-y-2">
-        {/* Model Info */}
+        {/* Rules Summary */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-foreground/60">Model:</span>
-          <span className="font-medium text-foreground/80 truncate max-w-[120px]" title={nodeData.config.model_name}>
-            {nodeData.config.model_name}
-          </span>
+          <span className="text-foreground/60">Rules:</span>
+          {rulesConfigured ? (
+            <span className="font-medium text-teal-700">
+              {enabledRulesCount} active
+            </span>
+          ) : (
+            <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+              Not configured
+            </span>
+          )}
         </div>
 
-        {/* Provider */}
+        {/* Event Source */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-foreground/60">Provider:</span>
-          <span className="text-xs px-2 py-0.5 bg-teal-100 text-teal-700 rounded-full">
-            {providerLabel}
-          </span>
-        </div>
-
-        {/* Monitoring Type */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-foreground/60">Monitoring:</span>
+          <span className="text-foreground/60">Source:</span>
           <span className="flex items-center gap-1">
-            <span>{monitoringInfo?.icon}</span>
-            <span className="text-foreground/80 text-xs truncate max-w-[100px]">
-              {monitoringInfo?.label?.replace(' Detection', '')}
+            <span>{eventSourceInfo?.icon}</span>
+            <span className="text-foreground/80 text-xs">
+              {eventSourceInfo?.label}
             </span>
           </span>
         </div>
 
-        {/* Alert Threshold */}
+        {/* Runtime Cost */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-foreground/60">Threshold:</span>
-          <span className="text-foreground/80">
-            {((nodeData.config.alert_threshold || 0.7) * 100).toFixed(0)}%
+          <span className="text-foreground/60">Runtime:</span>
+          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
+            $0 (rules-based)
           </span>
         </div>
+
+        {/* Stats (if available) */}
+        {(nodeData.config.events_processed ?? 0) > 0 && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-foreground/60">Processed:</span>
+            <span className="text-foreground/80">
+              {nodeData.config.events_processed} events
+            </span>
+          </div>
+        )}
 
         {/* Status Indicator */}
         <div className="flex items-center justify-between text-sm pt-2 border-t border-foreground/10">
           <span className="text-foreground/60">Status:</span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-amber-600 text-xs">Standby</span>
+            <span className={`w-2 h-2 rounded-full ${status.color}`} />
+            <span className={`text-xs ${status.textColor}`}>{status.text}</span>
           </span>
         </div>
       </div>
 
-      {/* Footer - Event Source */}
-      <div className="px-4 py-2 border-t border-teal-100 bg-teal-50/50 rounded-b-xl">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-foreground/50">Source:</span>
-          <span className="text-teal-600 capitalize">
-            {nodeData.config.event_source_type?.replace('_', ' ')}
-          </span>
+      {/* Footer - Monitoring Description Preview */}
+      {nodeData.config.monitoring_description && (
+        <div className="px-4 py-2 border-t border-teal-100 bg-teal-50/50 rounded-b-xl">
+          <p className="text-xs text-teal-700 truncate" title={nodeData.config.monitoring_description}>
+            {nodeData.config.monitoring_description}
+          </p>
         </div>
-      </div>
+      )}
 
-      {/* Output Handles */}
+      {/* Output Handles - Severity Based */}
       <Handle
         type="source"
         position={Position.Right}
-        id="alert"
-        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white"
-        style={{ top: '25%' }}
-        title="Alert Output"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="summary"
+        id="info"
         className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
-        style={{ top: '50%' }}
-        title="Summary Output"
+        style={{ top: '25%' }}
+        title="Info Events (log only)"
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="classification"
-        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white"
+        id="warning"
+        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white"
+        style={{ top: '50%' }}
+        title="Warning Events (alert user)"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="critical"
+        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white"
         style={{ top: '75%' }}
-        title="Classification Output"
+        title="Critical Events (forward to AI Agent)"
       />
     </div>
   );

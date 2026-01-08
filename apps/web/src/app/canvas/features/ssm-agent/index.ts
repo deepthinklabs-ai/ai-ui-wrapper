@@ -1,11 +1,16 @@
 /**
  * SSM Agent Feature Module
  *
- * Public exports for the SSM Agent feature.
- * Import from this file to use SSM agent functionality.
+ * Public exports for the Stream Monitor feature.
+ * Rules-based event monitoring with $0 runtime cost.
+ *
+ * Architecture:
+ * - LLM used ONLY at setup time to generate rules (~$0.01 one-time)
+ * - Runtime uses pure pattern matching ($0 cost)
+ * - Pre-defined response templates for each severity
  *
  * @example
- * import { SSMAgentConfigPanel, useSSMConfig } from '@/app/canvas/features/ssm-agent';
+ * import { SSMAgentConfigPanel, matchEvent, generateAlert } from '@/app/canvas/features/ssm-agent';
  */
 
 // Components
@@ -13,27 +18,30 @@ export { default as SSMAgentConfigPanel } from './SSMAgentConfigPanel';
 
 // Hooks
 export { useSSMConfig } from './hooks/useSSMConfig';
-export {
-  useSSMExecution,
-  type SSMExecutionStatus,
-  type SSMExecuteParams,
-  type SSMExecuteResult,
-  type UseSSMExecutionResult,
-} from './hooks/useSSMExecution';
 
-// Lib - Defaults
+// Lib - Defaults & Configuration
 export {
-  SSM_MODEL_OPTIONS,
-  MONITORING_TYPE_OPTIONS,
-  EVENT_SOURCE_OPTIONS,
-  OUTPUT_FORMAT_OPTIONS,
-  POLLING_SOURCE_OPTIONS,
+  DEFAULT_RULES,
+  DEFAULT_RESPONSE_TEMPLATES,
   DEFAULT_SSM_CONFIG,
-  getModelsForProvider,
-  getProviderLabel,
-  getMonitoringTypeInfo,
-  getDefaultModelForProvider,
+  EVENT_SOURCE_OPTIONS,
+  POLLING_SOURCE_OPTIONS,
+  AI_PROVIDER_OPTIONS,
+  MONITORING_EXAMPLES,
+  getEventSourceInfo,
+  generateRuleId,
+  hasRulesConfigured,
+  countEnabledRules,
 } from './lib/ssmDefaults';
+
+// Lib - Rules Engine (Runtime - $0 cost)
+export {
+  matchEvent,
+  generateAlert,
+  validateRegexPattern,
+  testRules,
+  getRuleStats,
+} from './lib/ssmRulesEngine';
 
 // Lib - Validation
 export {
@@ -42,40 +50,3 @@ export {
   applySSMDefaults,
   type ValidationResult,
 } from './lib/ssmValidation';
-
-// Lib - Sanitization (Security)
-export {
-  sanitizeEventContent,
-  sanitizeCustomPrompt,
-  validateOllamaEndpoint,
-  validateWebhookUrl,
-  sanitizeNodeName,
-  generateRequestId,
-  getRateLimitKey,
-  getUserRateLimitKey,
-  INPUT_LIMITS,
-  type SanitizationResult,
-  type EndpointValidationResult,
-} from './lib/ssmSanitization';
-
-// Lib - Prompts
-export {
-  generatePrompt,
-  generateBatchPrompt,
-  parseAlertResponse,
-  parseClassificationResponse,
-  parseSummaryResponse,
-  type PromptContext,
-  type GeneratedPrompt,
-  type ParsedAlertResponse,
-  type ParsedClassificationResponse,
-} from './lib/ssmPrompts';
-
-// Lib - Ollama Client
-export {
-  executeSSMInference,
-  checkEndpointHealth,
-  listOllamaModels,
-  type OllamaRequestOptions,
-  type OllamaResponse,
-} from './lib/ssmOllamaClient';

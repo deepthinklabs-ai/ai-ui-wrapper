@@ -1,65 +1,106 @@
 /**
- * SSM Agent Node Type Definitions
+ * SSM (Smart Stream Monitor) Node Type Definitions
  *
- * State-Space Models (SSMs) like Mamba provide linear-time sequence
- * processing, ideal for continuous monitoring of event streams.
+ * A rules-based event monitoring system that:
+ * - Uses LLM ONLY at setup time to generate rules
+ * - Runs on pure pattern matching at runtime ($0 cost)
+ * - Pre-defines response templates for each scenario
  *
- * Key advantages over Transformers:
- * - Linear O(n) complexity vs quadratic O(n²)
- * - 4-5x faster inference
- * - Fixed-size state (ideal for continuous monitoring)
- * - Lower memory usage (no attention matrix/KV cache)
- *
- * Use cases: Email inbox monitoring, security log analysis,
- * activity stream classification, anomaly detection.
+ * Architecture:
+ * - Setup: User describes what to monitor → LLM generates rules/templates
+ * - Runtime: Events matched against rules → Pre-defined responses
+ * - AI Agent: Only invoked for critical alerts (user's choice)
  */
 
 // ============================================================================
-// MODEL PROVIDERS
+// ALERT SEVERITY
 // ============================================================================
 
 /**
- * Supported SSM model providers
- * Self-hosted options (Ollama, vLLM) are prioritized for cost efficiency
+ * Severity levels for alerts
  */
-export type SSMModelProvider = 'ollama' | 'vllm' | 'huggingface' | 'replicate';
+export type SSMAlertSeverity = 'info' | 'warning' | 'critical';
 
 // ============================================================================
-// MONITORING CONFIGURATION
+// RULES CONFIGURATION
 // ============================================================================
 
 /**
- * Types of monitoring the SSM can perform
+ * A keyword rule for matching events
  */
-export type SSMMonitoringType =
-  | 'security_threat'      // Detect potential security threats in logs
-  | 'anomaly_detection'    // Identify unusual patterns in data streams
-  | 'classification'       // Categorize incoming events
-  | 'summarization'        // Summarize activity streams
-  | 'custom';              // User-defined monitoring logic
+export interface SSMKeywordRule {
+  id: string;
+  keyword: string;
+  caseSensitive: boolean;
+  severity: SSMAlertSeverity;
+  enabled: boolean;
+}
+
+/**
+ * A pattern rule using regex for matching events
+ */
+export interface SSMPatternRule {
+  id: string;
+  name: string;
+  pattern: string;        // Regex pattern
+  description: string;    // Human-readable description
+  severity: SSMAlertSeverity;
+  enabled: boolean;
+}
+
+/**
+ * A condition rule for field-based matching
+ */
+export interface SSMConditionRule {
+  id: string;
+  field: string;          // Field to check (e.g., "sender", "subject", "amount")
+  operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'matches';
+  value: string;
+  severity: SSMAlertSeverity;
+  enabled: boolean;
+}
+
+/**
+ * All rules for an SSM node
+ */
+export interface SSMRulesConfig {
+  keywords: SSMKeywordRule[];
+  patterns: SSMPatternRule[];
+  conditions: SSMConditionRule[];
+}
+
+// ============================================================================
+// RESPONSE TEMPLATES
+// ============================================================================
+
+/**
+ * A response template for a specific severity level
+ * Uses placeholders like {sender}, {subject}, {matched_rule}
+ */
+export interface SSMResponseTemplate {
+  severity: SSMAlertSeverity;
+  title: string;           // Template for alert title
+  message: string;         // Template for alert message
+  action: 'log' | 'alert' | 'forward_to_ai';  // What to do when triggered
+}
+
+// ============================================================================
+// EVENT SOURCE
+// ============================================================================
 
 /**
  * How the SSM receives events to monitor
  */
 export type SSMEventSourceType =
+  | 'canvas'    // Events from connected canvas nodes
   | 'webhook'   // Events pushed via webhook
   | 'polling'   // Periodically fetch events from a source
-  | 'pubsub'    // Subscribe to Pub/Sub topic (Google Cloud, etc.)
-  | 'manual';   // Events triggered manually or from canvas connections
+  | 'manual';   // Manual testing
 
 /**
- * Output format for SSM responses
+ * Polling source options
  */
-export type SSMOutputFormat =
-  | 'alert'          // Structured alert object
-  | 'summary'        // Natural language summary
-  | 'classification' // Single classification label
-  | 'raw';           // Raw JSON response
-
-/**
- * Severity levels for alerts
- */
-export type SSMAlertSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type SSMPollingSource = 'gmail' | 'slack' | 'custom_api';
 
 // ============================================================================
 // NODE CONFIGURATION
@@ -67,41 +108,66 @@ export type SSMAlertSeverity = 'low' | 'medium' | 'high' | 'critical';
 
 /**
  * SSM Agent Node Configuration
- * Defines all settings for an SSM-based monitoring node
+ * Defines all settings for a rules-based monitoring node
  */
 export interface SSMAgentNodeConfig {
   // Identity
   name: string;
   description: string;
 
-  // Model Configuration
-  model_provider: SSMModelProvider;
-  model_name: string;
-  model_endpoint?: string; // For self-hosted (Ollama URL, vLLM endpoint)
+  // What to monitor (user's plain English description)
+  monitoring_description: string;
+
+  // Generated rules (created by LLM at setup)
+  rules: SSMRulesConfig;
+
+  // Response templates for each severity
+  response_templates: SSMResponseTemplate[];
 
   // Event Source
   event_source_type: SSMEventSourceType;
-  polling_source?: 'gmail' | 'slack' | 'custom_api';
+  polling_source?: SSMPollingSource;
   polling_interval_seconds?: number;
   webhook_secret?: string;
 
-  // Monitoring Configuration
-  monitoring_type: SSMMonitoringType;
-  custom_prompt?: string;          // Custom instructions for monitoring
-  alert_threshold?: number;        // 0-1 confidence threshold for alerts
+  // Setup metadata
+  rules_generated_at?: string;
+  rules_generated_by?: 'claude' | 'openai' | 'manual';
 
-  // Output Configuration
-  output_format: SSMOutputFormat;
-  alert_webhook?: string;          // External webhook to send alerts to
-
-  // State Management
-  state_retention_hours?: number;  // How long to retain SSM state
-  checkpoint_enabled?: boolean;    // Enable state checkpointing
+  // Runtime stats
+  events_processed?: number;
+  alerts_triggered?: number;
+  last_event_at?: string;
 }
 
 // ============================================================================
 // RUNTIME TYPES
 // ============================================================================
+
+/**
+ * An event to be processed by the SSM
+ */
+export interface SSMEvent {
+  id: string;
+  timestamp: string;
+  source: string;
+  type: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Result of matching an event against rules
+ */
+export interface SSMMatchResult {
+  matched: boolean;
+  severity: SSMAlertSeverity | null;
+  matched_rules: Array<{
+    type: 'keyword' | 'pattern' | 'condition';
+    rule_id: string;
+    rule_name: string;
+  }>;
+}
 
 /**
  * Alert generated by SSM monitoring
@@ -110,10 +176,13 @@ export interface SSMAlert {
   id: string;
   severity: SSMAlertSeverity;
   title: string;
-  details: Record<string, unknown>;
+  message: string;
+  event_id: string;
+  matched_rules: string[];
   timestamp: string;
   acknowledged: boolean;
-  source_node_id?: string;
+  source_node_id: string;
+  forwarded_to_ai: boolean;
 }
 
 /**
@@ -126,4 +195,45 @@ export interface SSMExecutionState {
   events_processed: number;
   alerts_generated: number;
   error_message?: string;
+}
+
+// ============================================================================
+// API TYPES
+// ============================================================================
+
+/**
+ * Request to generate rules from a description
+ */
+export interface SSMGenerateRulesRequest {
+  description: string;
+  provider: 'claude' | 'openai';
+  examples?: string[];  // Optional example events to help generation
+}
+
+/**
+ * Response from rule generation
+ */
+export interface SSMGenerateRulesResponse {
+  success: boolean;
+  rules?: SSMRulesConfig;
+  response_templates?: SSMResponseTemplate[];
+  error?: string;
+}
+
+/**
+ * Request to process an event
+ */
+export interface SSMProcessEventRequest {
+  event: SSMEvent;
+  rules: SSMRulesConfig;
+  response_templates: SSMResponseTemplate[];
+}
+
+/**
+ * Response from event processing
+ */
+export interface SSMProcessEventResponse {
+  matched: boolean;
+  alert?: SSMAlert;
+  action: 'none' | 'log' | 'alert' | 'forward_to_ai';
 }

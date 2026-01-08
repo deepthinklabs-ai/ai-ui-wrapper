@@ -1,15 +1,12 @@
 /**
  * SSM Agent Configuration Validation
  *
- * Ensures config integrity before save.
- * Separated from component code for:
- * - Reusability
- * - Unit testing
- * - Clear separation of concerns
+ * Validates rules-based Stream Monitor configuration.
+ * Ensures rules and templates are properly configured.
  */
 
-import type { SSMAgentNodeConfig } from '../../../types/ssm';
-import { SSM_MODEL_OPTIONS } from './ssmDefaults';
+import type { SSMAgentNodeConfig, SSMRulesConfig } from '../../../types/ssm';
+import { DEFAULT_SSM_CONFIG, DEFAULT_RESPONSE_TEMPLATES } from './ssmDefaults';
 
 // ============================================================================
 // VALIDATION RESULT TYPE
@@ -40,42 +37,21 @@ export function validateSSMConfig(config: SSMAgentNodeConfig): ValidationResult 
     errors.push('Name is required');
   }
 
-  if (!config.model_provider) {
-    errors.push('Model provider is required');
+  // Monitoring description
+  if (!config.monitoring_description?.trim()) {
+    warnings.push('No monitoring description set - rules may not be configured yet');
   }
 
-  if (!config.model_name) {
-    errors.push('Model name is required');
+  // Rules validation
+  if (config.rules) {
+    const rulesResult = validateRules(config.rules);
+    errors.push(...rulesResult.errors);
+    warnings.push(...rulesResult.warnings);
   }
 
-  // Provider-specific validation
-  if (config.model_provider === 'ollama' && !config.model_endpoint) {
-    // Set default endpoint for Ollama if not specified
-    warnings.push('Ollama endpoint not set, will use default (http://localhost:11434)');
-  }
-
-  if (config.model_provider === 'vllm' && !config.model_endpoint) {
-    warnings.push('vLLM endpoint not set, will use default (http://localhost:8000)');
-  }
-
-  // Validate model exists for provider
-  if (config.model_provider && config.model_name) {
-    const availableModels = SSM_MODEL_OPTIONS[config.model_provider]?.models || [];
-    if (!availableModels.includes(config.model_name)) {
-      warnings.push(`Model "${config.model_name}" may not be available for ${config.model_provider}`);
-    }
-  }
-
-  // Custom monitoring type requires prompt
-  if (config.monitoring_type === 'custom' && !config.custom_prompt?.trim()) {
-    errors.push('Custom prompt is required when using custom monitoring type');
-  }
-
-  // Alert threshold validation
-  if (config.alert_threshold !== undefined) {
-    if (config.alert_threshold < 0 || config.alert_threshold > 1) {
-      errors.push('Alert threshold must be between 0 and 1');
-    }
+  // Response templates validation
+  if (!config.response_templates || config.response_templates.length === 0) {
+    warnings.push('No response templates configured - using defaults');
   }
 
   // Polling configuration validation
@@ -100,30 +76,68 @@ export function validateSSMConfig(config: SSMAgentNodeConfig): ValidationResult 
     }
   }
 
-  // State retention validation
-  if (config.state_retention_hours !== undefined) {
-    if (config.state_retention_hours < 1) {
-      errors.push('State retention must be at least 1 hour');
-    }
-    if (config.state_retention_hours > 720) {
-      warnings.push('State retention over 30 days (720 hours) may impact storage');
-    }
-  }
-
-  // Alert webhook validation
-  if (config.alert_webhook) {
-    try {
-      new URL(config.alert_webhook);
-    } catch {
-      errors.push('Alert webhook must be a valid URL');
-    }
-  }
-
   return {
     isValid: errors.length === 0,
     errors,
     warnings,
   };
+}
+
+/**
+ * Validate rules configuration
+ */
+function validateRules(rules: SSMRulesConfig): ValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Check if any rules exist
+  const totalRules =
+    (rules.keywords?.length || 0) +
+    (rules.patterns?.length || 0) +
+    (rules.conditions?.length || 0);
+
+  if (totalRules === 0) {
+    warnings.push('No rules configured - monitor will not detect any events');
+  }
+
+  // Validate keyword rules
+  for (const keyword of rules.keywords || []) {
+    if (!keyword.keyword?.trim()) {
+      errors.push(`Keyword rule ${keyword.id} has empty keyword`);
+    }
+  }
+
+  // Validate pattern rules (regex)
+  for (const pattern of rules.patterns || []) {
+    if (!pattern.pattern?.trim()) {
+      errors.push(`Pattern rule ${pattern.id} has empty pattern`);
+    } else {
+      try {
+        new RegExp(pattern.pattern);
+      } catch (e) {
+        errors.push(`Pattern rule "${pattern.name}" has invalid regex: ${e instanceof Error ? e.message : 'unknown error'}`);
+      }
+    }
+  }
+
+  // Validate condition rules
+  for (const condition of rules.conditions || []) {
+    if (!condition.field?.trim()) {
+      errors.push(`Condition rule ${condition.id} has no field specified`);
+    }
+    if (!condition.value?.trim()) {
+      errors.push(`Condition rule ${condition.id} has no value specified`);
+    }
+    if (condition.operator === 'matches') {
+      try {
+        new RegExp(condition.value);
+      } catch (e) {
+        errors.push(`Condition rule with "matches" operator has invalid regex: ${e instanceof Error ? e.message : 'unknown error'}`);
+      }
+    }
+  }
+
+  return { isValid: errors.length === 0, errors, warnings };
 }
 
 /**
@@ -141,21 +155,6 @@ export function validateSSMField(
       }
       break;
 
-    case 'model_provider':
-      if (!value || !Object.keys(SSM_MODEL_OPTIONS).includes(value as string)) {
-        return 'Invalid model provider';
-      }
-      break;
-
-    case 'alert_threshold':
-      if (value !== undefined) {
-        const num = Number(value);
-        if (isNaN(num) || num < 0 || num > 1) {
-          return 'Alert threshold must be between 0 and 1';
-        }
-      }
-      break;
-
     case 'polling_interval_seconds':
       if (value !== undefined) {
         const num = Number(value);
@@ -165,19 +164,9 @@ export function validateSSMField(
       }
       break;
 
-    case 'custom_prompt':
-      if (currentConfig.monitoring_type === 'custom' && (!value || typeof value !== 'string' || !value.trim())) {
-        return 'Custom prompt is required for custom monitoring';
-      }
-      break;
-
-    case 'alert_webhook':
-      if (value && typeof value === 'string' && value.trim()) {
-        try {
-          new URL(value);
-        } catch {
-          return 'Alert webhook must be a valid URL';
-        }
+    case 'monitoring_description':
+      if (typeof value === 'string' && value.trim().length > 0 && value.trim().length < 10) {
+        return 'Description should be at least 10 characters for good rule generation';
       }
       break;
   }
@@ -189,27 +178,10 @@ export function validateSSMField(
  * Apply default values to config where missing
  */
 export function applySSMDefaults(config: Partial<SSMAgentNodeConfig>): SSMAgentNodeConfig {
-  const result: SSMAgentNodeConfig = {
-    name: config.name || 'SSM Monitor',
-    description: config.description || '',
-    model_provider: config.model_provider || 'ollama',
-    model_name: config.model_name || 'mamba',
-    event_source_type: config.event_source_type || 'manual',
-    monitoring_type: config.monitoring_type || 'classification',
-    output_format: config.output_format || 'alert',
-    state_retention_hours: config.state_retention_hours ?? 24,
-    checkpoint_enabled: config.checkpoint_enabled ?? true,
-    alert_threshold: config.alert_threshold ?? 0.7,
+  return {
+    ...DEFAULT_SSM_CONFIG,
     ...config,
+    rules: config.rules || DEFAULT_SSM_CONFIG.rules,
+    response_templates: config.response_templates || DEFAULT_RESPONSE_TEMPLATES,
   };
-
-  // Apply default endpoints for self-hosted providers
-  if (result.model_provider === 'ollama' && !result.model_endpoint) {
-    result.model_endpoint = 'http://localhost:11434';
-  }
-  if (result.model_provider === 'vllm' && !result.model_endpoint) {
-    result.model_endpoint = 'http://localhost:8000';
-  }
-
-  return result;
 }
