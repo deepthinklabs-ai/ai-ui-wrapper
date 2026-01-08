@@ -221,6 +221,7 @@ export default function SSMAgentConfigPanel({
         body: JSON.stringify({
           description: currentConfig.monitoring_description,
           provider: selectedProvider,
+          userId: userId,
         }),
       });
 

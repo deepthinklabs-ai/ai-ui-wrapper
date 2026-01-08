@@ -26,6 +26,7 @@ import type {
   SSMConditionRule,
 } from '@/app/canvas/types/ssm';
 import { RULES_GENERATION_PROMPT } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
+import { getProviderKey } from '@/lib/secretManager/getKey';
 
 // ============================================================================
 // SESSION ACCESS (shared with training route via global)
@@ -82,6 +83,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       }, { status: 404 });
     }
 
+    // Get user's API key for the selected provider
+    const providerKey = provider === 'claude' ? 'claude' : 'openai';
+    const apiKey = await getProviderKey(session.userId, providerKey);
+    if (!apiKey) {
+      const providerName = provider === 'claude' ? 'Claude' : 'OpenAI';
+      return NextResponse.json({
+        success: false,
+        monitoringDescription: '',
+        rules: { keywords: [], patterns: [], conditions: [] },
+        responseTemplates: [],
+        error: `Please configure your ${providerName} API key in Settings to use SSM training.`,
+      }, { status: 403 });
+    }
+
     // Build conversation string
     const conversationText = session.messages
       .map(m => `${m.role.toUpperCase()}: ${m.content}`)
@@ -96,7 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       .replace('{extractedInfo}', extractedInfoText);
 
     // Generate rules using AI
-    const result = await generateRulesWithAI(prompt, provider);
+    const result = await generateRulesWithAI(prompt, provider, apiKey);
 
     if (!result.success) {
       return NextResponse.json({
@@ -144,23 +159,18 @@ interface GenerationResult {
 
 async function generateRulesWithAI(
   prompt: string,
-  provider: 'claude' | 'openai'
+  provider: 'claude' | 'openai',
+  apiKey: string
 ): Promise<GenerationResult> {
   if (provider === 'claude') {
-    return generateWithClaude(prompt);
+    return generateWithClaude(prompt, apiKey);
   } else {
-    return generateWithOpenAI(prompt);
+    return generateWithOpenAI(prompt, apiKey);
   }
 }
 
-async function generateWithClaude(prompt: string): Promise<GenerationResult> {
+async function generateWithClaude(prompt: string, apiKey: string): Promise<GenerationResult> {
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      console.error('[SSM Finalize] Missing ANTHROPIC_API_KEY');
-      return { success: false, error: 'Claude API key not configured' };
-    }
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -193,13 +203,13 @@ async function generateWithClaude(prompt: string): Promise<GenerationResult> {
   }
 }
 
-async function generateWithOpenAI(prompt: string): Promise<GenerationResult> {
+async function generateWithOpenAI(prompt: string, apiKey: string): Promise<GenerationResult> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -211,8 +221,9 @@ async function generateWithOpenAI(prompt: string): Promise<GenerationResult> {
     });
 
     if (!response.ok) {
-      console.error('[SSM Finalize] OpenAI API error:', await response.text());
-      return { success: false, error: 'OpenAI API error' };
+      const errorText = await response.text();
+      console.error('[SSM Finalize] OpenAI API error:', response.status, errorText);
+      return { success: false, error: `OpenAI API error: ${response.status}` };
     }
 
     const data = await response.json();

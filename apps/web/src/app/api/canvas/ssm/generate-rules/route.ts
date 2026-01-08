@@ -19,6 +19,7 @@ import type {
   SSMRulesConfig,
   SSMResponseTemplate,
 } from '@/app/canvas/types/ssm';
+import { getProviderKey } from '@/lib/secretManager/getKey';
 
 // ============================================================================
 // PROMPT TEMPLATE
@@ -111,13 +112,31 @@ USER'S MONITORING DESCRIPTION:
 export async function POST(request: NextRequest): Promise<NextResponse<SSMGenerateRulesResponse>> {
   try {
     const body: SSMGenerateRulesRequest = await request.json();
-    const { description, provider, examples } = body;
+    const { description, provider, userId, examples } = body;
 
     if (!description || description.trim().length < 10) {
       return NextResponse.json({
         success: false,
         error: 'Please provide a more detailed description (at least 10 characters)',
       }, { status: 400 });
+    }
+
+    if (!userId) {
+      return NextResponse.json({
+        success: false,
+        error: 'User ID is required',
+      }, { status: 400 });
+    }
+
+    // Get user's API key for the selected provider
+    const providerKey = provider === 'claude' ? 'claude' : 'openai';
+    const apiKey = await getProviderKey(userId, providerKey);
+    if (!apiKey) {
+      const providerName = provider === 'claude' ? 'Claude' : 'OpenAI';
+      return NextResponse.json({
+        success: false,
+        error: `Please configure your ${providerName} API key in Settings to generate rules.`,
+      }, { status: 403 });
     }
 
     // Build the prompt
@@ -135,14 +154,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMGenera
     let response_templates: SSMResponseTemplate[];
 
     if (provider === 'claude') {
-      const result = await generateWithClaude(prompt);
+      const result = await generateWithClaude(prompt, apiKey);
       if (!result.success) {
         return NextResponse.json({ success: false, error: result.error }, { status: 500 });
       }
       rules = result.rules!;
       response_templates = result.response_templates!;
     } else if (provider === 'openai') {
-      const result = await generateWithOpenAI(prompt);
+      const result = await generateWithOpenAI(prompt, apiKey);
       if (!result.success) {
         return NextResponse.json({ success: false, error: result.error }, { status: 500 });
       }
@@ -174,13 +193,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMGenera
 // AI PROVIDER FUNCTIONS
 // ============================================================================
 
-async function generateWithClaude(prompt: string): Promise<SSMGenerateRulesResponse> {
+async function generateWithClaude(prompt: string, apiKey: string): Promise<SSMGenerateRulesResponse> {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
@@ -196,9 +215,9 @@ async function generateWithClaude(prompt: string): Promise<SSMGenerateRulesRespo
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('[SSM Generate Rules] Claude API error:', error);
-      return { success: false, error: 'Claude API error' };
+      const errorText = await response.text();
+      console.error('[SSM Generate Rules] Claude API error:', response.status, errorText);
+      return { success: false, error: `Claude API error: ${response.status}` };
     }
 
     const data = await response.json();
@@ -211,13 +230,13 @@ async function generateWithClaude(prompt: string): Promise<SSMGenerateRulesRespo
   }
 }
 
-async function generateWithOpenAI(prompt: string): Promise<SSMGenerateRulesResponse> {
+async function generateWithOpenAI(prompt: string, apiKey: string): Promise<SSMGenerateRulesResponse> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini', // Use cheap model for rule generation
@@ -232,9 +251,9 @@ async function generateWithOpenAI(prompt: string): Promise<SSMGenerateRulesRespo
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('[SSM Generate Rules] OpenAI API error:', error);
-      return { success: false, error: 'OpenAI API error' };
+      const errorText = await response.text();
+      console.error('[SSM Generate Rules] OpenAI API error:', response.status, errorText);
+      return { success: false, error: `OpenAI API error: ${response.status}` };
     }
 
     const data = await response.json();

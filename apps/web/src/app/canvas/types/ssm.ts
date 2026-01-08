@@ -228,7 +228,8 @@ export interface SSMExecutionState {
 export interface SSMGenerateRulesRequest {
   description: string;
   provider: 'claude' | 'openai';
-  examples?: string[];  // Optional example events to help generation
+  userId: string;        // Required for API key lookup
+  examples?: string[];   // Optional example events to help generation
 }
 
 /**

@@ -24,6 +24,7 @@ import {
   generateMessageId,
   generateSessionId,
 } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
+import { getProviderKey } from '@/lib/secretManager/getKey';
 
 // ============================================================================
 // IN-MEMORY SESSION STORE (Replace with Redis/DB in production)
@@ -159,12 +160,30 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMTraini
       });
     }
 
+    // Get user's API key for the selected provider
+    const providerKey = provider === 'claude' ? 'claude' : 'openai';
+    const apiKey = await getProviderKey(userId, providerKey);
+    if (!apiKey) {
+      const providerName = provider === 'claude' ? 'Claude' : 'OpenAI';
+      return NextResponse.json({
+        success: false,
+        sessionId: currentSessionId,
+        message: { id: '', role: 'system', content: '', timestamp: '' },
+        phase: session.phase,
+        extractedInfo: session.extractedInfo,
+        isComplete: false,
+        sessionStartedAt: session.startedAt,
+        error: `Please configure your ${providerName} API key in Settings to use SSM training.`,
+      }, { status: 403 });
+    }
+
     // Generate AI response
     const aiResponse = await generateTrainingResponse(
       session.messages,
       session.phase,
       session.extractedInfo,
-      provider
+      provider,
+      apiKey
     );
 
     // Add AI response to session
@@ -337,15 +356,16 @@ async function generateTrainingResponse(
   messages: SSMTrainingMessage[],
   phase: SSMTrainingPhase,
   extractedInfo: SSMExtractedInfo,
-  provider: 'claude' | 'openai'
+  provider: 'claude' | 'openai',
+  apiKey: string
 ): Promise<string> {
   const systemPrompt = buildSystemPrompt(phase, extractedInfo);
   const conversationHistory = buildConversationHistory(messages);
 
   if (provider === 'claude') {
-    return generateWithClaude(systemPrompt, conversationHistory);
+    return generateWithClaude(systemPrompt, conversationHistory, apiKey);
   } else {
-    return generateWithOpenAI(systemPrompt, conversationHistory);
+    return generateWithOpenAI(systemPrompt, conversationHistory, apiKey);
   }
 }
 
@@ -354,14 +374,15 @@ async function generateTrainingResponse(
  */
 async function generateWithClaude(
   systemPrompt: string,
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  apiKey: string
 ): Promise<string> {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
@@ -373,15 +394,16 @@ async function generateWithClaude(
     });
 
     if (!response.ok) {
-      console.error('[SSM Training] Claude API error:', await response.text());
-      return getFallbackResponse();
+      const errorText = await response.text();
+      console.error('[SSM Training] Claude API error:', response.status, errorText);
+      throw new Error(`Claude API error: ${response.status}`);
     }
 
     const data = await response.json();
     return data.content?.[0]?.text || getFallbackResponse();
   } catch (error) {
     console.error('[SSM Training] Claude error:', error);
-    return getFallbackResponse();
+    throw error;
   }
 }
 
@@ -390,14 +412,15 @@ async function generateWithClaude(
  */
 async function generateWithOpenAI(
   systemPrompt: string,
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  apiKey: string
 ): Promise<string> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -410,15 +433,16 @@ async function generateWithOpenAI(
     });
 
     if (!response.ok) {
-      console.error('[SSM Training] OpenAI API error:', await response.text());
-      return getFallbackResponse();
+      const errorText = await response.text();
+      console.error('[SSM Training] OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
     return data.choices?.[0]?.message?.content || getFallbackResponse();
   } catch (error) {
     console.error('[SSM Training] OpenAI error:', error);
-    return getFallbackResponse();
+    throw error;
   }
 }
 
