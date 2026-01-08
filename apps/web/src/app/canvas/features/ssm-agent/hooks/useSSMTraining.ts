@@ -22,6 +22,7 @@ import type {
   SSMFinalizeTrainingResponse,
 } from '../types/training';
 import type { SSMRulesConfig, SSMResponseTemplate } from '../../../types/ssm';
+import { apiClient } from '@/lib/apiClient';
 
 // ============================================================================
 // TYPES
@@ -152,17 +153,16 @@ export function useSSMTraining(options: UseSSMTrainingOptions): UseSSMTrainingRe
         provider,
       };
 
-      const response = await fetch('/api/canvas/ssm/training', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
-      });
+      const response = await apiClient.post<SSMTrainingResponse>(
+        '/api/canvas/ssm/training',
+        request
+      );
 
-      if (!response.ok) {
-        throw new Error(`Training API error: ${response.status}`);
+      if (!response.ok || !response.data) {
+        throw new Error(response.error || `Training API error: ${response.status}`);
       }
 
-      const data: SSMTrainingResponse = await response.json();
+      const data = response.data;
 
       if (!data.success) {
         throw new Error(data.error || 'Training failed');
@@ -229,17 +229,16 @@ export function useSSMTraining(options: UseSSMTrainingOptions): UseSSMTrainingRe
         provider,
       };
 
-      const response = await fetch('/api/canvas/ssm/training/finalize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
-      });
+      const response = await apiClient.post<SSMFinalizeTrainingResponse>(
+        '/api/canvas/ssm/training/finalize',
+        request
+      );
 
-      if (!response.ok) {
-        throw new Error(`Finalize API error: ${response.status}`);
+      if (!response.ok || !response.data) {
+        throw new Error(response.error || `Finalize API error: ${response.status}`);
       }
 
-      const data: SSMFinalizeTrainingResponse = await response.json();
+      const data = response.data;
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to generate rules');
