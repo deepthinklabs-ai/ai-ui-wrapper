@@ -120,7 +120,7 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
             </span>
           )}
         </div>
-        <p className="text-xs text-teal-600 mt-1">Stream Monitor</p>
+        <p className="text-xs text-teal-600 mt-1">State-Space Model</p>
       </div>
 
       {/* Body */}

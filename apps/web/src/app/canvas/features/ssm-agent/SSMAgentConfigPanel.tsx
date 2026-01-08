@@ -1,17 +1,18 @@
 /**
  * SSMAgentConfigPanel Component
  *
- * Configuration interface for SSM (Smart Stream Monitor) nodes.
+ * Configuration interface for SSM (State-Space Model) nodes.
  *
  * New Architecture:
  * - LLM used ONLY at setup to generate rules
  * - Runtime uses pure pattern matching ($0 cost)
  * - Pre-defined response templates
+ * - OAuth integrations for data source access
  */
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type {
   SSMAgentNodeConfig,
   SSMRulesConfig,
@@ -29,6 +30,18 @@ import {
   generateRuleId,
 } from './lib/ssmDefaults';
 import { testRules, getRuleStats } from './lib/ssmRulesEngine';
+
+// OAuth Integration Panels
+import { GmailOAuthPanel } from '../../features/gmail-oauth/components/GmailOAuthPanel';
+import { DEFAULT_GMAIL_CONFIG, type GmailOAuthConfig } from '../../features/gmail-oauth/types';
+import { CalendarOAuthPanel } from '../../features/calendar-oauth/components/CalendarOAuthPanel';
+import { DEFAULT_CALENDAR_CONFIG, type CalendarOAuthConfig } from '../../features/calendar-oauth/types';
+import { SheetsOAuthPanel } from '../../features/sheets-oauth/components/SheetsOAuthPanel';
+import { DEFAULT_SHEETS_CONFIG, type SheetsOAuthConfig } from '../../features/sheets-oauth/types';
+import { DocsOAuthPanel } from '../../features/docs-oauth/components/DocsOAuthPanel';
+import { DEFAULT_DOCS_CONFIG, type DocsOAuthConfig } from '../../features/docs-oauth/types';
+import { SlackOAuthPanel } from '../../features/slack-oauth/components/SlackOAuthPanel';
+import { DEFAULT_SLACK_CONFIG, type SlackOAuthConfig } from '../../features/slack-oauth/types';
 
 // ============================================================================
 // TYPES
@@ -53,8 +66,16 @@ export default function SSMAgentConfigPanel({
   config,
   onUpdate,
 }: SSMAgentConfigPanelProps) {
-  // Merge with defaults
-  const currentConfig = { ...DEFAULT_SSM_CONFIG, ...config };
+  // Local state for form data (needed for OAuth panels)
+  const [formData, setFormData] = useState<SSMAgentNodeConfig>({ ...DEFAULT_SSM_CONFIG, ...config });
+
+  // Sync with prop changes
+  useEffect(() => {
+    setFormData({ ...DEFAULT_SSM_CONFIG, ...config });
+  }, [config]);
+
+  // Merge with defaults (for display)
+  const currentConfig = formData;
 
   // UI State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -534,6 +555,69 @@ export default function SSMAgentConfigPanel({
           </div>
         </section>
       )}
+
+      {/* Section: Integrations */}
+      <section>
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <span>🔗</span> Data Source Integrations
+        </h3>
+        <p className="text-xs text-foreground/60 mb-4">
+          Connect to external services to monitor their data streams.
+        </p>
+
+        {/* Gmail OAuth Panel */}
+        <GmailOAuthPanel
+          config={formData.gmail || DEFAULT_GMAIL_CONFIG}
+          onConfigChange={(gmailConfig: GmailOAuthConfig) => {
+            setFormData(prev => ({ ...prev, gmail: gmailConfig }));
+            onUpdate({ gmail: gmailConfig });
+          }}
+        />
+
+        <div className="my-4 border-t border-foreground/10" />
+
+        {/* Calendar OAuth Panel */}
+        <CalendarOAuthPanel
+          config={formData.calendar || DEFAULT_CALENDAR_CONFIG}
+          onConfigChange={(calendarConfig: CalendarOAuthConfig) => {
+            setFormData(prev => ({ ...prev, calendar: calendarConfig }));
+            onUpdate({ calendar: calendarConfig });
+          }}
+        />
+
+        <div className="my-4 border-t border-foreground/10" />
+
+        {/* Sheets OAuth Panel */}
+        <SheetsOAuthPanel
+          config={formData.sheets || DEFAULT_SHEETS_CONFIG}
+          onConfigChange={(sheetsConfig: SheetsOAuthConfig) => {
+            setFormData(prev => ({ ...prev, sheets: sheetsConfig }));
+            onUpdate({ sheets: sheetsConfig });
+          }}
+        />
+
+        <div className="my-4 border-t border-foreground/10" />
+
+        {/* Docs OAuth Panel */}
+        <DocsOAuthPanel
+          config={formData.docs || DEFAULT_DOCS_CONFIG}
+          onConfigChange={(docsConfig: DocsOAuthConfig) => {
+            setFormData(prev => ({ ...prev, docs: docsConfig }));
+            onUpdate({ docs: docsConfig });
+          }}
+        />
+
+        <div className="my-4 border-t border-foreground/10" />
+
+        {/* Slack OAuth Panel */}
+        <SlackOAuthPanel
+          config={formData.slack || DEFAULT_SLACK_CONFIG}
+          onConfigChange={(slackConfig: SlackOAuthConfig) => {
+            setFormData(prev => ({ ...prev, slack: slackConfig }));
+            onUpdate({ slack: slackConfig });
+          }}
+        />
+      </section>
 
       {/* Cost Info */}
       <div className="p-3 bg-green-50 border border-green-200 rounded-lg">

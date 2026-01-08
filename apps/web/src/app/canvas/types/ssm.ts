@@ -1,5 +1,5 @@
 /**
- * SSM (Smart Stream Monitor) Node Type Definitions
+ * SSM (State-Space Model) Node Type Definitions
  *
  * A rules-based event monitoring system that:
  * - Uses LLM ONLY at setup time to generate rules
@@ -11,6 +11,12 @@
  * - Runtime: Events matched against rules → Pre-defined responses
  * - AI Agent: Only invoked for critical alerts (user's choice)
  */
+
+import type { GmailOAuthConfig } from '../features/gmail-oauth/types';
+import type { CalendarOAuthConfig } from '../features/calendar-oauth/types';
+import type { SheetsOAuthConfig } from '../features/sheets-oauth/types';
+import type { DocsOAuthConfig } from '../features/docs-oauth/types';
+import type { SlackOAuthConfig } from '../features/slack-oauth/types';
 
 // ============================================================================
 // ALERT SEVERITY
@@ -138,6 +144,13 @@ export interface SSMAgentNodeConfig {
   events_processed?: number;
   alerts_triggered?: number;
   last_event_at?: string;
+
+  // OAuth Integrations (for data source access)
+  gmail?: GmailOAuthConfig;
+  calendar?: CalendarOAuthConfig;
+  sheets?: SheetsOAuthConfig;
+  docs?: DocsOAuthConfig;
+  slack?: SlackOAuthConfig;
 }
 
 // ============================================================================
