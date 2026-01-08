@@ -7,6 +7,7 @@
  * Features:
  * - LLM generates rules at setup time (one-time cost)
  * - Pure pattern matching at runtime ($0)
+ * - On/off toggle to start/stop monitoring
  * - Three severity outputs: Info, Warning, Critical (→ AI Agent)
  */
 
@@ -17,6 +18,7 @@ import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { SSMAgentNodeConfig } from '../../types/ssm';
 import { getEventSourceInfo, hasRulesConfigured, countEnabledRules } from '../../features/ssm-agent/lib/ssmDefaults';
+import { useCanvasContext } from '../../context/CanvasContext';
 
 // ============================================================================
 // TYPES
@@ -34,8 +36,10 @@ export interface SSMAgentNodeData {
 
 export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
   const nodeData = data as SSMAgentNodeData;
+  const { onUpdateNode } = useCanvasContext();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(nodeData.config.name);
+  const [isToggling, setIsToggling] = useState(false);
 
   // Get display info
   const eventSourceInfo = useMemo(() => {
@@ -50,21 +54,47 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
     return countEnabledRules(nodeData.config.rules);
   }, [nodeData.config.rules]);
 
+  const isEnabled = nodeData.config.is_enabled ?? false;
+  const isTrained = !!nodeData.config.trained_at;
+
   // Handle name editing
   const handleSaveName = useCallback(() => {
     setIsEditing(false);
   }, []);
 
-  // Determine status based on rules configuration
+  // Handle toggle on/off
+  const handleToggle = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Don't trigger node selection
+    if (isToggling) return;
+
+    // Don't allow enabling if not trained
+    if (!isTrained && !isEnabled) {
+      return;
+    }
+
+    setIsToggling(true);
+    try {
+      await onUpdateNode(id, {
+        config: { ...nodeData.config, is_enabled: !isEnabled },
+      });
+    } finally {
+      setIsToggling(false);
+    }
+  }, [id, nodeData.config, isEnabled, isTrained, isToggling, onUpdateNode]);
+
+  // Determine status based on configuration and enabled state
   const status = useMemo(() => {
+    if (!isTrained) {
+      return { color: 'bg-gray-400', text: 'Not Trained', textColor: 'text-gray-600' };
+    }
     if (!rulesConfigured) {
-      return { color: 'bg-gray-400', text: 'Setup Required', textColor: 'text-gray-600' };
+      return { color: 'bg-gray-400', text: 'No Rules', textColor: 'text-gray-600' };
     }
-    if (enabledRulesCount === 0) {
-      return { color: 'bg-amber-400', text: 'No Active Rules', textColor: 'text-amber-600' };
+    if (!isEnabled) {
+      return { color: 'bg-amber-400', text: 'Paused', textColor: 'text-amber-600' };
     }
-    return { color: 'bg-green-400 animate-pulse', text: 'Ready', textColor: 'text-green-600' };
-  }, [rulesConfigured, enabledRulesCount]);
+    return { color: 'bg-green-400 animate-pulse', text: 'Monitoring', textColor: 'text-green-600' };
+  }, [isTrained, rulesConfigured, isEnabled]);
 
   return (
     <div
@@ -78,22 +108,14 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
         }
       `}
     >
-      {/* Input Handles */}
+      {/* Input Handle (optional - for manual trigger or chaining) */}
       <Handle
         type="target"
         position={Position.Left}
         id="trigger"
         className="!w-3 !h-3 !bg-teal-500 !border-2 !border-white"
-        style={{ top: '30%' }}
-        title="Trigger"
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="events"
-        className="!w-3 !h-3 !bg-teal-500 !border-2 !border-white"
-        style={{ top: '70%' }}
-        title="Events"
+        style={{ top: '50%' }}
+        title="Optional Trigger"
       />
 
       {/* Header */}
@@ -119,25 +141,54 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
               {nodeData.config.name || nodeData.label}
             </span>
           )}
+
+          {/* On/Off Toggle */}
+          <button
+            onClick={handleToggle}
+            disabled={!isTrained || isToggling}
+            className={`
+              relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+              ${!isTrained ? 'bg-gray-200 cursor-not-allowed opacity-50' : isEnabled ? 'bg-green-500' : 'bg-gray-300 hover:bg-gray-400'}
+              ${isToggling ? 'opacity-50' : ''}
+            `}
+            title={!isTrained ? 'Complete training first' : isEnabled ? 'Click to pause monitoring' : 'Click to start monitoring'}
+          >
+            <span
+              className={`
+                inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+                ${isEnabled ? 'translate-x-4' : 'translate-x-0.5'}
+              `}
+            />
+          </button>
         </div>
-        <p className="text-xs text-teal-600 mt-1">State-Space Model</p>
+        <p className="text-xs text-teal-600 mt-1">Stream Monitor</p>
       </div>
 
       {/* Body */}
       <div className="px-4 py-3 space-y-2">
-        {/* Rules Summary */}
+        {/* Training Status */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-foreground/60">Rules:</span>
-          {rulesConfigured ? (
-            <span className="font-medium text-teal-700">
-              {enabledRulesCount} active
+          <span className="text-foreground/60">Training:</span>
+          {isTrained ? (
+            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+              Trained
             </span>
           ) : (
             <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
-              Not configured
+              Not trained
             </span>
           )}
         </div>
+
+        {/* Rules Summary (only show if trained) */}
+        {isTrained && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-foreground/60">Rules:</span>
+            <span className="font-medium text-teal-700">
+              {enabledRulesCount} active
+            </span>
+          </div>
+        )}
 
         {/* Event Source */}
         <div className="flex items-center justify-between text-sm">
@@ -147,14 +198,6 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
             <span className="text-foreground/80 text-xs">
               {eventSourceInfo?.label}
             </span>
-          </span>
-        </div>
-
-        {/* Runtime Cost */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-foreground/60">Runtime:</span>
-          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
-            $0 (rules-based)
           </span>
         </div>
 
@@ -180,42 +223,30 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
 
       {/* Footer */}
       <div className="px-4 py-2 border-t border-teal-100 bg-teal-50/50 rounded-b-xl">
-        {nodeData.config.monitoring_description ? (
+        {isTrained && nodeData.config.training_summary ? (
+          <p className="text-xs text-teal-700 truncate" title={nodeData.config.training_summary}>
+            {nodeData.config.training_summary}
+          </p>
+        ) : isTrained && nodeData.config.monitoring_description ? (
           <p className="text-xs text-teal-700 truncate" title={nodeData.config.monitoring_description}>
             {nodeData.config.monitoring_description}
           </p>
         ) : (
           <div className="flex items-center gap-2 text-teal-600">
             <span className="text-sm">🎓</span>
-            <span className="text-xs">Click to configure in Node Inspector</span>
+            <span className="text-xs">Click to train in Node Inspector</span>
           </div>
         )}
       </div>
 
-      {/* Output Handles - Severity Based */}
+      {/* Output Handle - Sends alerts to connected nodes */}
       <Handle
         type="source"
         position={Position.Right}
-        id="info"
-        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
-        style={{ top: '25%' }}
-        title="Info Events (log only)"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="warning"
-        className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white"
+        id="output"
+        className="!w-3 !h-3 !bg-teal-500 !border-2 !border-white"
         style={{ top: '50%' }}
-        title="Warning Events (alert user)"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="critical"
-        className="!w-3 !h-3 !bg-red-500 !border-2 !border-white"
-        style={{ top: '75%' }}
-        title="Critical Events (forward to AI Agent)"
+        title="Alert Output (to AI Agent)"
       />
     </div>
   );

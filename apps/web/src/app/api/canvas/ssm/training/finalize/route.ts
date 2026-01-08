@@ -14,6 +14,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import type {
   SSMFinalizeTrainingRequest,
   SSMFinalizeTrainingResponse,
+  SSMTrainingPhase,
+  SSMTrainingMessage,
+  SSMExtractedInfo,
 } from '@/app/canvas/features/ssm-agent/types/training';
 import type {
   SSMRulesConfig,
@@ -25,35 +28,25 @@ import type {
 import { RULES_GENERATION_PROMPT } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
 
 // ============================================================================
-// SESSION ACCESS (mirror from training route)
+// SESSION ACCESS (shared with training route via global)
 // ============================================================================
 
-interface SessionStore {
-  [sessionId: string]: {
+// Note: In production, this should be Redis/DB
+// The training route defines the global, we just access it
+function getSessionStore() {
+  // Access the global store set by training route
+  const store = (global as { ssmTrainingSessions?: Record<string, {
     nodeId: string;
     canvasId: string;
     userId: string;
-    phase: string;
-    messages: Array<{ role: string; content: string; id: string; timestamp: string }>;
-    extractedInfo: Record<string, unknown>;
+    phase: SSMTrainingPhase;
+    messages: SSMTrainingMessage[];
+    extractedInfo: SSMExtractedInfo;
     startedAt: string;
     lastActivityAt: string;
-  };
-}
+  }> }).ssmTrainingSessions;
 
-// Note: In production, this should be Redis/DB
-// For now, we'll need to import from training route or use a shared store
-// This is a workaround - in production use proper session management
-declare global {
-  // eslint-disable-next-line no-var
-  var ssmTrainingSessions: SessionStore | undefined;
-}
-
-function getSessionStore(): SessionStore {
-  if (!global.ssmTrainingSessions) {
-    global.ssmTrainingSessions = {};
-  }
-  return global.ssmTrainingSessions;
+  return store || {};
 }
 
 // ============================================================================

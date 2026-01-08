@@ -121,8 +121,16 @@ export interface SSMAgentNodeConfig {
   name: string;
   description: string;
 
+  // Monitoring enabled state (on/off switch)
+  is_enabled: boolean;
+
   // What to monitor (user's plain English description)
   monitoring_description: string;
+
+  // Training state
+  trained_at?: string;           // When training was completed
+  trained_by?: 'claude' | 'openai';  // Which provider was used
+  training_summary?: string;     // Summary of what was trained (auto-generated)
 
   // Generated rules (created by LLM at setup)
   rules: SSMRulesConfig;

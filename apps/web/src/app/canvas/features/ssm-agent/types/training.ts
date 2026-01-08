@@ -128,8 +128,8 @@ export interface SSMFinalizeTrainingRequest {
 export interface SSMFinalizeTrainingResponse {
   success: boolean;
   monitoringDescription: string;
-  rules: import('../../types/ssm').SSMRulesConfig;
-  responseTemplates: import('../../types/ssm').SSMResponseTemplate[];
+  rules: import('../../../types/ssm').SSMRulesConfig;
+  responseTemplates: import('../../../types/ssm').SSMResponseTemplate[];
   error?: string;
 }
 
