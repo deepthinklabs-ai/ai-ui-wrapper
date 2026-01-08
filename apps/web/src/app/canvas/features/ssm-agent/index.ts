@@ -35,3 +35,40 @@ export {
   applySSMDefaults,
   type ValidationResult,
 } from './lib/ssmValidation';
+
+// Lib - Sanitization (Security)
+export {
+  sanitizeEventContent,
+  sanitizeCustomPrompt,
+  validateOllamaEndpoint,
+  validateWebhookUrl,
+  sanitizeNodeName,
+  generateRequestId,
+  getRateLimitKey,
+  getUserRateLimitKey,
+  INPUT_LIMITS,
+  type SanitizationResult,
+  type EndpointValidationResult,
+} from './lib/ssmSanitization';
+
+// Lib - Prompts
+export {
+  generatePrompt,
+  generateBatchPrompt,
+  parseAlertResponse,
+  parseClassificationResponse,
+  parseSummaryResponse,
+  type PromptContext,
+  type GeneratedPrompt,
+  type ParsedAlertResponse,
+  type ParsedClassificationResponse,
+} from './lib/ssmPrompts';
+
+// Lib - Ollama Client
+export {
+  executeSSMInference,
+  checkEndpointHealth,
+  listOllamaModels,
+  type OllamaRequestOptions,
+  type OllamaResponse,
+} from './lib/ssmOllamaClient';
