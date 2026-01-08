@@ -178,14 +178,19 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
         </div>
       </div>
 
-      {/* Footer - Monitoring Description Preview */}
-      {nodeData.config.monitoring_description && (
-        <div className="px-4 py-2 border-t border-teal-100 bg-teal-50/50 rounded-b-xl">
+      {/* Footer */}
+      <div className="px-4 py-2 border-t border-teal-100 bg-teal-50/50 rounded-b-xl">
+        {nodeData.config.monitoring_description ? (
           <p className="text-xs text-teal-700 truncate" title={nodeData.config.monitoring_description}>
             {nodeData.config.monitoring_description}
           </p>
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center gap-2 text-teal-600">
+            <span className="text-sm">🎓</span>
+            <span className="text-xs">Click to configure in Node Inspector</span>
+          </div>
+        )}
+      </div>
 
       {/* Output Handles - Severity Based */}
       <Handle

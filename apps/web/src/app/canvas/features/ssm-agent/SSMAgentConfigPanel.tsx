@@ -8,6 +8,7 @@
  * - Runtime uses pure pattern matching ($0 cost)
  * - Pre-defined response templates
  * - OAuth integrations for data source access
+ * - Conversational training interface
  */
 
 'use client';
@@ -30,6 +31,10 @@ import {
   generateRuleId,
 } from './lib/ssmDefaults';
 import { testRules, getRuleStats } from './lib/ssmRulesEngine';
+
+// Training components
+import { useSSMTraining, type TrainingResult } from './hooks/useSSMTraining';
+import { SSMTrainingModal } from './components/SSMTrainingModal';
 
 // OAuth Integration Panels
 import { GmailOAuthPanel } from '../../features/gmail-oauth/components/GmailOAuthPanel';
@@ -88,6 +93,29 @@ export default function SSMAgentConfigPanel({
   const rulesConfigured = hasRulesConfigured(currentConfig.rules);
   const enabledRuleCount = countEnabledRules(currentConfig.rules);
   const ruleStats = getRuleStats(currentConfig.rules);
+
+  // Training hook
+  const handleTrainingComplete = useCallback(async (result: TrainingResult) => {
+    await onUpdate({
+      monitoring_description: result.monitoringDescription,
+      rules: result.rules,
+      response_templates: result.responseTemplates,
+      rules_generated_at: new Date().toISOString(),
+      rules_generated_by: selectedProvider,
+    });
+    setFormData(prev => ({
+      ...prev,
+      monitoring_description: result.monitoringDescription,
+    }));
+  }, [onUpdate, selectedProvider]);
+
+  const training = useSSMTraining({
+    nodeId,
+    canvasId,
+    userId,
+    provider: selectedProvider,
+    onTrainingComplete: handleTrainingComplete,
+  });
 
   /**
    * Generate rules from description using AI
@@ -231,7 +259,48 @@ export default function SSMAgentConfigPanel({
         </div>
       </section>
 
-      {/* Section: What to Monitor */}
+      {/* Section: Conversational Training */}
+      <section>
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <span>💬</span> Train with Conversation
+        </h3>
+        <div className="p-4 bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-xl">
+          <p className="text-sm text-teal-700 mb-3">
+            Have a conversation to teach the SSM what to monitor. The AI will ask clarifying questions and generate optimized rules.
+          </p>
+          <div className="flex gap-2 mb-3">
+            <select
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value as 'claude' | 'openai')}
+              className="text-xs px-2 py-1.5 border border-teal-300 rounded bg-white flex-1"
+            >
+              {AI_PROVIDER_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={training.openTraining}
+            className="w-full py-3 px-4 rounded-lg text-sm font-medium bg-teal-500 text-white hover:bg-teal-600 transition-colors flex items-center justify-center gap-2"
+          >
+            <span>🎓</span>
+            Start Training Session
+          </button>
+          <p className="text-xs text-teal-600 mt-2 text-center">
+            Recommended for first-time setup
+          </p>
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 border-t border-foreground/10" />
+        <span className="text-xs text-foreground/40">or configure manually</span>
+        <div className="flex-1 border-t border-foreground/10" />
+      </div>
+
+      {/* Section: What to Monitor (Manual) */}
       <section>
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
           <span>🎯</span> What to Monitor
@@ -644,6 +713,23 @@ export default function SSMAgentConfigPanel({
           </div>
         </div>
       </div>
+
+      {/* Training Modal */}
+      <SSMTrainingModal
+        isOpen={training.isOpen}
+        onClose={training.closeTraining}
+        nodeName={currentConfig.name}
+        messages={training.messages}
+        phase={training.phase}
+        extractedInfo={training.extractedInfo}
+        isLoading={training.isLoading}
+        isFinalizing={training.isFinalizing}
+        error={training.error}
+        sessionStartedAt={training.sessionStartedAt}
+        onSendMessage={training.sendMessage}
+        onFinalize={training.finalize}
+        onReset={training.reset}
+      />
     </div>
   );
 }
