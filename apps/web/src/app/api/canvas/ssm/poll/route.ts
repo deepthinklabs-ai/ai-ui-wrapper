@@ -98,6 +98,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       trained_by?: string;
       gmail_enabled?: boolean;
       gmail_connection_id?: string;
+      events_processed?: number;
+      alerts_triggered?: number;
+      processed_event_ids?: string[];
     } | null;
 
 
@@ -165,8 +168,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       events = await fetchGmailEvents(userId, gmailConfig, node.id);
     }
 
-    // If no events, return early
-    if (events.length === 0) {
+    // Filter out already-processed events to prevent duplicate counting
+    const processedIds = new Set(runtimeConfig?.processed_event_ids || []);
+    const newEvents = events.filter(e => !processedIds.has(e.id));
+
+    // If no new events, return early
+    if (newEvents.length === 0) {
       return NextResponse.json({
         success: true,
         eventsProcessed: 0,
@@ -178,11 +185,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
     // Get connected nodes for forwarding alerts
     const connectedNodes = await getConnectedNodes(supabase, canvasId, nodeId);
 
-    // Process events through rules engine
+    // Process only NEW events through rules engine
     const alerts: SSMAlert[] = [];
     let alertsGenerated = 0;
+    const newlyProcessedIds: string[] = [];
 
-    for (const event of events) {
+    for (const event of newEvents) {
+      newlyProcessedIds.push(event.id);
       // Use matchEvent instead of testRules to include metadata (from, subject, etc.)
       const result = matchEvent(event, rules);
 
@@ -224,22 +233,28 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
 
     // Update stats in runtime_config (not encrypted config)
     // Stats are stored in runtime_config so server can track them without decryption
-    const currentStats = (runtimeConfig as any) || {};
+    // Also store processed event IDs to prevent duplicate counting
+    const existingProcessedIds = runtimeConfig?.processed_event_ids || [];
+    const allProcessedIds = [...existingProcessedIds, ...newlyProcessedIds];
+    // Keep only last 500 IDs to prevent unbounded growth (covers ~8 hours of 60s polling)
+    const trimmedProcessedIds = allProcessedIds.slice(-500);
+
     await supabase
       .from('canvas_nodes')
       .update({
         runtime_config: {
           ...runtimeConfig,
-          events_processed: (currentStats.events_processed || 0) + events.length,
-          alerts_triggered: (currentStats.alerts_triggered || 0) + alertsGenerated,
+          events_processed: (runtimeConfig?.events_processed || 0) + newEvents.length,
+          alerts_triggered: (runtimeConfig?.alerts_triggered || 0) + alertsGenerated,
           last_event_at: new Date().toISOString(),
+          processed_event_ids: trimmedProcessedIds,
         },
       })
       .eq('id', nodeId);
 
     return NextResponse.json({
       success: true,
-      eventsProcessed: events.length,
+      eventsProcessed: newEvents.length,
       alertsGenerated,
       alerts,
     });

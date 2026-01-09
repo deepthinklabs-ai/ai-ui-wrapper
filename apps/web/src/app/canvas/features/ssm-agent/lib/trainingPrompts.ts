@@ -92,15 +92,32 @@ EXTRACTED INFO:
 
 Generate a JSON response with:
 1. A clear monitoring_description (1-2 sentences summarizing what to monitor)
-2. Keyword rules for important terms
-3. Pattern rules (regex) for complex patterns
-4. Condition rules for field-based matching
-5. Response templates for each severity
+2. The logic mode: "all" if ALL conditions must match (AND), "any" if ANY condition triggers (OR)
+3. Keyword rules for important terms
+4. Pattern rules (regex) for complex patterns
+5. Condition rules for field-based matching
+6. Response templates for each severity
+
+IMPORTANT - Logic Mode Selection:
+- Use "all" (AND logic) when the user describes COMPOUND requirements like:
+  - "emails from X AND containing Y"
+  - "from address X with subject containing Y"
+  - "messages from sender X that mention keyword Y"
+- Use "any" (OR logic) when the user wants to catch ANY of several patterns:
+  - "emails containing X OR Y"
+  - "watch for phishing OR spam"
+  - "alert on any suspicious activity"
+
+IMPORTANT - Condition Fields for Email:
+- Use field "from" for sender email address checks
+- Use field "subject" for subject line checks
+- Use field "content" for body text checks
 
 OUTPUT FORMAT (JSON only, no markdown):
 {
   "monitoring_description": "...",
   "rules": {
+    "logic": "all" or "any",
     "keywords": [...],
     "patterns": [...],
     "conditions": [...]

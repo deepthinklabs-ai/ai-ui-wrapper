@@ -55,12 +55,24 @@ export interface SSMPatternRule {
 }
 
 /**
+ * Supported operators for condition rules
+ */
+export type SSMConditionOperator =
+  | 'equals' | '==' | '==='
+  | 'contains' | 'includes'
+  | 'startsWith'
+  | 'endsWith'
+  | 'greaterThan'
+  | 'lessThan'
+  | 'matches';
+
+/**
  * A condition rule for field-based matching
  */
 export interface SSMConditionRule {
   id: string;
   field: string;          // Field to check (e.g., "sender", "subject", "amount")
-  operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'matches';
+  operator: SSMConditionOperator;
   value: string;
   severity: SSMAlertSeverity;
   enabled: boolean;
@@ -73,6 +85,12 @@ export interface SSMRulesConfig {
   keywords: SSMKeywordRule[];
   patterns: SSMPatternRule[];
   conditions: SSMConditionRule[];
+  /**
+   * Logic mode for combining rules:
+   * - 'any' (OR): Alert if ANY rule matches (default)
+   * - 'all' (AND): Alert only if ALL enabled rules match
+   */
+  logic?: 'any' | 'all';
 }
 
 // ============================================================================
@@ -152,6 +170,9 @@ export interface SSMAgentNodeConfig {
   events_processed?: number;
   alerts_triggered?: number;
   last_event_at?: string;
+
+  // Processed event IDs to prevent duplicate counting
+  processed_event_ids?: string[];
 
   // OAuth Integrations (for data source access)
   gmail?: GmailOAuthConfig;
