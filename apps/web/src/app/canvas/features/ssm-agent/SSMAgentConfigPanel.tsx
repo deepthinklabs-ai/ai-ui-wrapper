@@ -730,6 +730,40 @@ export default function SSMAgentConfigPanel({
             </span>
           </div>
 
+          {/* Logic Mode Toggle */}
+          <div className="mb-3 p-2 bg-foreground/5 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-foreground/60">Match Mode:</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => onUpdate({ rules: { ...currentConfig.rules, logic: 'all' } })}
+                  className={`text-xs px-2 py-1 rounded transition-colors ${
+                    currentConfig.rules.logic === 'all'
+                      ? 'bg-teal-500 text-white'
+                      : 'bg-foreground/10 text-foreground/60 hover:bg-foreground/20'
+                  }`}
+                >
+                  ALL (AND)
+                </button>
+                <button
+                  onClick={() => onUpdate({ rules: { ...currentConfig.rules, logic: 'any' } })}
+                  className={`text-xs px-2 py-1 rounded transition-colors ${
+                    !currentConfig.rules.logic || currentConfig.rules.logic === 'any'
+                      ? 'bg-teal-500 text-white'
+                      : 'bg-foreground/10 text-foreground/60 hover:bg-foreground/20'
+                  }`}
+                >
+                  ANY (OR)
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-foreground/50 mt-1">
+              {currentConfig.rules.logic === 'all'
+                ? 'Alert only when ALL rules match'
+                : 'Alert when ANY rule matches'}
+            </p>
+          </div>
+
           {/* Keywords */}
           {currentConfig.rules.keywords.length > 0 && (
             <div className="mb-3">
