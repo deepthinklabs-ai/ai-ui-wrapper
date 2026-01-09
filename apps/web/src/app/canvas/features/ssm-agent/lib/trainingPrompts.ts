@@ -38,6 +38,7 @@ export const TRAINING_SYSTEM_PROMPT = `You are a helpful assistant training a St
 - What's critical vs warning vs just logging?
 - Any specific patterns or keywords to watch?
 - What should be ignored?
+- Do they want automatic replies? If so, what should the reply say?
 
 ## Response Format:
 Keep responses concise (2-4 sentences). End with a clear question unless you're summarizing.
@@ -97,6 +98,7 @@ Generate a JSON response with:
 4. Pattern rules (regex) for complex patterns
 5. Condition rules for field-based matching
 6. Response templates for each severity
+7. Auto-reply configuration (if user mentioned wanting automatic replies)
 
 IMPORTANT - Logic Mode Selection:
 - Use "all" (AND logic) when the user describes COMPOUND requirements like:
@@ -113,6 +115,13 @@ IMPORTANT - Condition Fields for Email:
 - Use field "subject" for subject line checks
 - Use field "content" for body text checks
 
+IMPORTANT - Auto-Reply Configuration:
+If the user mentioned wanting to send automatic replies when matches occur:
+- Set auto_reply.enabled to true
+- Configure the template with appropriate subject and body
+- Use placeholders like {sender}, {subject}, {matched_rules}, {severity}
+- If user didn't mention auto-reply, set auto_reply.enabled to false
+
 OUTPUT FORMAT (JSON only, no markdown):
 {
   "monitoring_description": "...",
@@ -122,7 +131,24 @@ OUTPUT FORMAT (JSON only, no markdown):
     "patterns": [...],
     "conditions": [...]
   },
-  "response_templates": [...]
+  "response_templates": [...],
+  "auto_reply": {
+    "enabled": true/false,
+    "template": {
+      "subject": "Re: {subject}",
+      "body": "Your reply message here...",
+      "signature": "Optional signature",
+      "includeOriginal": true/false
+    },
+    "conditions": {
+      "severities": ["info", "warning", "critical"],
+      "excludeSenders": ["noreply@", "automated@"]
+    },
+    "rateLimit": {
+      "maxRepliesPerSender": 1,
+      "windowMinutes": 60
+    }
+  }
 }`;
 
 // ============================================================================

@@ -26,6 +26,8 @@ import type {
   SSMPatternRule,
   SSMConditionRule,
 } from '@/app/canvas/types/ssm';
+import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
+import { DEFAULT_AUTO_REPLY_CONFIG } from '@/app/canvas/features/ssm-agent/features/auto-reply/defaults';
 import { RULES_GENERATION_PROMPT } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
 import { getProviderKey } from '@/lib/secretManager/getKey';
 
@@ -161,6 +163,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       monitoringDescription: result.monitoringDescription || '',
       rules: result.rules || { keywords: [], patterns: [], conditions: [] },
       responseTemplates: result.responseTemplates || getDefaultResponseTemplates(),
+      autoReply: result.autoReply,
     });
 
   } catch (error) {
@@ -184,6 +187,7 @@ interface GenerationResult {
   monitoringDescription?: string;
   rules?: SSMRulesConfig;
   responseTemplates?: SSMResponseTemplate[];
+  autoReply?: SSMAutoReplyConfig;
   error?: string;
 }
 
@@ -313,6 +317,29 @@ function parseGeneratedRules(content: string): GenerationResult {
       })),
     };
 
+    // Parse auto_reply configuration if present
+    let autoReply: SSMAutoReplyConfig | undefined;
+    if (parsed.auto_reply?.enabled) {
+      autoReply = {
+        enabled: true,
+        template: {
+          subject: parsed.auto_reply.template?.subject || 'Re: {subject}',
+          body: parsed.auto_reply.template?.body || 'Thank you for your message. We have received it and will respond shortly.',
+          signature: parsed.auto_reply.template?.signature || '',
+          includeOriginal: parsed.auto_reply.template?.includeOriginal ?? false,
+        },
+        conditions: {
+          severities: parsed.auto_reply.conditions?.severities || ['info', 'warning', 'critical'],
+          excludeSenders: parsed.auto_reply.conditions?.excludeSenders || ['noreply@', 'no-reply@', 'automated@'],
+        },
+        rateLimit: {
+          maxRepliesPerSender: parsed.auto_reply.rateLimit?.maxRepliesPerSender || 1,
+          windowMinutes: parsed.auto_reply.rateLimit?.windowMinutes || 60,
+          sentReplies: {},
+        },
+      };
+    }
+
     return {
       success: true,
       monitoringDescription: parsed.monitoring_description || 'Custom monitoring based on training',
@@ -320,6 +347,7 @@ function parseGeneratedRules(content: string): GenerationResult {
       responseTemplates: parsed.response_templates?.length
         ? parsed.response_templates
         : getDefaultResponseTemplates(),
+      autoReply,
     };
 
   } catch (error) {

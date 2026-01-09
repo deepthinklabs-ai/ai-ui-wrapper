@@ -22,6 +22,7 @@ import type {
   SSMFinalizeTrainingResponse,
 } from '../types/training';
 import type { SSMRulesConfig, SSMResponseTemplate } from '../../../types/ssm';
+import type { SSMAutoReplyConfig } from '../features/auto-reply/types';
 import { apiClient } from '@/lib/apiClient';
 
 // ============================================================================
@@ -40,6 +41,7 @@ export interface TrainingResult {
   monitoringDescription: string;
   rules: SSMRulesConfig;
   responseTemplates: SSMResponseTemplate[];
+  autoReply?: SSMAutoReplyConfig;
 }
 
 export interface UseSSMTrainingReturn {
@@ -248,6 +250,7 @@ export function useSSMTraining(options: UseSSMTrainingOptions): UseSSMTrainingRe
         monitoringDescription: data.monitoringDescription,
         rules: data.rules,
         responseTemplates: data.responseTemplates,
+        autoReply: data.autoReply,
       };
 
       // Update session to complete
