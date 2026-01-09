@@ -25,7 +25,7 @@
 
 - **Chat with any AI** — Switch between OpenAI, Claude, Grok, and Gemini mid-conversation
 - **Build visual workflows** — Orchestrate AI agents with an n8n-style canvas builder
-- **Own your data** — Client-side encryption, bring your own API keys. We do not store API keys at rest. Keys are handled ephemerally, in-memory only.
+- **Own your data** — Client-side encryption, bring your own API keys. API keys are **never stored at rest** and are handled **ephemerally, in-memory only**, then **immediately discarded after use**.
 - **Share and discover** — Marketplace for chatbots, workflows, and AI experiences
 
 ---
