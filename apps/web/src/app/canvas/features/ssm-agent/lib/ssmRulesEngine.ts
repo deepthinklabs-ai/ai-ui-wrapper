@@ -173,11 +173,22 @@ function matchCondition(event: SSMEvent, rule: SSMConditionRule): boolean {
     strValue = extractEmailAddress(strValue);
   }
 
+  // Debug log for condition matching
+  console.log('[SSM Rules] Condition check:', {
+    field: rule.field,
+    operator: rule.operator,
+    ruleValue: ruleValue,
+    actualValue: strValue,
+  });
+
   switch (rule.operator) {
     case 'equals':
+    case '==':
+    case '===':
       return strValue.toLowerCase() === ruleValue.toLowerCase();
 
     case 'contains':
+    case 'includes':
       return strValue.toLowerCase().includes(ruleValue.toLowerCase());
 
     case 'startsWith':
