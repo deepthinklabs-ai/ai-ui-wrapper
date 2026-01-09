@@ -30,8 +30,9 @@ export {
   recordSentReply,
 } from './defaults';
 
-// Service
-export { sendAutoReply, processAutoReply } from './sendReply';
+// NOTE: sendReply.ts exports are NOT included here because they use
+// server-only Node.js modules (googleapis). Import directly from
+// './sendReply' in server-side code (API routes) only.
 
 // UI Component
 export { ReplyConfigPanel } from './ReplyConfigPanel';

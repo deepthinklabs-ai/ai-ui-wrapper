@@ -12,9 +12,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getGmailClient } from '@/lib/googleClients';
 import { matchEvent } from '@/app/canvas/features/ssm-agent/lib/ssmRulesEngine';
-import { processAutoReply } from '@/app/canvas/features/ssm-agent/features/auto-reply';
+import { processAutoReply } from '@/app/canvas/features/ssm-agent/features/auto-reply/sendReply';
 import type { SSMAgentNodeConfig, SSMAlert, SSMEvent } from '@/app/canvas/types/ssm';
-import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply';
+import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 
 // ============================================================================
 // TYPES
