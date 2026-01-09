@@ -127,8 +127,12 @@ export default function SSMAgentConfigPanel({
     if (!isTrained && !isEnabled) return;
 
     const newState = !isEnabled;
-    await onUpdate({ is_enabled: newState });
-    setFormData(prev => ({ ...prev, is_enabled: newState }));
+    console.log('[SSM] Toggling monitoring to:', newState);
+    const success = await onUpdate({ is_enabled: newState });
+    console.log('[SSM] Toggle update result:', success);
+    if (success) {
+      setFormData(prev => ({ ...prev, is_enabled: newState }));
+    }
   }, [isTrained, isEnabled, onUpdate]);
 
   // Polling state - use ref for isPolling to avoid dependency loops

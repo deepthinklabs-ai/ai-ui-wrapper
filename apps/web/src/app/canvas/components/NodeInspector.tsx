@@ -20,7 +20,7 @@ import { useAuthSession } from '@/hooks/useAuthSession';
 
 interface NodeInspectorProps {
   node: CanvasNode | null;
-  onUpdateNode: (updates: Partial<CanvasNode>) => void;
+  onUpdateNode: (updates: Partial<CanvasNode>) => Promise<boolean>;
   onDeleteNode: () => void;
   onDuplicateNode: () => void;
   onClose: () => void;
@@ -193,8 +193,8 @@ export default function NodeInspector({
                 userId={user.id}
                 config={node.config as SSMAgentNodeConfig}
                 onUpdate={async (updates) => {
-                  onUpdateNode({ config: { ...node.config, ...updates } });
-                  return true;
+                  const success = await onUpdateNode({ config: { ...node.config, ...updates } });
+                  return success;
                 }}
               />
             )}
