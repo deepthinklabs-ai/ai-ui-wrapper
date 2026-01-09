@@ -193,24 +193,25 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
     const alerts: SSMAlert[] = [];
     let alertsGenerated = 0;
 
-    // Log rules for debugging
-    console.log('[SSM Poll] Rules to test:', {
+    // Log rules for debugging - consolidated into single log
+    const rulesSummary = {
       keywordCount: rules.keywords?.length || 0,
       patternCount: rules.patterns?.length || 0,
       conditionCount: rules.conditions?.length || 0,
-      keywords: rules.keywords?.map(k => k.keyword) || [],
-    });
+      keywords: rules.keywords?.slice(0, 5).map(k => k.keyword) || [],
+    };
+    console.log('[SSM Poll] RULES:', JSON.stringify(rulesSummary));
 
     for (const event of events) {
-      // Log first 200 chars of event content for debugging
-      console.log('[SSM Poll] Testing event:', {
-        id: event.id,
-        contentPreview: event.content.substring(0, 200),
-        from: event.metadata?.from,
-        subject: event.metadata?.subject,
-      });
       const result = testRules(event.content, rules);
-      console.log('[SSM Poll] Rule test result:', { matched: result.matched, matchedRules: result.matched_rules.map(r => r.rule_name) });
+      // Consolidated debug log
+      console.log('[SSM Poll] EVENT+RESULT:', JSON.stringify({
+        from: event.metadata?.from?.substring(0, 50),
+        subject: event.metadata?.subject?.substring(0, 50),
+        contentStart: event.content.substring(0, 100),
+        matched: result.matched,
+        matchedRules: result.matched_rules.map(r => r.rule_name),
+      }));
 
       if (result.matched) {
         // Determine highest severity
