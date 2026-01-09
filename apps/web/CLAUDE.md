@@ -43,19 +43,35 @@ gh pr list --state all -L 5   # Recent pull requests
 - PRs merge to `staging` first, then to `main`
 
 ### 7. Git Workflow for AI Assistants
-**IMPORTANT:** Always automatically commit and push changes to `staging` after completing any code modifications. Do not wait for the user to ask - push immediately after:
-1. Completing a feature or fix
-2. Verifying the build passes
-3. Creating any new files or modifications
+
+#### Staging Branch (Development)
+Automatically commit and push changes to `staging` after completing code modifications:
+1. Complete a feature or fix
+2. Verify the build passes (run `npx tsc --noEmit`)
+3. Commit and push to staging
 
 ```bash
 # Standard workflow after making changes:
+git checkout staging
 git add -A
 git commit -m "Description of changes"
 git push origin staging
 ```
 
-Only create PRs to `main` when explicitly requested by the user.
+#### Main Branch (Production) - CRITICAL RULES
+**🚨 NEVER push to `main` without EXPLICIT user approval. 🚨**
+
+- **DO NOT** create PRs to main automatically
+- **DO NOT** merge PRs to main without the user saying "push to main" or similar
+- **ALWAYS** wait for user to test changes in staging first
+- **ALWAYS** ask for confirmation before any main branch operations
+
+The workflow is:
+1. Push changes to `staging` → User tests in staging environment
+2. User explicitly requests: "push to main" / "merge to main" / "deploy to production"
+3. Only THEN create PR from staging → main and merge
+
+This ensures production stability. Breaking this rule causes production issues.
 
 ---
 
