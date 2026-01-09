@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getGmailClient } from '@/lib/googleClients';
-import { testRules } from '@/app/canvas/features/ssm-agent/lib/ssmRulesEngine';
+import { matchEvent } from '@/app/canvas/features/ssm-agent/lib/ssmRulesEngine';
 import type { SSMAgentNodeConfig, SSMAlert, SSMEvent } from '@/app/canvas/types/ssm';
 
 // ============================================================================
@@ -203,7 +203,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
     console.log('[SSM Poll] RULES:', JSON.stringify(rulesSummary));
 
     for (const event of events) {
-      const result = testRules(event.content, rules);
+      // Use matchEvent instead of testRules to include metadata (from, subject, etc.)
+      const result = matchEvent(event, rules);
       // Consolidated debug log
       console.log('[SSM Poll] EVENT+RESULT:', JSON.stringify({
         from: event.metadata?.from?.substring(0, 50),

@@ -130,6 +130,20 @@ function matchPattern(content: string, rule: SSMPatternRule): boolean {
 }
 
 /**
+ * Extract email address from RFC 5322 format
+ * e.g., '"Display Name" <email@example.com>' -> 'email@example.com'
+ */
+function extractEmailAddress(value: string): string {
+  // Try to extract email from angle brackets: "Name" <email@example.com>
+  const angleMatch = value.match(/<([^>]+)>/);
+  if (angleMatch) {
+    return angleMatch[1].toLowerCase();
+  }
+  // If no angle brackets, return as-is (might already be just the email)
+  return value.toLowerCase().trim();
+}
+
+/**
  * Match event against a condition rule
  */
 function matchCondition(event: SSMEvent, rule: SSMConditionRule): boolean {
@@ -151,8 +165,13 @@ function matchCondition(event: SSMEvent, rule: SSMConditionRule): boolean {
     return false;
   }
 
-  const strValue = String(fieldValue);
+  let strValue = String(fieldValue);
   const ruleValue = rule.value;
+
+  // For email-related fields, extract the actual email address
+  if (rule.field === 'from' || rule.field === 'to' || rule.field === 'sender') {
+    strValue = extractEmailAddress(strValue);
+  }
 
   switch (rule.operator) {
     case 'equals':
