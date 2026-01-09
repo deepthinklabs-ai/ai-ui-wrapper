@@ -74,8 +74,15 @@ export default function SSMAgentConfigPanel({
   // Local state for form data (needed for OAuth panels)
   const [formData, setFormData] = useState<SSMAgentNodeConfig>({ ...DEFAULT_SSM_CONFIG, ...config });
 
+  // Log initial state on mount
+  useEffect(() => {
+    console.log('[SSMAgentConfigPanel] Mount - config prop:', config);
+    console.log('[SSMAgentConfigPanel] Mount - config.is_enabled:', config.is_enabled);
+  }, []);
+
   // Sync with prop changes
   useEffect(() => {
+    console.log('[SSMAgentConfigPanel] Config prop changed:', { is_enabled: config.is_enabled, trained_at: config.trained_at });
     setFormData({ ...DEFAULT_SSM_CONFIG, ...config });
   }, [config]);
 

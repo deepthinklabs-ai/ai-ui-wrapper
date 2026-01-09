@@ -193,7 +193,12 @@ export default function NodeInspector({
                 userId={user.id}
                 config={node.config as SSMAgentNodeConfig}
                 onUpdate={async (updates) => {
-                  const success = await onUpdateNode({ config: { ...node.config, ...updates } });
+                  console.log('[NodeInspector] SSM onUpdate called with:', updates);
+                  console.log('[NodeInspector] Current node.config:', node.config);
+                  const mergedConfig = { ...node.config, ...updates };
+                  console.log('[NodeInspector] Merged config:', mergedConfig);
+                  const success = await onUpdateNode({ config: mergedConfig });
+                  console.log('[NodeInspector] onUpdateNode result:', success);
                   return success;
                 }}
               />
