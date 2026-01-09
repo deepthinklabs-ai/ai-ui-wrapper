@@ -74,15 +74,8 @@ export default function SSMAgentConfigPanel({
   // Local state for form data (needed for OAuth panels)
   const [formData, setFormData] = useState<SSMAgentNodeConfig>({ ...DEFAULT_SSM_CONFIG, ...config });
 
-  // Log initial state on mount
-  useEffect(() => {
-    console.log('[SSMAgentConfigPanel] Mount - config prop:', config);
-    console.log('[SSMAgentConfigPanel] Mount - config.is_enabled:', config.is_enabled);
-  }, []);
-
   // Sync with prop changes
   useEffect(() => {
-    console.log('[SSMAgentConfigPanel] Config prop changed:', { is_enabled: config.is_enabled, trained_at: config.trained_at });
     setFormData({ ...DEFAULT_SSM_CONFIG, ...config });
   }, [config]);
 
@@ -134,9 +127,7 @@ export default function SSMAgentConfigPanel({
     if (!isTrained && !isEnabled) return;
 
     const newState = !isEnabled;
-    console.warn('[SSM] Toggling monitoring to:', newState);
     const success = await onUpdate({ is_enabled: newState });
-    console.warn('[SSM] Toggle update result:', success);
     if (success) {
       setFormData(prev => ({ ...prev, is_enabled: newState }));
     } else {
@@ -174,8 +165,6 @@ export default function SSMAgentConfigPanel({
     }
 
     try {
-      console.log('[SSM Poll] Starting poll...', { canvasId, nodeId, userId, isAutomatic });
-
       const response = await apiClient.post<{
         success: boolean;
         eventsProcessed: number;
@@ -190,14 +179,6 @@ export default function SSMAgentConfigPanel({
         rules: currentConfig.rules,
         gmail: currentConfig.gmail,
       });
-
-      console.log('[SSM Poll] Response:', response);
-      console.log('[SSM Poll] Data:', response.data ? {
-        eventsProcessed: response.data.eventsProcessed,
-        alertsGenerated: response.data.alertsGenerated,
-        alertCount: response.data.alerts?.length,
-        error: response.data.error,
-      } : 'no data');
 
       setLastPollTime(new Date());
 
@@ -246,24 +227,17 @@ export default function SSMAgentConfigPanel({
 
   // Automatic polling when monitoring is enabled and Gmail is connected
   useEffect(() => {
-    if (!isEnabled || !isGmailConnected) {
-      console.log('[SSM Poll] Auto-polling disabled:', { isEnabled, isGmailConnected });
-      return;
-    }
-
-    console.log('[SSM Poll] Starting auto-polling...');
+    if (!isEnabled || !isGmailConnected) return;
 
     // Initial poll when monitoring is enabled
     executePoll(true);
 
     // Set up interval for automatic polling
     const intervalId = setInterval(() => {
-      console.log('[SSM Poll] Interval poll triggered');
       executePoll(true);
     }, POLL_INTERVAL_MS);
 
     return () => {
-      console.log('[SSM Poll] Cleaning up interval');
       clearInterval(intervalId);
     };
   }, [isEnabled, isGmailConnected, executePoll]);

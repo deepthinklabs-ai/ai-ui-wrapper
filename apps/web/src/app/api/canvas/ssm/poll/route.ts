@@ -67,7 +67,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       }, { status: 400 });
     }
 
-    console.log('[SSM Poll] Processing request:', { canvasId, nodeId, userId });
 
     const supabase = getSupabaseAdmin();
 
@@ -101,7 +100,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       gmail_connection_id?: string;
     } | null;
 
-    console.log('[SSM Poll] Runtime config:', runtimeConfig);
 
     // Check if monitoring is enabled (from runtime_config since config is encrypted)
     if (!runtimeConfig?.is_enabled) {
@@ -159,21 +157,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
 
     // Check for Gmail integration using the gmail config from request
     if (gmail?.enabled) {
-      console.log('[SSM Poll] Gmail config from request:', {
-        enabled: gmail.enabled,
-        connectionId: gmail.connectionId,
-        filter_from: gmail.filter_from,
-        filter_subject: gmail.filter_subject,
-      });
       // Build a minimal config object for fetchGmailEvents
       const gmailConfig = {
         gmail,
         last_event_at: undefined, // Will fetch from last hour
       } as SSMAgentNodeConfig;
       events = await fetchGmailEvents(userId, gmailConfig, node.id);
-      console.log('[SSM Poll] Gmail events fetched:', events.length);
-    } else {
-      console.log('[SSM Poll] Gmail not enabled in request config');
     }
 
     // If no events, return early
@@ -193,26 +182,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
     const alerts: SSMAlert[] = [];
     let alertsGenerated = 0;
 
-    // Log rules for debugging - consolidated into single log
-    const rulesSummary = {
-      keywordCount: rules.keywords?.length || 0,
-      patternCount: rules.patterns?.length || 0,
-      conditionCount: rules.conditions?.length || 0,
-      keywords: rules.keywords?.slice(0, 5).map(k => k.keyword) || [],
-    };
-    console.log('[SSM Poll] RULES:', JSON.stringify(rulesSummary));
-
     for (const event of events) {
       // Use matchEvent instead of testRules to include metadata (from, subject, etc.)
       const result = matchEvent(event, rules);
-      // Consolidated debug log
-      console.log('[SSM Poll] EVENT+RESULT:', JSON.stringify({
-        from: event.metadata?.from?.substring(0, 50),
-        subject: event.metadata?.subject?.substring(0, 50),
-        contentStart: event.content.substring(0, 100),
-        matched: result.matched,
-        matchedRules: result.matched_rules.map(r => r.rule_name),
-      }));
 
       if (result.matched) {
         // Determine highest severity
@@ -296,9 +268,7 @@ async function fetchGmailEvents(
   const events: SSMEvent[] = [];
 
   try {
-    console.log('[SSM Poll] Getting Gmail client for user:', userId);
     const gmail = await getGmailClient(userId);
-    console.log('[SSM Poll] Gmail client obtained');
 
     // Build Gmail query based on config
     let query = 'is:unread';
@@ -314,8 +284,6 @@ async function fetchGmailEvents(
       : new Date(Date.now() - 60 * 60 * 1000);
     query += ` after:${Math.floor(sinceDate.getTime() / 1000)}`;
 
-    console.log('[SSM Poll] Gmail query:', query);
-
     // Search for emails
     const listResponse = await gmail.users.messages.list({
       userId: 'me',
@@ -324,7 +292,6 @@ async function fetchGmailEvents(
     });
 
     const messages = listResponse.data.messages || [];
-    console.log('[SSM Poll] Gmail messages found:', messages.length);
 
     // Fetch full content for each message
     for (const msg of messages) {
@@ -380,7 +347,6 @@ async function fetchGmailEvents(
     }
   } catch (error: any) {
     console.error('[SSM Poll] Gmail fetch error:', error?.message || error);
-    console.error('[SSM Poll] Gmail fetch error details:', JSON.stringify(error, null, 2));
   }
 
   return events;
@@ -486,8 +452,6 @@ async function forwardToConnectedNodes(
           ],
         })
         .eq('id', executionId);
-
-      console.log(`[SSM Poll] Forwarded alert to AI Agent ${targetNode.id}`);
     } catch (error) {
       console.error(`[SSM Poll] Failed to forward to node ${targetNode.id}:`, error);
     }
