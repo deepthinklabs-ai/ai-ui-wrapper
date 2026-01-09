@@ -292,6 +292,22 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
               slack_enabled: config.slack?.enabled || false,
             };
           }
+          // Check if this looks like an SSMAgentNodeConfig (has is_enabled, trained_at, monitoring_description)
+          if ('is_enabled' in config || 'trained_at' in config || 'monitoring_description' in config) {
+            encryptedUpdates.runtime_config = {
+              ...(encryptedUpdates.runtime_config || {}),
+              name: config.name,
+              is_enabled: config.is_enabled || false,
+              trained_at: config.trained_at,
+              trained_by: config.trained_by,
+              gmail_enabled: config.gmail?.enabled || false,
+              gmail_connection_id: config.gmail?.connectionId,
+              calendar_enabled: config.calendar?.enabled || false,
+              sheets_enabled: config.sheets?.enabled || false,
+              docs_enabled: config.docs?.enabled || false,
+              slack_enabled: config.slack?.enabled || false,
+            };
+          }
         }
 
         // Encrypt config if being updated (stored as encrypted string in JSONB)

@@ -22,6 +22,9 @@ interface PollRequest {
   canvasId: string;
   nodeId: string;
   userId: string;
+  // Client passes decrypted config since server can't decrypt
+  rules?: SSMAgentNodeConfig['rules'];
+  gmail?: SSMAgentNodeConfig['gmail'];
 }
 
 interface PollResponse {
@@ -50,7 +53,7 @@ function getSupabaseAdmin() {
 export async function POST(request: NextRequest): Promise<NextResponse<PollResponse>> {
   try {
     const body: PollRequest = await request.json();
-    const { canvasId, nodeId, userId } = body;
+    const { canvasId, nodeId, userId, rules, gmail } = body;
 
     // Validate required fields
     if (!canvasId || !nodeId || !userId) {
@@ -87,16 +90,22 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       }, { status: 404 });
     }
 
-    const config = node.config as SSMAgentNodeConfig;
-    console.log('[SSM Poll] Node config:', {
-      is_enabled: config.is_enabled,
-      trained_at: config.trained_at,
-      gmail_enabled: config.gmail?.enabled,
-    });
+    // IMPORTANT: Config is encrypted! Use runtime_config for server-side checks
+    // runtime_config stores unencrypted metadata for server-side access
+    const runtimeConfig = node.runtime_config as {
+      name?: string;
+      is_enabled?: boolean;
+      trained_at?: string;
+      trained_by?: string;
+      gmail_enabled?: boolean;
+      gmail_connection_id?: string;
+    } | null;
 
-    // Check if monitoring is enabled
-    if (!config.is_enabled) {
-      console.error('[SSM Poll] Monitoring not enabled for node:', nodeId);
+    console.log('[SSM Poll] Runtime config:', runtimeConfig);
+
+    // Check if monitoring is enabled (from runtime_config since config is encrypted)
+    if (!runtimeConfig?.is_enabled) {
+      console.error('[SSM Poll] Monitoring not enabled for node:', nodeId, 'runtime_config:', runtimeConfig);
       return NextResponse.json({
         success: false,
         eventsProcessed: 0,
@@ -107,7 +116,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
     }
 
     // Check if node has been trained
-    if (!config.trained_at) {
+    if (!runtimeConfig?.trained_at) {
       console.error('[SSM Poll] Node not trained:', nodeId);
       return NextResponse.json({
         success: false,
@@ -118,12 +127,44 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       }, { status: 400 });
     }
 
+    // Check if Gmail is connected (needed for polling)
+    if (!runtimeConfig?.gmail_enabled || !runtimeConfig?.gmail_connection_id) {
+      console.error('[SSM Poll] Gmail not connected:', nodeId);
+      return NextResponse.json({
+        success: false,
+        eventsProcessed: 0,
+        alertsGenerated: 0,
+        alerts: [],
+        error: 'Gmail is not connected for this node',
+      }, { status: 400 });
+    }
+
+    // IMPORTANT: Config is encrypted in database - use values passed from client
+    // The client decrypts the config and passes rules/gmail in the request
+
+    // Validate that we have the decrypted config from client
+    if (!rules) {
+      console.error('[SSM Poll] No rules passed from client - config is encrypted');
+      return NextResponse.json({
+        success: false,
+        eventsProcessed: 0,
+        alertsGenerated: 0,
+        alerts: [],
+        error: 'No rules provided - please refresh the page and try again',
+      }, { status: 400 });
+    }
+
     // Determine data source and fetch events
     let events: SSMEvent[] = [];
 
-    // Check for Gmail integration
-    if (config.gmail?.enabled) {
-      events = await fetchGmailEvents(userId, config, node.id);
+    // Check for Gmail integration using the gmail config from request
+    if (gmail?.enabled) {
+      // Build a minimal config object for fetchGmailEvents
+      const gmailConfig = {
+        gmail,
+        last_event_at: undefined, // Will fetch from last hour
+      } as SSMAgentNodeConfig;
+      events = await fetchGmailEvents(userId, gmailConfig, node.id);
     }
 
     // If no events, return early
@@ -144,7 +185,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
     let alertsGenerated = 0;
 
     for (const event of events) {
-      const result = testRules(event.content, config.rules);
+      const result = testRules(event.content, rules);
 
       if (result.matched) {
         // Determine highest severity
@@ -182,14 +223,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       }
     }
 
-    // Update node stats
+    // Update stats in runtime_config (not encrypted config)
+    // Stats are stored in runtime_config so server can track them without decryption
+    const currentStats = (runtimeConfig as any) || {};
     await supabase
       .from('canvas_nodes')
       .update({
-        config: {
-          ...config,
-          events_processed: (config.events_processed || 0) + events.length,
-          alerts_triggered: (config.alerts_triggered || 0) + alertsGenerated,
+        runtime_config: {
+          ...runtimeConfig,
+          events_processed: (currentStats.events_processed || 0) + events.length,
+          alerts_triggered: (currentStats.alerts_triggered || 0) + alertsGenerated,
           last_event_at: new Date().toISOString(),
         },
       })

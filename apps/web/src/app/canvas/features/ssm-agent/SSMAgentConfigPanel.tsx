@@ -186,6 +186,9 @@ export default function SSMAgentConfigPanel({
         canvasId,
         nodeId,
         userId,
+        // Pass decrypted config since server can't decrypt
+        rules: currentConfig.rules,
+        gmail: currentConfig.gmail,
       });
 
       console.log('[SSM Poll] Response:', response);
@@ -233,7 +236,7 @@ export default function SSMAgentConfigPanel({
       isPollingRef.current = false;
       setIsPolling(false);
     }
-  }, [canvasId, nodeId, userId, isEnabled, isGmailConnected]);
+  }, [canvasId, nodeId, userId, isEnabled, isGmailConnected, currentConfig.rules, currentConfig.gmail]);
 
   // Automatic polling when monitoring is enabled and Gmail is connected
   useEffect(() => {
