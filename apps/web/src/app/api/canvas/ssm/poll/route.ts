@@ -159,12 +159,21 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
 
     // Check for Gmail integration using the gmail config from request
     if (gmail?.enabled) {
+      console.log('[SSM Poll] Gmail config from request:', {
+        enabled: gmail.enabled,
+        connectionId: gmail.connectionId,
+        filter_from: gmail.filter_from,
+        filter_subject: gmail.filter_subject,
+      });
       // Build a minimal config object for fetchGmailEvents
       const gmailConfig = {
         gmail,
         last_event_at: undefined, // Will fetch from last hour
       } as SSMAgentNodeConfig;
       events = await fetchGmailEvents(userId, gmailConfig, node.id);
+      console.log('[SSM Poll] Gmail events fetched:', events.length);
+    } else {
+      console.log('[SSM Poll] Gmail not enabled in request config');
     }
 
     // If no events, return early
@@ -269,7 +278,9 @@ async function fetchGmailEvents(
   const events: SSMEvent[] = [];
 
   try {
+    console.log('[SSM Poll] Getting Gmail client for user:', userId);
     const gmail = await getGmailClient(userId);
+    console.log('[SSM Poll] Gmail client obtained');
 
     // Build Gmail query based on config
     let query = 'is:unread';
@@ -285,6 +296,8 @@ async function fetchGmailEvents(
       : new Date(Date.now() - 60 * 60 * 1000);
     query += ` after:${Math.floor(sinceDate.getTime() / 1000)}`;
 
+    console.log('[SSM Poll] Gmail query:', query);
+
     // Search for emails
     const listResponse = await gmail.users.messages.list({
       userId: 'me',
@@ -293,6 +306,7 @@ async function fetchGmailEvents(
     });
 
     const messages = listResponse.data.messages || [];
+    console.log('[SSM Poll] Gmail messages found:', messages.length);
 
     // Fetch full content for each message
     for (const msg of messages) {
@@ -346,8 +360,9 @@ async function fetchGmailEvents(
 
       events.push(event);
     }
-  } catch (error) {
-    console.error('[SSM Poll] Gmail fetch error:', error);
+  } catch (error: any) {
+    console.error('[SSM Poll] Gmail fetch error:', error?.message || error);
+    console.error('[SSM Poll] Gmail fetch error details:', JSON.stringify(error, null, 2));
   }
 
   return events;

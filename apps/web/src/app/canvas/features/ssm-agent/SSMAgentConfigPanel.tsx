@@ -192,6 +192,12 @@ export default function SSMAgentConfigPanel({
       });
 
       console.log('[SSM Poll] Response:', response);
+      console.log('[SSM Poll] Data:', response.data ? {
+        eventsProcessed: response.data.eventsProcessed,
+        alertsGenerated: response.data.alertsGenerated,
+        alertCount: response.data.alerts?.length,
+        error: response.data.error,
+      } : 'no data');
 
       setLastPollTime(new Date());
 
