@@ -8,17 +8,19 @@
  */
 
 import React, { useState } from 'react';
-import type { CanvasNode, GenesisBotNodeConfig } from '../types';
+import type { CanvasNode, GenesisBotNodeConfig, SSMAgentNodeConfig } from '../types';
 import { NODE_DEFINITIONS } from '../lib/nodeRegistry';
 import GenesisBotConfigPanel from './config/GenesisBotConfigPanel';
+import { SSMAgentConfigPanel } from '../features/ssm-agent';
 import { useCanvasContext } from '../context/CanvasStateContext';
 import { useAskAnswer, QueryInput, QueryReviewPanel, AskAnswerToggle } from '../features/ask-answer';
 import { findEdgeBetweenNodes } from '../features/ask-answer/lib/validation';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
+import { useAuthSession } from '@/hooks/useAuthSession';
 
 interface NodeInspectorProps {
   node: CanvasNode | null;
-  onUpdateNode: (updates: Partial<CanvasNode>) => void;
+  onUpdateNode: (updates: Partial<CanvasNode>) => Promise<boolean>;
   onDeleteNode: () => void;
   onDuplicateNode: () => void;
   onClose: () => void;
@@ -35,8 +37,9 @@ export default function NodeInspector({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Ask/Answer integration
-  const { nodes, edges } = useCanvasContext();
+  const { nodes, edges, canvas } = useCanvasContext();
   const askAnswer = useAskAnswer();
+  const { user } = useAuthSession();
 
   // Find ALL connected Genesis Bot nodes (for toggle section)
   const allGenesisBotConnections = node && node.type === 'GENESIS_BOT'
@@ -182,8 +185,27 @@ export default function NodeInspector({
               />
             )}
 
+            {/* SSM Agent Configuration */}
+            {node.type === 'SSM_AGENT' && canvas.current && user && (
+              <SSMAgentConfigPanel
+                nodeId={node.id}
+                canvasId={canvas.current.id}
+                userId={user.id}
+                config={node.config as SSMAgentNodeConfig}
+                onUpdate={async (updates) => {
+                  console.warn('[NodeInspector] SSM onUpdate called with:', updates);
+                  console.warn('[NodeInspector] Current node.config.is_enabled:', (node.config as any)?.is_enabled);
+                  const mergedConfig = { ...node.config, ...updates };
+                  console.warn('[NodeInspector] Merged config.is_enabled:', (mergedConfig as any)?.is_enabled);
+                  const success = await onUpdateNode({ config: mergedConfig });
+                  console.warn('[NodeInspector] onUpdateNode result:', success);
+                  return success;
+                }}
+              />
+            )}
+
             {/* Placeholder for other node types */}
-            {node.type !== 'GENESIS_BOT' && (
+            {node.type !== 'GENESIS_BOT' && node.type !== 'SSM_AGENT' && (
               <div className="rounded-lg border border-white/40 bg-white/40 p-4">
                 <p className="text-xs text-foreground/60">
                   Configuration panel for {definition.label} nodes will be displayed here.

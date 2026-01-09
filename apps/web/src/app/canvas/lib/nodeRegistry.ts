@@ -23,6 +23,8 @@ import type {
   TerminalCommandNodeConfig,
   CustomNodeConfig,
 } from '../types';
+import type { SSMAgentNodeConfig } from '../types/ssm';
+import { DEFAULT_SSM_CONFIG } from '../features/ssm-agent/lib/ssmDefaults';
 
 // ============================================================================
 // CATEGORY DEFINITIONS
@@ -138,6 +140,40 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       canHaveMultipleInstances: true,
       canBeDisabled: true,
     },
+  },
+
+  SSM_AGENT: {
+    type: 'SSM_AGENT',
+    label: 'Stream Monitor',
+    description: 'Rules-based event monitoring with $0 runtime cost. LLM generates rules at setup, pure pattern matching at runtime. Ideal for email, security logs, and activity streams.',
+    category: 'bot',
+    icon: '📊',
+    color: 'teal',
+    inputs: [
+      {
+        id: 'trigger',
+        label: 'Trigger (Optional)',
+        type: 'input',
+        dataType: 'trigger',
+        required: false,
+      },
+    ],
+    outputs: [
+      {
+        id: 'output',
+        label: 'Alert Output',
+        type: 'output',
+        dataType: 'data',
+      },
+    ],
+    defaultConfig: DEFAULT_SSM_CONFIG as SSMAgentNodeConfig,
+    componentPath: './components/nodes/SSMAgentNode',
+    capabilities: {
+      canHaveMultipleInstances: true,
+      canBeDisabled: true,
+      requiresAuth: false,
+    },
+    hidden: false,
   },
 
   TRAINING_SESSION: {

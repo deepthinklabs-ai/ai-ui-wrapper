@@ -42,6 +42,21 @@ gh pr list --state all -L 5   # Recent pull requests
 - **Development branch:** `staging`
 - PRs merge to `staging` first, then to `main`
 
+### 7. Git Workflow for AI Assistants
+**IMPORTANT:** Always automatically commit and push changes to `staging` after completing any code modifications. Do not wait for the user to ask - push immediately after:
+1. Completing a feature or fix
+2. Verifying the build passes
+3. Creating any new files or modifications
+
+```bash
+# Standard workflow after making changes:
+git add -A
+git commit -m "Description of changes"
+git push origin staging
+```
+
+Only create PRs to `main` when explicitly requested by the user.
+
 ---
 
 ## Project Overview
@@ -165,6 +180,7 @@ Visual workflow editor for orchestrating AI agents and automations.
 | Type | Description |
 |------|-------------|
 | **CHATBOT** | AI agent with model selection, system prompt, tools, voice, memory |
+| **SSM_AGENT** | State-Space Model monitor for continuous event streams (email, logs, activity) |
 | **TRAINING_SESSION** | Fine-tune bots through conversation |
 | **BOARDROOM** | Multi-bot collaborative discussions |
 | **CHATBOT_TRIGGER** | Expose workflows to main Chatbot page |
@@ -207,6 +223,30 @@ CanvasEdge {
 - **Response Compiler:** Aggregate and summarize multi-agent responses
 - **Chatbot Trigger:** Expose canvas workflows as Chatbot actions
 - **Integrations:** Gmail, Calendar, Sheets, Docs, Slack, MCP Tools
+
+### SSM (State-Space Model) Nodes
+
+SSM nodes use State-Space Model architectures (like Mamba) for efficient continuous monitoring:
+
+**Key Advantages over Transformers:**
+- **Linear O(n) complexity** - handles high-volume streams efficiently
+- **Fixed-size state** - constant memory regardless of sequence length
+- **4-5x faster inference** - ideal for real-time monitoring
+- **No KV cache** - lower memory footprint
+
+**Use Cases:**
+- Email inbox monitoring (security, classification)
+- Security log analysis (threat detection, anomaly detection)
+- Activity stream classification
+- Continuous event summarization
+
+**Supported Providers:**
+- **Ollama (local):** `mamba`, `mamba-2.8b`, `granite-mamba`
+- **vLLM (self-hosted):** `state-spaces/mamba-2.8b`, `ibm/bamba-9b`
+- **Hugging Face:** `state-spaces/mamba-130m`, `state-spaces/mamba-2.8b-slimpj`
+- **Replicate:** `ibm/granite-4.0-tiny`, `ibm/granite-4.0-small`
+
+**Feature Location:** `src/app/canvas/features/ssm-agent/`
 
 ### Canvas Hooks
 
@@ -365,6 +405,49 @@ Admin-only debug overlays for troubleshooting. Toggle with **Ctrl+Shift+D**.
 - Server-side validation
 - Input sanitization
 - OAuth token encryption
+
+### Separation of Concerns
+
+When implementing new features, follow these principles to ensure maintainable, testable code:
+
+**1. Single Responsibility**
+- Each file should have one clear purpose
+- Components render UI; hooks manage state; lib files contain utilities
+- Avoid mixing business logic with presentation logic
+
+**2. Feature Modules**
+- Group related functionality in `features/` directories
+- Each feature module should be self-contained with its own components, hooks, and utilities
+- Use an `index.ts` to control public exports
+
+**3. Type Separation**
+- Define types in dedicated files, not inline in components
+- Place feature-specific types in the feature module
+- Export shared types from central type files
+
+**4. Hook Extraction**
+- Extract state management logic into custom hooks
+- Hooks should encapsulate one concern (e.g., `useSSMConfig` for SSM configuration)
+- Keep components focused on rendering
+
+**5. Utility Isolation**
+- Keep helpers, defaults, and validation in separate lib files
+- Validation logic should be pure functions, easily testable
+- Default values should be centralized for consistency
+
+**Example feature module structure:**
+```
+src/app/canvas/features/[feature-name]/
+├── index.ts              # Public exports
+├── [Feature]Panel.tsx    # Main component
+├── hooks/
+│   └── use[Feature].ts   # State management hook
+└── lib/
+    ├── defaults.ts       # Default configurations
+    └── validation.ts     # Validation logic
+```
+
+**Reference Implementation:** See `src/app/canvas/features/ssm-agent/` for a complete example following these patterns.
 
 ---
 

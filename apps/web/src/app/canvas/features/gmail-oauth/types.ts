@@ -26,6 +26,10 @@ export interface GmailOAuthConfig {
   allowedRecipientDomains?: string[]; // e.g., ['company.com'] - restrict who bot can email
   maxEmailsPerHour?: number; // Rate limiting
   requireConfirmation?: boolean; // Require user confirmation before sending
+  // SSM Monitoring filters
+  filter_from?: string; // Filter emails from specific sender (e.g., 'john@example.com')
+  filter_subject?: string; // Filter emails with specific subject keywords
+  filter_label?: string; // Filter emails with specific label
 }
 
 // Default Gmail permissions (conservative by default)

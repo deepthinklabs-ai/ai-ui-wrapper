@@ -34,7 +34,7 @@ export interface UseCanvasOperationsResult {
   setShowDuplicateToast: (show: boolean) => void;
 
   // Inspector actions
-  handleUpdateSelectedNode: (updates: any) => void;
+  handleUpdateSelectedNode: (updates: any) => Promise<boolean>;
   handleDeleteSelectedNode: () => void;
   handleDuplicateSelectedNode: () => void;
 }
@@ -146,10 +146,11 @@ export function useCanvasOperations({
    * Update selected node (for inspector)
    */
   const handleUpdateSelectedNode = useCallback(
-    (updates: any) => {
+    async (updates: any): Promise<boolean> => {
       if (selectedNodeId) {
-        nodeOps.update(selectedNodeId, updates);
+        return await nodeOps.update(selectedNodeId, updates);
       }
+      return false;
     },
     [selectedNodeId, nodeOps]
   );
