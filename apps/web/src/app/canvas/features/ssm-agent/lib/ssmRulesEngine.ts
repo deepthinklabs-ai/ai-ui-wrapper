@@ -29,10 +29,7 @@ import type {
 
 /**
  * Match an event against all rules
- *
- * Supports two logic modes:
- * - 'any' (OR): Alert if ANY rule matches (default)
- * - 'all' (AND): Alert only if ALL enabled rules match
+ * Returns the highest severity match
  */
 export function matchEvent(
   event: SSMEvent,
@@ -47,14 +44,10 @@ export function matchEvent(
     critical: 3,
   };
 
-  // Count total enabled rules for AND logic
-  const enabledKeywords = rules.keywords.filter(r => r.enabled);
-  const enabledPatterns = rules.patterns.filter(r => r.enabled);
-  const enabledConditions = rules.conditions.filter(r => r.enabled);
-  const totalEnabledRules = enabledKeywords.length + enabledPatterns.length + enabledConditions.length;
-
   // Check keyword rules
-  for (const rule of enabledKeywords) {
+  for (const rule of rules.keywords) {
+    if (!rule.enabled) continue;
+
     if (matchKeyword(event.content, rule)) {
       matchedRules.push({
         type: 'keyword',
@@ -69,7 +62,9 @@ export function matchEvent(
   }
 
   // Check pattern rules
-  for (const rule of enabledPatterns) {
+  for (const rule of rules.patterns) {
+    if (!rule.enabled) continue;
+
     if (matchPattern(event.content, rule)) {
       matchedRules.push({
         type: 'pattern',
@@ -84,7 +79,9 @@ export function matchEvent(
   }
 
   // Check condition rules
-  for (const rule of enabledConditions) {
+  for (const rule of rules.conditions) {
+    if (!rule.enabled) continue;
+
     if (matchCondition(event, rule)) {
       matchedRules.push({
         type: 'condition',
@@ -98,21 +95,9 @@ export function matchEvent(
     }
   }
 
-  // Determine if matched based on logic mode
-  const logicMode = rules.logic || 'any';
-  let isMatched: boolean;
-
-  if (logicMode === 'all') {
-    // AND logic: ALL enabled rules must match
-    isMatched = totalEnabledRules > 0 && matchedRules.length === totalEnabledRules;
-  } else {
-    // OR logic (default): ANY rule match is sufficient
-    isMatched = matchedRules.length > 0;
-  }
-
   return {
-    matched: isMatched,
-    severity: isMatched ? highestSeverity : null,
+    matched: matchedRules.length > 0,
+    severity: highestSeverity,
     matched_rules: matchedRules,
   };
 }
