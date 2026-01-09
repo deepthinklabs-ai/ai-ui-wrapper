@@ -12,7 +12,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getGmailClient } from '@/lib/googleClients';
 import { matchEvent } from '@/app/canvas/features/ssm-agent/lib/ssmRulesEngine';
+import { processAutoReply } from '@/app/canvas/features/ssm-agent/features/auto-reply';
 import type { SSMAgentNodeConfig, SSMAlert, SSMEvent } from '@/app/canvas/types/ssm';
+import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply';
 
 // ============================================================================
 // TYPES
@@ -25,6 +27,7 @@ interface PollRequest {
   // Client passes decrypted config since server can't decrypt
   rules?: SSMAgentNodeConfig['rules'];
   gmail?: SSMAgentNodeConfig['gmail'];
+  auto_reply?: SSMAutoReplyConfig;
 }
 
 interface PollResponse {
@@ -53,7 +56,7 @@ function getSupabaseAdmin() {
 export async function POST(request: NextRequest): Promise<NextResponse<PollResponse>> {
   try {
     const body: PollRequest = await request.json();
-    const { canvasId, nodeId, userId, rules, gmail } = body;
+    const { canvasId, nodeId, userId, rules, gmail, auto_reply } = body;
 
     // Validate required fields
     if (!canvasId || !nodeId || !userId) {
@@ -244,6 +247,22 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
         // Forward to connected AI Agent nodes
         if (connectedNodes.length > 0) {
           await forwardToConnectedNodes(supabase, canvasId, executionId, nodeId, connectedNodes, event, alert);
+        }
+
+        // Process auto-reply if configured
+        if (auto_reply?.enabled) {
+          try {
+            const replyResult = await processAutoReply(userId, event, alert, auto_reply);
+            if (replyResult.result.success) {
+              console.log(`[SSM Poll] Auto-reply sent to ${replyResult.result.recipient}`);
+            } else if (replyResult.result.rateLimited) {
+              console.log(`[SSM Poll] Auto-reply rate limited: ${replyResult.result.error}`);
+            } else {
+              console.warn(`[SSM Poll] Auto-reply failed: ${replyResult.result.error}`);
+            }
+          } catch (replyError) {
+            console.error('[SSM Poll] Auto-reply error:', replyError);
+          }
         }
       }
     }

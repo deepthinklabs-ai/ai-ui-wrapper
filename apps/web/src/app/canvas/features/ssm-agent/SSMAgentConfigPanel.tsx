@@ -39,6 +39,10 @@ import { SSMTrainingModal } from './components/SSMTrainingModal';
 // OAuth Integration Panels
 import { GmailOAuthPanel } from '../../features/gmail-oauth/components/GmailOAuthPanel';
 import { DEFAULT_GMAIL_CONFIG, type GmailOAuthConfig } from '../../features/gmail-oauth/types';
+
+// Auto-Reply Feature
+import { ReplyConfigPanel } from './features/auto-reply/ReplyConfigPanel';
+import { DEFAULT_AUTO_REPLY_CONFIG, type SSMAutoReplyConfig } from './features/auto-reply';
 import { CalendarOAuthPanel } from '../../features/calendar-oauth/components/CalendarOAuthPanel';
 import { DEFAULT_CALENDAR_CONFIG, type CalendarOAuthConfig } from '../../features/calendar-oauth/types';
 import { SheetsOAuthPanel } from '../../features/sheets-oauth/components/SheetsOAuthPanel';
@@ -150,6 +154,9 @@ export default function SSMAgentConfigPanel({
   // Check if Gmail is connected
   const isGmailConnected = currentConfig.gmail?.enabled && currentConfig.gmail?.connectionId;
 
+  // Check if Gmail can send (has send permission enabled)
+  const gmailCanSend = isGmailConnected && currentConfig.gmail?.permissions?.canSend;
+
   // Automatic polling interval (60 seconds)
   const POLL_INTERVAL_MS = 60 * 1000;
 
@@ -178,6 +185,8 @@ export default function SSMAgentConfigPanel({
         // Pass decrypted config since server can't decrypt
         rules: currentConfig.rules,
         gmail: currentConfig.gmail,
+        // Pass auto-reply config for automatic email responses
+        auto_reply: currentConfig.auto_reply,
       });
 
       setLastPollTime(new Date());
@@ -223,7 +232,7 @@ export default function SSMAgentConfigPanel({
       isPollingRef.current = false;
       setIsPolling(false);
     }
-  }, [canvasId, nodeId, userId, isEnabled, isGmailConnected, currentConfig.rules, currentConfig.gmail]);
+  }, [canvasId, nodeId, userId, isEnabled, isGmailConnected, currentConfig.rules, currentConfig.gmail, currentConfig.auto_reply]);
 
   // Automatic polling when monitoring is enabled and Gmail is connected
   useEffect(() => {
@@ -359,6 +368,14 @@ export default function SSMAgentConfigPanel({
     };
     await onUpdate({ rules: updatedRules });
   }, [currentConfig.rules, onUpdate]);
+
+  /**
+   * Update auto-reply configuration
+   */
+  const handleAutoReplyUpdate = useCallback(async (autoReplyConfig: SSMAutoReplyConfig) => {
+    setFormData(prev => ({ ...prev, auto_reply: autoReplyConfig }));
+    await onUpdate({ auto_reply: autoReplyConfig });
+  }, [onUpdate]);
 
   return (
     <div className="space-y-6 p-4">
@@ -983,6 +1000,16 @@ export default function SSMAgentConfigPanel({
             onUpdate({ gmail: gmailConfig });
           }}
         />
+
+        {/* Auto-Reply Panel (requires Gmail connection) */}
+        <div className="mt-4">
+          <ReplyConfigPanel
+            config={formData.auto_reply || DEFAULT_AUTO_REPLY_CONFIG}
+            onUpdate={handleAutoReplyUpdate}
+            gmailConnected={!!isGmailConnected}
+            gmailCanSend={!!gmailCanSend}
+          />
+        </div>
 
         <div className="my-4 border-t border-foreground/10" />
 

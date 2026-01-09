@@ -17,6 +17,7 @@ import type { CalendarOAuthConfig } from '../features/calendar-oauth/types';
 import type { SheetsOAuthConfig } from '../features/sheets-oauth/types';
 import type { DocsOAuthConfig } from '../features/docs-oauth/types';
 import type { SlackOAuthConfig } from '../features/slack-oauth/types';
+import type { SSMAutoReplyConfig } from '../features/ssm-agent/features/auto-reply/types';
 
 // ============================================================================
 // ALERT SEVERITY
@@ -98,6 +99,11 @@ export interface SSMRulesConfig {
 // ============================================================================
 
 /**
+ * Actions that can be taken when rules match
+ */
+export type SSMResponseAction = 'log' | 'alert' | 'forward_to_ai' | 'send_reply';
+
+/**
  * A response template for a specific severity level
  * Uses placeholders like {sender}, {subject}, {matched_rule}
  */
@@ -105,7 +111,7 @@ export interface SSMResponseTemplate {
   severity: SSMAlertSeverity;
   title: string;           // Template for alert title
   message: string;         // Template for alert message
-  action: 'log' | 'alert' | 'forward_to_ai';  // What to do when triggered
+  action: SSMResponseAction;  // What to do when triggered
 }
 
 // ============================================================================
@@ -180,6 +186,9 @@ export interface SSMAgentNodeConfig {
   sheets?: SheetsOAuthConfig;
   docs?: DocsOAuthConfig;
   slack?: SlackOAuthConfig;
+
+  // Auto-reply configuration
+  auto_reply?: SSMAutoReplyConfig;
 }
 
 // ============================================================================
@@ -278,5 +287,5 @@ export interface SSMProcessEventRequest {
 export interface SSMProcessEventResponse {
   matched: boolean;
   alert?: SSMAlert;
-  action: 'none' | 'log' | 'alert' | 'forward_to_ai';
+  action: 'none' | SSMResponseAction;
 }
