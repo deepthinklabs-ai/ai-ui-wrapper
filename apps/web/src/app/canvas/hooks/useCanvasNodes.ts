@@ -175,7 +175,7 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
     async (id: NodeId, updates: Partial<CanvasNode>): Promise<boolean> => {
       if (!canvasId) return false;
 
-      console.log('[useCanvasNodes] updateNode called:', { id, updates });
+      console.warn('[useCanvasNodes] updateNode called:', { id, config_is_enabled: (updates as any)?.config?.is_enabled });
 
       setLoading(true);
 
@@ -220,7 +220,7 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
         delete dbUpdates.created_at;
         delete dbUpdates.updated_at;
 
-        console.log('[useCanvasNodes] Sending to Supabase:', dbUpdates);
+        console.warn('[useCanvasNodes] Sending to Supabase - config.is_enabled:', dbUpdates?.config?.is_enabled);
 
         const { error } = await supabase
           .from('canvas_nodes')
@@ -233,7 +233,7 @@ export function useCanvasNodes(canvasId: CanvasId | null): UseCanvasNodesResult 
           throw error;
         }
 
-        console.log('[useCanvasNodes] Supabase update successful');
+        console.warn('[useCanvasNodes] Supabase update successful for is_enabled:', dbUpdates?.config?.is_enabled);
 
         // Update local state
         setNodes(prev =>

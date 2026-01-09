@@ -193,12 +193,12 @@ export default function NodeInspector({
                 userId={user.id}
                 config={node.config as SSMAgentNodeConfig}
                 onUpdate={async (updates) => {
-                  console.log('[NodeInspector] SSM onUpdate called with:', updates);
-                  console.log('[NodeInspector] Current node.config:', node.config);
+                  console.warn('[NodeInspector] SSM onUpdate called with:', updates);
+                  console.warn('[NodeInspector] Current node.config.is_enabled:', (node.config as any)?.is_enabled);
                   const mergedConfig = { ...node.config, ...updates };
-                  console.log('[NodeInspector] Merged config:', mergedConfig);
+                  console.warn('[NodeInspector] Merged config.is_enabled:', (mergedConfig as any)?.is_enabled);
                   const success = await onUpdateNode({ config: mergedConfig });
-                  console.log('[NodeInspector] onUpdateNode result:', success);
+                  console.warn('[NodeInspector] onUpdateNode result:', success);
                   return success;
                 }}
               />
