@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import type {
   SSMGenerateRulesRequest,
   SSMGenerateRulesResponse,
@@ -20,6 +21,17 @@ import type {
   SSMResponseTemplate,
 } from '@/app/canvas/types/ssm';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+
+// ============================================================================
+// SUPABASE CLIENT
+// ============================================================================
+
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 // ============================================================================
 // PROMPT TEMPLATE
@@ -126,6 +138,21 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMGenera
         success: false,
         error: 'User ID is required',
       }, { status: 400 });
+    }
+
+    // Verify user has Pro tier (SSM is a Pro feature)
+    const supabase = getSupabaseAdmin();
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('tier')
+      .eq('id', userId)
+      .single();
+
+    if (!profile || profile.tier !== 'pro') {
+      return NextResponse.json({
+        success: false,
+        error: 'State-Space Model (SSM) requires Pro subscription',
+      }, { status: 403 });
     }
 
     // Get user's API key for the selected provider

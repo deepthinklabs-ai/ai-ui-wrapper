@@ -70,6 +70,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
 
     const supabase = getSupabaseAdmin();
 
+    // Verify user has Pro tier (SSM is a Pro feature)
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('tier')
+      .eq('id', userId)
+      .single();
+
+    if (!profile || profile.tier !== 'pro') {
+      return NextResponse.json({
+        success: false,
+        eventsProcessed: 0,
+        alertsGenerated: 0,
+        alerts: [],
+        error: 'State-Space Model (SSM) requires Pro subscription',
+      }, { status: 403 });
+    }
+
     // Get node configuration
     const { data: node, error: nodeError } = await supabase
       .from('canvas_nodes')

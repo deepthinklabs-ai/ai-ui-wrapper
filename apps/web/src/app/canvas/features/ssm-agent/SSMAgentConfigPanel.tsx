@@ -367,7 +367,7 @@ export default function SSMAgentConfigPanel({
         <div className="flex items-start gap-2">
           <span className="text-xl">📊</span>
           <div>
-            <p className="text-xs text-teal-700 font-medium">Smart Stream Monitor</p>
+            <p className="text-xs text-teal-700 font-medium">State-Space Model (SSM)</p>
             <p className="text-xs text-teal-600 mt-1">
               Rules-based monitoring. AI generates rules at setup, runtime is free.
             </p>

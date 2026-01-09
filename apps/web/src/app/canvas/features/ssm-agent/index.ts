@@ -1,7 +1,7 @@
 /**
  * SSM Agent Feature Module
  *
- * Public exports for the Stream Monitor feature.
+ * Public exports for the State-Space Model (SSM) feature.
  * Rules-based event monitoring with $0 runtime cost.
  *
  * Architecture:

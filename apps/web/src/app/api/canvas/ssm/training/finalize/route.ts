@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import type {
   SSMFinalizeTrainingRequest,
   SSMFinalizeTrainingResponse,
@@ -27,6 +28,17 @@ import type {
 } from '@/app/canvas/types/ssm';
 import { RULES_GENERATION_PROMPT } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+
+// ============================================================================
+// SUPABASE CLIENT
+// ============================================================================
+
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 // ============================================================================
 // SESSION ACCESS (shared with training route via global)
@@ -81,6 +93,24 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
         responseTemplates: [],
         error: 'Session not found',
       }, { status: 404 });
+    }
+
+    // Verify user has Pro tier (SSM is a Pro feature)
+    const supabase = getSupabaseAdmin();
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('tier')
+      .eq('id', session.userId)
+      .single();
+
+    if (!profile || profile.tier !== 'pro') {
+      return NextResponse.json({
+        success: false,
+        monitoringDescription: '',
+        rules: { keywords: [], patterns: [], conditions: [] },
+        responseTemplates: [],
+        error: 'State-Space Model (SSM) requires Pro subscription',
+      }, { status: 403 });
     }
 
     // Get user's API key for the selected provider
