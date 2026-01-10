@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import type {
   SSMFinalizeTrainingRequest,
   SSMFinalizeTrainingResponse,
@@ -25,8 +26,21 @@ import type {
   SSMPatternRule,
   SSMConditionRule,
 } from '@/app/canvas/types/ssm';
+import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
+import { DEFAULT_AUTO_REPLY_CONFIG } from '@/app/canvas/features/ssm-agent/features/auto-reply/defaults';
 import { RULES_GENERATION_PROMPT } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+
+// ============================================================================
+// SUPABASE CLIENT
+// ============================================================================
+
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 // ============================================================================
 // SESSION ACCESS (shared with training route via global)
@@ -83,6 +97,24 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       }, { status: 404 });
     }
 
+    // Verify user has Pro tier (SSM is a Pro feature)
+    const supabase = getSupabaseAdmin();
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('tier')
+      .eq('id', session.userId)
+      .single();
+
+    if (!profile || profile.tier !== 'pro') {
+      return NextResponse.json({
+        success: false,
+        monitoringDescription: '',
+        rules: { keywords: [], patterns: [], conditions: [] },
+        responseTemplates: [],
+        error: 'State-Space Model (SSM) requires Pro subscription',
+      }, { status: 403 });
+    }
+
     // Get user's API key for the selected provider
     const providerKey = provider === 'claude' ? 'claude' : 'openai';
     const apiKey = await getProviderKey(session.userId, providerKey);
@@ -131,6 +163,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       monitoringDescription: result.monitoringDescription || '',
       rules: result.rules || { keywords: [], patterns: [], conditions: [] },
       responseTemplates: result.responseTemplates || getDefaultResponseTemplates(),
+      autoReply: result.autoReply,
     });
 
   } catch (error) {
@@ -154,6 +187,7 @@ interface GenerationResult {
   monitoringDescription?: string;
   rules?: SSMRulesConfig;
   responseTemplates?: SSMResponseTemplate[];
+  autoReply?: SSMAutoReplyConfig;
   error?: string;
 }
 
@@ -283,6 +317,29 @@ function parseGeneratedRules(content: string): GenerationResult {
       })),
     };
 
+    // Parse auto_reply configuration if present
+    let autoReply: SSMAutoReplyConfig | undefined;
+    if (parsed.auto_reply?.enabled) {
+      autoReply = {
+        enabled: true,
+        template: {
+          subject: parsed.auto_reply.template?.subject || 'Re: {subject}',
+          body: parsed.auto_reply.template?.body || 'Thank you for your message. We have received it and will respond shortly.',
+          signature: parsed.auto_reply.template?.signature || '',
+          includeOriginal: parsed.auto_reply.template?.includeOriginal ?? false,
+        },
+        conditions: {
+          severities: parsed.auto_reply.conditions?.severities || ['info', 'warning', 'critical'],
+          excludeSenders: parsed.auto_reply.conditions?.excludeSenders || ['noreply@', 'no-reply@', 'automated@'],
+        },
+        rateLimit: {
+          maxRepliesPerSender: parsed.auto_reply.rateLimit?.maxRepliesPerSender || 1,
+          windowMinutes: parsed.auto_reply.rateLimit?.windowMinutes || 60,
+          sentReplies: {},
+        },
+      };
+    }
+
     return {
       success: true,
       monitoringDescription: parsed.monitoring_description || 'Custom monitoring based on training',
@@ -290,6 +347,7 @@ function parseGeneratedRules(content: string): GenerationResult {
       responseTemplates: parsed.response_templates?.length
         ? parsed.response_templates
         : getDefaultResponseTemplates(),
+      autoReply,
     };
 
   } catch (error) {

@@ -1,7 +1,7 @@
 /**
  * SSM Agent Configuration Validation
  *
- * Validates rules-based Stream Monitor configuration.
+ * Validates rules-based State-Space Model (SSM) configuration.
  * Ensures rules and templates are properly configured.
  */
 

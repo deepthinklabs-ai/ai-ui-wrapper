@@ -56,7 +56,7 @@ export const DEFAULT_RESPONSE_TEMPLATES: SSMResponseTemplate[] = [
 // ============================================================================
 
 export const DEFAULT_SSM_CONFIG: SSMAgentNodeConfig = {
-  name: 'Stream Monitor',
+  name: 'State-Space Model (SSM)',
   description: '',
   is_enabled: false, // Off by default until configured
   monitoring_description: '',

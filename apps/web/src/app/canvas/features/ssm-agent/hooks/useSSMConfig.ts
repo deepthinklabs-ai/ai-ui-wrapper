@@ -1,7 +1,7 @@
 /**
  * useSSMConfig Hook
  *
- * Manages Stream Monitor configuration state.
+ * Manages State-Space Model (SSM) configuration state.
  * Handles rules-based configuration with:
  * - Auto-save with debouncing
  * - Validation integration

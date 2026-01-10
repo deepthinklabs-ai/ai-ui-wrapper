@@ -17,6 +17,7 @@ import type { CalendarOAuthConfig } from '../features/calendar-oauth/types';
 import type { SheetsOAuthConfig } from '../features/sheets-oauth/types';
 import type { DocsOAuthConfig } from '../features/docs-oauth/types';
 import type { SlackOAuthConfig } from '../features/slack-oauth/types';
+import type { SSMAutoReplyConfig } from '../features/ssm-agent/features/auto-reply/types';
 
 // ============================================================================
 // ALERT SEVERITY
@@ -55,12 +56,24 @@ export interface SSMPatternRule {
 }
 
 /**
+ * Supported operators for condition rules
+ */
+export type SSMConditionOperator =
+  | 'equals' | '==' | '==='
+  | 'contains' | 'includes'
+  | 'startsWith'
+  | 'endsWith'
+  | 'greaterThan'
+  | 'lessThan'
+  | 'matches';
+
+/**
  * A condition rule for field-based matching
  */
 export interface SSMConditionRule {
   id: string;
   field: string;          // Field to check (e.g., "sender", "subject", "amount")
-  operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'matches';
+  operator: SSMConditionOperator;
   value: string;
   severity: SSMAlertSeverity;
   enabled: boolean;
@@ -73,11 +86,22 @@ export interface SSMRulesConfig {
   keywords: SSMKeywordRule[];
   patterns: SSMPatternRule[];
   conditions: SSMConditionRule[];
+  /**
+   * Logic mode for combining rules:
+   * - 'any' (OR): Alert if ANY rule matches (default)
+   * - 'all' (AND): Alert only if ALL enabled rules match
+   */
+  logic?: 'any' | 'all';
 }
 
 // ============================================================================
 // RESPONSE TEMPLATES
 // ============================================================================
+
+/**
+ * Actions that can be taken when rules match
+ */
+export type SSMResponseAction = 'log' | 'alert' | 'forward_to_ai' | 'send_reply';
 
 /**
  * A response template for a specific severity level
@@ -87,7 +111,7 @@ export interface SSMResponseTemplate {
   severity: SSMAlertSeverity;
   title: string;           // Template for alert title
   message: string;         // Template for alert message
-  action: 'log' | 'alert' | 'forward_to_ai';  // What to do when triggered
+  action: SSMResponseAction;  // What to do when triggered
 }
 
 // ============================================================================
@@ -153,12 +177,18 @@ export interface SSMAgentNodeConfig {
   alerts_triggered?: number;
   last_event_at?: string;
 
+  // Processed event IDs to prevent duplicate counting
+  processed_event_ids?: string[];
+
   // OAuth Integrations (for data source access)
   gmail?: GmailOAuthConfig;
   calendar?: CalendarOAuthConfig;
   sheets?: SheetsOAuthConfig;
   docs?: DocsOAuthConfig;
   slack?: SlackOAuthConfig;
+
+  // Auto-reply configuration
+  auto_reply?: SSMAutoReplyConfig;
 }
 
 // ============================================================================
@@ -257,5 +287,5 @@ export interface SSMProcessEventRequest {
 export interface SSMProcessEventResponse {
   matched: boolean;
   alert?: SSMAlert;
-  action: 'none' | 'log' | 'alert' | 'forward_to_ai';
+  action: 'none' | SSMResponseAction;
 }

@@ -223,20 +223,31 @@ export function SSMTrainingModal({
               </button>
             )}
 
-            {/* Manual finalize button */}
-            {phase === 'gathering' && messages.length >= 4 && (
+            {/* Finalize button - show after any exchange */}
+            {(phase === 'gathering' || phase === 'clarifying') && messages.length >= 2 && (
               <button
                 onClick={handleFinalize}
                 disabled={isFinalizing}
                 className="
-                  px-3 py-1.5 text-xs rounded-lg
+                  px-4 py-2 text-sm font-medium rounded-lg
                   bg-teal-500 text-white
                   hover:bg-teal-600
                   disabled:opacity-50 disabled:cursor-not-allowed
                   transition-colors
+                  flex items-center gap-2
                 "
               >
-                {isFinalizing ? 'Generating...' : 'Finish & Generate'}
+                {isFinalizing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    Generate Rules
+                  </>
+                )}
               </button>
             )}
 

@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import type {
   SSMTrainingRequest,
   SSMTrainingResponse,
@@ -25,6 +26,17 @@ import {
   generateSessionId,
 } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+
+// ============================================================================
+// SUPABASE CLIENT
+// ============================================================================
+
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 // ============================================================================
 // IN-MEMORY SESSION STORE (Replace with Redis/DB in production)
@@ -91,6 +103,26 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMTraini
         isComplete: false,
         error: 'Missing required fields',
       }, { status: 400 });
+    }
+
+    // Verify user has Pro tier (SSM is a Pro feature)
+    const supabase = getSupabaseAdmin();
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('tier')
+      .eq('id', userId)
+      .single();
+
+    if (!profile || profile.tier !== 'pro') {
+      return NextResponse.json({
+        success: false,
+        sessionId: '',
+        message: { id: '', role: 'system', content: '', timestamp: '' },
+        phase: 'greeting',
+        extractedInfo: {},
+        isComplete: false,
+        error: 'State-Space Model (SSM) requires Pro subscription',
+      }, { status: 403 });
     }
 
     // Get or create session

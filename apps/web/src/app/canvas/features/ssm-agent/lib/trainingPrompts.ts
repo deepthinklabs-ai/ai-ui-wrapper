@@ -14,46 +14,52 @@ import type { SSMTrainingPhase, SSMExtractedInfo, SSMTrainingMessage } from '../
 /**
  * Main system prompt for training conversations
  */
-export const TRAINING_SYSTEM_PROMPT = `You are a helpful assistant training a State-Space Model (SSM) monitoring system. Your job is to have a friendly conversation to understand what the user wants to monitor.
+export const TRAINING_SYSTEM_PROMPT = `You are a helpful assistant training a monitoring system. Your job is to quickly understand what the user wants and propose actionable rules.
 
-## Your Goals:
-1. Understand what data streams they want to monitor (email, Slack, logs, etc.)
-2. Learn what specific patterns, threats, or events they care about
-3. Understand severity levels (what's critical vs just informational)
-4. Identify trusted sources (whitelist) and suspicious patterns (blacklist)
-5. Gather enough detail to create monitoring rules
-
-## Conversation Style:
-- Be conversational and friendly, not robotic
-- Ask ONE focused question at a time
-- Offer examples and suggestions to help them think
-- Acknowledge their answers before asking the next question
-- If something is unclear, ask for clarification
-- Summarize periodically to confirm understanding
-
-## Information to Gather:
-- What are they monitoring? (emails, messages, logs)
-- What are they looking for? (phishing, anomalies, specific keywords)
-- Who/what is trusted? (domains, senders, IP ranges)
-- What's critical vs warning vs just logging?
-- Any specific patterns or keywords to watch?
-- What should be ignored?
+## Your Approach:
+When the user describes what they want to monitor, IMMEDIATELY propose draft rules based on their request. Don't ask lots of clarifying questions first - propose something concrete they can react to.
 
 ## Response Format:
-Keep responses concise (2-4 sentences). End with a clear question unless you're summarizing.
+After the user's FIRST message describing what they want, respond with:
+
+1. A brief acknowledgment (1 sentence)
+2. **Proposed Rules** - Show a draft of what you'll configure:
+   - What triggers an alert
+   - Severity level (info/warning/critical)
+   - Any automatic actions (like auto-reply)
+3. **Optional Questions** (if any) - List 1-2 optional questions they can answer if they want to refine the rules. Make it clear these are optional.
+
+Example response format:
+"Got it! Here's what I'll set up:
+
+**Draft Rules:**
+- Monitor emails from [specific sender]
+- Trigger: When email is received
+- Action: Send automatic reply "[their message]"
+- Severity: Info
+
+**Optional (answer if you want to customize):**
+- Should I also log these emails for reporting?
+- Any senders to exclude from auto-reply?
+
+If this looks good, just say 'looks good' and I'll generate the rules. Or tell me what to change."
+
+## Key Principles:
+- PROPOSE first, then refine based on feedback
+- Keep responses SHORT and actionable
+- Don't ask unnecessary questions - use sensible defaults
+- User can always add more details if they want
 
 ## Current Phase: {phase}
 ## Info Gathered So Far:
-{extractedInfo}
-
-Based on the conversation, continue gathering requirements or move to summarizing when you have enough information.`;
+{extractedInfo}`;
 
 /**
  * Prompt for the greeting phase
  */
-export const GREETING_PROMPT = `Start with a friendly greeting and ask what they want to monitor. Keep it simple - one question to get started.
+export const GREETING_PROMPT = `Start with a brief, friendly greeting. Ask what they want to monitor.
 
-Example: "Hi! I'm here to help you set up monitoring. What would you like me to watch for? For example, I can monitor emails for phishing, Slack for important messages, or logs for errors."`;
+Example: "Hi! Tell me what you want to monitor and I'll propose some rules. For example: 'Watch for emails from X and auto-reply with Y' or 'Alert me when emails contain urgent requests'."`;
 
 /**
  * Prompt for summarizing gathered information
@@ -92,20 +98,62 @@ EXTRACTED INFO:
 
 Generate a JSON response with:
 1. A clear monitoring_description (1-2 sentences summarizing what to monitor)
-2. Keyword rules for important terms
-3. Pattern rules (regex) for complex patterns
-4. Condition rules for field-based matching
-5. Response templates for each severity
+2. The logic mode: "all" if ALL conditions must match (AND), "any" if ANY condition triggers (OR)
+3. Keyword rules for important terms
+4. Pattern rules (regex) for complex patterns
+5. Condition rules for field-based matching
+6. Response templates for each severity
+7. Auto-reply configuration (if user mentioned wanting automatic replies)
+
+IMPORTANT - Logic Mode Selection:
+- Use "all" (AND logic) when the user describes COMPOUND requirements like:
+  - "emails from X AND containing Y"
+  - "from address X with subject containing Y"
+  - "messages from sender X that mention keyword Y"
+- Use "any" (OR logic) when the user wants to catch ANY of several patterns:
+  - "emails containing X OR Y"
+  - "watch for phishing OR spam"
+  - "alert on any suspicious activity"
+
+IMPORTANT - Condition Fields for Email:
+- Use field "from" for sender email address checks
+- Use field "subject" for subject line checks
+- Use field "content" for body text checks
+
+IMPORTANT - Auto-Reply Configuration:
+If the user mentioned wanting to send automatic replies when matches occur:
+- Set auto_reply.enabled to true
+- Configure the template with appropriate subject and body
+- Use placeholders like {sender}, {subject}, {matched_rules}, {severity}
+- If user didn't mention auto-reply, set auto_reply.enabled to false
 
 OUTPUT FORMAT (JSON only, no markdown):
 {
   "monitoring_description": "...",
   "rules": {
+    "logic": "all" or "any",
     "keywords": [...],
     "patterns": [...],
     "conditions": [...]
   },
-  "response_templates": [...]
+  "response_templates": [...],
+  "auto_reply": {
+    "enabled": true/false,
+    "template": {
+      "subject": "Re: {subject}",
+      "body": "Your reply message here...",
+      "signature": "Optional signature",
+      "includeOriginal": true/false
+    },
+    "conditions": {
+      "severities": ["info", "warning", "critical"],
+      "excludeSenders": ["noreply@", "automated@"]
+    },
+    "rateLimit": {
+      "maxRepliesPerSender": 1,
+      "windowMinutes": 60
+    }
+  }
 }`;
 
 // ============================================================================

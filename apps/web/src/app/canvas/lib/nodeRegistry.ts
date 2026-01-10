@@ -144,7 +144,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
 
   SSM_AGENT: {
     type: 'SSM_AGENT',
-    label: 'Stream Monitor',
+    label: 'State-Space Model (SSM)',
     description: 'Rules-based event monitoring with $0 runtime cost. LLM generates rules at setup, pure pattern matching at runtime. Ideal for email, security logs, and activity streams.',
     category: 'bot',
     icon: '📊',
@@ -172,6 +172,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
       canHaveMultipleInstances: true,
       canBeDisabled: true,
       requiresAuth: false,
+      requiresPro: true,
     },
     hidden: false,
   },

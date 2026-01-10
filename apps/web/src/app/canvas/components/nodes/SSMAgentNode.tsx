@@ -1,7 +1,7 @@
 /**
  * SSMAgentNode Component
  *
- * Visual representation of a Stream Monitor node in the Canvas.
+ * Visual representation of a State-Space Model (SSM) node in the Canvas.
  * Rules-based event monitoring with $0 runtime cost.
  *
  * Features:
@@ -161,7 +161,7 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
             />
           </button>
         </div>
-        <p className="text-xs text-teal-600 mt-1">Stream Monitor</p>
+        <p className="text-xs text-teal-600 mt-1">State-Space Model (SSM)</p>
       </div>
 
       {/* Body */}

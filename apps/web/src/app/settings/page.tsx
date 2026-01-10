@@ -6,6 +6,7 @@ import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal
 import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
 import EncryptionSettings from "@/components/settings/EncryptionSettings";
 import BYOKSettings from "@/components/settings/BYOKSettings";
+import { OAuthConnectionsSettings } from "@/components/settings/oauth";
 import { useAuthSession } from "@/hooks/useAuthSession";
 
 function SettingsPageContent() {
@@ -56,6 +57,9 @@ function SettingsPageContent() {
 
           {/* BYOK API Keys Section - Primary for BYOK model */}
           <BYOKSettings />
+
+          {/* OAuth Connections Section */}
+          <OAuthConnectionsSettings />
 
           {/* Encryption Settings Section */}
           <EncryptionSettings userEmail={user?.email} />

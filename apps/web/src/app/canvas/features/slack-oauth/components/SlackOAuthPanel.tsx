@@ -1,13 +1,13 @@
 /**
- * Slack OAuth Panel Component
+ * SlackOAuthPanel Component
  *
- * UI panel for configuring Slack OAuth in Genesis Bot nodes.
- * Displays connection status, permissions toggles, and available tools.
+ * UI panel for configuring Slack permissions in Canvas nodes.
+ * Connection is managed in Settings - this only shows status and permission toggles.
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useSlackOAuth } from '../hooks/useSlackOAuth';
 import type { SlackOAuthConfig, SlackPermissions } from '../types';
 import { DEFAULT_SLACK_CONFIG } from '../types';
@@ -23,14 +23,12 @@ export function SlackOAuthPanel({
   onConfigChange,
   disabled = false,
 }: SlackOAuthPanelProps) {
-  const { connection, status, isLoading, error, connect, disconnect } = useSlackOAuth();
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const { connection, status, isLoading } = useSlackOAuth();
 
-  // Use provided config or defaults - deep merge permissions
+  // Use provided config or defaults
   const currentConfig: SlackOAuthConfig = {
     ...DEFAULT_SLACK_CONFIG,
     ...config,
-    // Deep merge permissions to ensure all permission keys exist
     permissions: {
       ...DEFAULT_SLACK_CONFIG.permissions,
       ...config.permissions,
@@ -38,6 +36,7 @@ export function SlackOAuthPanel({
   };
 
   const handleToggleEnabled = () => {
+    if (!connection && !currentConfig.enabled) return;
     onConfigChange({
       ...currentConfig,
       enabled: !currentConfig.enabled,
@@ -54,26 +53,9 @@ export function SlackOAuthPanel({
     });
   };
 
-  const handleDisconnect = async () => {
-    setIsDisconnecting(true);
-    await disconnect();
-    onConfigChange({
-      ...currentConfig,
-      enabled: false,
-      connectionId: null,
-      workspaceName: undefined,
-      workspaceId: undefined,
-    });
-    setIsDisconnecting(false);
-  };
-
-  const handleConnect = () => {
-    connect();
-  };
-
   // Update config with connection info when connected
-  useEffect(() => {
-    if (connection?.id && currentConfig.enabled && connection.id !== currentConfig.connectionId) {
+  React.useEffect(() => {
+    if (connection?.id && connection.id !== currentConfig.connectionId) {
       onConfigChange({
         ...currentConfig,
         connectionId: connection.id,
@@ -81,18 +63,17 @@ export function SlackOAuthPanel({
         workspaceId: connection.workspaceId,
       });
     }
-  }, [connection?.id, currentConfig.enabled, currentConfig.connectionId, onConfigChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connection?.id, currentConfig.connectionId]);
+
+  const isConnected = status === 'connected' && connection;
 
   return (
     <div className="space-y-4">
       {/* Header with Enable Toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <svg
-            className="w-5 h-5 text-[#4A154B]"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5 text-[#4A154B]" fill="currentColor" viewBox="0 0 24 24">
             <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
           </svg>
           <span className="text-sm font-medium text-foreground/80">Slack</span>
@@ -100,10 +81,11 @@ export function SlackOAuthPanel({
         <button
           type="button"
           onClick={handleToggleEnabled}
-          disabled={disabled}
+          disabled={disabled || !isConnected}
+          title={!isConnected ? 'Connect Slack in Settings first' : ''}
           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
             currentConfig.enabled ? 'bg-sky' : 'bg-foreground/30'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${disabled || !isConnected ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
           <span
             className="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
@@ -112,159 +94,131 @@ export function SlackOAuthPanel({
         </button>
       </div>
 
-      {currentConfig.enabled && (
+      {/* Connection Status */}
+      <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-foreground/60">
+            <div className="animate-spin h-4 w-4 border-2 border-foreground/40 border-t-transparent rounded-full" />
+            <span className="text-sm">Checking connection...</span>
+          </div>
+        ) : isConnected ? (
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#4A154B] flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{connection.workspaceName}</p>
+              <p className="text-xs text-foreground/60">Slack Workspace</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-green-500 rounded-full" />
+              <span className="text-xs text-green-600">Connected</span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-2">
+            <p className="text-sm text-foreground/60 mb-2">Slack not connected</p>
+            <a href="/settings" className="text-xs text-sky hover:text-sky/80 underline">
+              Go to Settings to connect Slack
+            </a>
+          </div>
+        )}
+      </div>
+
+      {/* Permissions - Only show when connected and enabled */}
+      {isConnected && currentConfig.enabled && (
         <>
-          {/* Connection Status */}
-          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-            {isLoading ? (
-              <div className="flex items-center gap-2 text-foreground/60">
-                <div className="animate-spin h-4 w-4 border-2 border-foreground/40 border-t-transparent rounded-full" />
-                <span className="text-sm">Checking connection...</span>
-              </div>
-            ) : status === 'connected' && connection ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#4A154B] flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {connection.workspaceName}
-                    </p>
-                    <p className="text-xs text-foreground/60">Slack Workspace</p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-green-500 rounded-full" />
-                    <span className="text-xs text-green-600">Connected</span>
-                  </div>
-                </div>
-                <button
-                  onClick={handleDisconnect}
-                  disabled={isDisconnecting}
-                  className="w-full mt-2 px-3 py-1.5 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded transition-colors"
-                >
-                  {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-foreground/60">
-                  Connect your Slack workspace to enable messaging capabilities.
-                </p>
-                {error && (
-                  <p className="text-xs text-red-500">{error}</p>
-                )}
-                <button
-                  onClick={handleConnect}
-                  className="w-full px-3 py-2 bg-sky hover:bg-sky/80 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52z" />
-                  </svg>
-                  Add to Slack
-                </button>
-              </div>
-            )}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-foreground/80">Permissions</label>
+            <div className="space-y-2 bg-foreground/5 rounded-lg p-3">
+              <PermissionToggle
+                label="Read Channels"
+                description="List channels and read message history"
+                checked={currentConfig.permissions.canReadChannels}
+                onChange={(v) => handlePermissionChange('canReadChannels', v)}
+                disabled={disabled}
+              />
+              <PermissionToggle
+                label="Post Messages"
+                description="Send messages and reply to threads"
+                checked={currentConfig.permissions.canPostMessages}
+                onChange={(v) => handlePermissionChange('canPostMessages', v)}
+                disabled={disabled}
+                dangerous
+              />
+              <PermissionToggle
+                label="Reactions"
+                description="Add and remove emoji reactions"
+                checked={currentConfig.permissions.canReact}
+                onChange={(v) => handlePermissionChange('canReact', v)}
+                disabled={disabled}
+              />
+              <PermissionToggle
+                label="Read Users"
+                description="Look up user information"
+                checked={currentConfig.permissions.canReadUsers}
+                onChange={(v) => handlePermissionChange('canReadUsers', v)}
+                disabled={disabled}
+              />
+              <PermissionToggle
+                label="Upload Files"
+                description="Upload files and snippets to channels"
+                checked={currentConfig.permissions.canUploadFiles}
+                onChange={(v) => handlePermissionChange('canUploadFiles', v)}
+                disabled={disabled}
+                dangerous
+              />
+              <PermissionToggle
+                label="Manage Channels"
+                description="Create new channels"
+                checked={currentConfig.permissions.canManageChannels}
+                onChange={(v) => handlePermissionChange('canManageChannels', v)}
+                disabled={disabled}
+                dangerous
+              />
+            </div>
           </div>
 
-          {/* Permissions - Only show when connected */}
-          {status === 'connected' && (
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-foreground/80">
-                Permissions
-              </label>
-              <div className="space-y-2 bg-foreground/5 rounded-lg p-3">
-                <PermissionToggle
-                  label="Read Channels"
-                  description="List channels and read message history"
-                  checked={currentConfig.permissions.canReadChannels}
-                  onChange={(v) => handlePermissionChange('canReadChannels', v)}
-                  disabled={disabled}
-                />
-                <PermissionToggle
-                  label="Post Messages"
-                  description="Send messages and reply to threads"
-                  checked={currentConfig.permissions.canPostMessages}
-                  onChange={(v) => handlePermissionChange('canPostMessages', v)}
-                  disabled={disabled}
-                  dangerous
-                />
-                <PermissionToggle
-                  label="Reactions"
-                  description="Add and remove emoji reactions"
-                  checked={currentConfig.permissions.canReact}
-                  onChange={(v) => handlePermissionChange('canReact', v)}
-                  disabled={disabled}
-                />
-                <PermissionToggle
-                  label="Read Users"
-                  description="Look up user information"
-                  checked={currentConfig.permissions.canReadUsers}
-                  onChange={(v) => handlePermissionChange('canReadUsers', v)}
-                  disabled={disabled}
-                />
-                <PermissionToggle
-                  label="Upload Files"
-                  description="Upload files and snippets to channels"
-                  checked={currentConfig.permissions.canUploadFiles}
-                  onChange={(v) => handlePermissionChange('canUploadFiles', v)}
-                  disabled={disabled}
-                  dangerous
-                />
-                <PermissionToggle
-                  label="Manage Channels"
-                  description="Create new channels"
-                  checked={currentConfig.permissions.canManageChannels}
-                  onChange={(v) => handlePermissionChange('canManageChannels', v)}
-                  disabled={disabled}
-                  dangerous
-                />
-              </div>
-            </div>
-          )}
-
           {/* Available Tools Info */}
-          {status === 'connected' && (
-            <div className="bg-foreground/5 rounded-lg p-3">
-              <label className="block text-xs font-medium text-foreground/80 mb-2">
-                Available Tools
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {currentConfig.permissions.canReadChannels && (
-                  <>
-                    <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_list_channels</span>
-                    <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_get_channel_history</span>
-                  </>
-                )}
-                {currentConfig.permissions.canPostMessages && (
-                  <>
-                    <span className="px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-600">slack_post_message</span>
-                    <span className="px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-600">slack_reply_to_thread</span>
-                  </>
-                )}
-                {currentConfig.permissions.canReact && (
-                  <>
-                    <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_add_reaction</span>
-                    <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_remove_reaction</span>
-                  </>
-                )}
-                {currentConfig.permissions.canReadUsers && (
-                  <>
-                    <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_get_user_info</span>
-                    <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_list_users</span>
-                  </>
-                )}
-                {currentConfig.permissions.canUploadFiles && (
-                  <span className="px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-600">slack_upload_file</span>
-                )}
-                {currentConfig.permissions.canManageChannels && (
-                  <span className="px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-600">slack_create_channel</span>
-                )}
-              </div>
+          <div className="bg-foreground/5 rounded-lg p-3">
+            <label className="block text-xs font-medium text-foreground/80 mb-2">
+              Available Tools
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {currentConfig.permissions.canReadChannels && (
+                <>
+                  <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_list_channels</span>
+                  <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_get_channel_history</span>
+                </>
+              )}
+              {currentConfig.permissions.canPostMessages && (
+                <>
+                  <span className="px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-600">slack_post_message</span>
+                  <span className="px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-600">slack_reply_to_thread</span>
+                </>
+              )}
+              {currentConfig.permissions.canReact && (
+                <>
+                  <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_add_reaction</span>
+                  <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_remove_reaction</span>
+                </>
+              )}
+              {currentConfig.permissions.canReadUsers && (
+                <>
+                  <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_get_user_info</span>
+                  <span className="px-2 py-0.5 bg-foreground/10 rounded text-xs text-foreground/70">slack_list_users</span>
+                </>
+              )}
+              {currentConfig.permissions.canUploadFiles && (
+                <span className="px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-600">slack_upload_file</span>
+              )}
+              {currentConfig.permissions.canManageChannels && (
+                <span className="px-2 py-0.5 bg-amber-500/20 rounded text-xs text-amber-600">slack_create_channel</span>
+              )}
             </div>
-          )}
+          </div>
         </>
       )}
     </div>
@@ -281,14 +235,7 @@ interface PermissionToggleProps {
   dangerous?: boolean;
 }
 
-function PermissionToggle({
-  label,
-  description,
-  checked,
-  onChange,
-  disabled,
-  dangerous,
-}: PermissionToggleProps) {
+function PermissionToggle({ label, description, checked, onChange, disabled, dangerous }: PermissionToggleProps) {
   return (
     <div className="flex items-start gap-3">
       <button
@@ -296,11 +243,7 @@ function PermissionToggle({
         onClick={() => onChange(!checked)}
         disabled={disabled}
         className={`relative mt-0.5 inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-          checked
-            ? dangerous
-              ? 'bg-amber-500'
-              : 'bg-sky'
-            : 'bg-foreground/30'
+          checked ? (dangerous ? 'bg-amber-500' : 'bg-sky') : 'bg-foreground/30'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span
@@ -309,13 +252,7 @@ function PermissionToggle({
         />
       </button>
       <div className="flex-1">
-        <span
-          className={`text-sm ${
-            dangerous && checked ? 'text-amber-600' : 'text-foreground/80'
-          }`}
-        >
-          {label}
-        </span>
+        <span className={`text-sm ${dangerous && checked ? 'text-amber-600' : 'text-foreground/80'}`}>{label}</span>
         <p className="text-xs text-foreground/60">{description}</p>
       </div>
     </div>

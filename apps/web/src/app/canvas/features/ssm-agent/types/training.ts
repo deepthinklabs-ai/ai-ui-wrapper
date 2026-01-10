@@ -81,6 +81,10 @@ export interface SSMExtractedInfo {
 
   // Custom rules from conversation
   customRules?: string[];
+
+  // Auto-reply preferences
+  wantsAutoReply?: boolean;
+  autoReplyMessage?: string;
 }
 
 // ============================================================================
@@ -130,6 +134,7 @@ export interface SSMFinalizeTrainingResponse {
   monitoringDescription: string;
   rules: import('../../../types/ssm').SSMRulesConfig;
   responseTemplates: import('../../../types/ssm').SSMResponseTemplate[];
+  autoReply?: import('../features/auto-reply/types').SSMAutoReplyConfig;
   error?: string;
 }
 

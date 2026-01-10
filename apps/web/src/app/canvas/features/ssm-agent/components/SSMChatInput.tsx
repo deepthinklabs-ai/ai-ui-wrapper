@@ -52,9 +52,9 @@ interface QuickResponse {
 }
 
 const QUICK_RESPONSES: QuickResponse[] = [
+  { label: 'Looks good', value: 'Looks good, generate the rules.', phases: ['gathering', 'clarifying'] },
   { label: 'Yes, confirm', value: 'Yes, that looks correct.', phases: ['confirming'] },
   { label: 'Make changes', value: "I'd like to make some changes.", phases: ['confirming'] },
-  { label: "That's all", value: "That's all I need to monitor.", phases: ['gathering', 'clarifying'] },
   { label: 'Add more', value: 'I want to add more monitoring rules.', phases: ['summarizing'] },
 ];
 
