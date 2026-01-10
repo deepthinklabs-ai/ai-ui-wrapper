@@ -329,7 +329,7 @@ export default function SSMAgentConfigPanel({
         <div className="flex items-start gap-2">
           <span className="text-xl">📊</span>
           <div>
-            <p className="text-xs text-teal-700 font-medium">State-Space Model (SSM)</p>
+            <p className="text-xs text-teal-700 font-medium">Polling Monitor</p>
             <p className="text-xs text-teal-600 mt-1">
               Rules-based monitoring. AI generates rules at setup, runtime is free.
             </p>
@@ -542,7 +542,7 @@ export default function SSMAgentConfigPanel({
           </h3>
           <div className="p-4 bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-xl">
             <p className="text-sm text-teal-700 mb-3">
-              Have a conversation to teach the SSM what to monitor. The AI will ask clarifying questions and generate optimized rules.
+              Have a conversation to teach the monitor what to watch for. The AI will ask clarifying questions and generate optimized rules.
             </p>
             <div className="flex gap-2 mb-3">
               <select

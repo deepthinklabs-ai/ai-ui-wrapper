@@ -151,7 +151,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMGenera
     if (!profile || profile.tier !== 'pro') {
       return NextResponse.json({
         success: false,
-        error: 'State-Space Model (SSM) requires Pro subscription',
+        error: 'Polling Monitor requires Pro subscription',
       }, { status: 403 });
     }
 

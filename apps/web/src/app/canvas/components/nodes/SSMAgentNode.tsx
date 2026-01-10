@@ -161,7 +161,7 @@ export default function SSMAgentNode({ id, data, selected }: NodeProps<any>) {
             />
           </button>
         </div>
-        <p className="text-xs text-teal-600 mt-1">State-Space Model (SSM)</p>
+        <p className="text-xs text-teal-600 mt-1">Polling Monitor</p>
       </div>
 
       {/* Body */}

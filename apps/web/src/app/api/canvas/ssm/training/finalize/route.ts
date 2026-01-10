@@ -111,7 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
         monitoringDescription: '',
         rules: { keywords: [], patterns: [], conditions: [] },
         responseTemplates: [],
-        error: 'State-Space Model (SSM) requires Pro subscription',
+        error: 'Polling Monitor requires Pro subscription',
       }, { status: 403 });
     }
 
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
         monitoringDescription: '',
         rules: { keywords: [], patterns: [], conditions: [] },
         responseTemplates: [],
-        error: `Please configure your ${providerName} API key in Settings to use SSM training.`,
+        error: `Please configure your ${providerName} API key in Settings for training.`,
       }, { status: 403 });
     }
 

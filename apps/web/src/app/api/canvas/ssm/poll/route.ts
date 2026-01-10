@@ -86,7 +86,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
         eventsProcessed: 0,
         alertsGenerated: 0,
         alerts: [],
-        error: 'State-Space Model (SSM) requires Pro subscription',
+        error: 'Polling Monitor requires Pro subscription',
       }, { status: 403 });
     }
 
