@@ -4,6 +4,7 @@
  * Default configurations and utility functions for auto-reply feature.
  */
 
+import RE2 from 're2';
 import type {
   SSMAutoReplyConfig,
   SSMReplyTemplate,
@@ -143,16 +144,13 @@ export function shouldSendReply(
   // Check sender pattern if specified
   if (conditions.senderPattern) {
     try {
-      // Validate pattern length and check for dangerous patterns
+      // Validate pattern length
       const pattern = conditions.senderPattern;
       if (pattern.length > 200) {
         return { shouldSend: false, reason: 'Sender pattern too long' };
       }
-      // Check for potentially dangerous nested quantifiers (ReDoS patterns)
-      if (/\([^)]*[+*]\)[+*]/.test(pattern) || /\([^)]*\|[^)]*\)[+*]/.test(pattern)) {
-        return { shouldSend: false, reason: 'Invalid sender pattern' };
-      }
-      const regex = new RegExp(pattern, 'i');
+      // Use RE2 for safe regex matching (immune to ReDoS)
+      const regex = new RE2(pattern, 'i');
       if (!regex.test(sender)) {
         return { shouldSend: false, reason: 'Sender does not match required pattern' };
       }

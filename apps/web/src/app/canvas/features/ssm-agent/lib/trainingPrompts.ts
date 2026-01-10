@@ -277,20 +277,14 @@ export function determineNextPhase(
  * Generate a unique message ID using cryptographically secure randomness
  */
 export function generateMessageId(): string {
-  // Use crypto.randomUUID() for secure random ID generation
-  const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-  return `msg_${uuid}`;
+  // crypto.randomUUID() is available in Node.js 19+ and all modern browsers
+  return `msg_${crypto.randomUUID()}`;
 }
 
 /**
  * Generate a unique session ID using cryptographically secure randomness
  */
 export function generateSessionId(): string {
-  // Use crypto.randomUUID() for secure random ID generation
-  const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-  return `train_${uuid}`;
+  // crypto.randomUUID() is available in Node.js 19+ and all modern browsers
+  return `train_${crypto.randomUUID()}`;
 }
