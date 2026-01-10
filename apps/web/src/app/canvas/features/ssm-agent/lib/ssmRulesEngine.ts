@@ -132,14 +132,49 @@ function matchKeyword(content: string, rule: SSMKeywordRule): boolean {
 }
 
 /**
+ * Sanitize a regex pattern to prevent ReDoS attacks
+ * Limits pattern length and checks for known dangerous patterns
+ */
+function sanitizeRegexPattern(pattern: string): string | null {
+  // Limit pattern length to prevent excessive complexity
+  if (pattern.length > 500) {
+    return null;
+  }
+
+  // Check for potentially dangerous nested quantifiers (ReDoS patterns)
+  // Patterns like (a+)+ or (a*)*b or (a|aa)+ can cause exponential backtracking
+  const dangerousPatterns = [
+    /\([^)]*[+*]\)[+*]/,  // Nested quantifiers like (a+)+
+    /\([^)]*\|[^)]*\)[+*]/, // Alternation with quantifier like (a|b)+
+  ];
+
+  for (const dangerous of dangerousPatterns) {
+    if (dangerous.test(pattern)) {
+      return null;
+    }
+  }
+
+  return pattern;
+}
+
+/**
  * Match content against a pattern rule (regex)
  */
 function matchPattern(content: string, rule: SSMPatternRule): boolean {
   try {
-    const regex = new RegExp(rule.pattern, 'i');
+    // Sanitize the pattern to prevent ReDoS attacks
+    const sanitizedPattern = sanitizeRegexPattern(rule.pattern);
+    if (!sanitizedPattern) {
+      // Log without including the potentially malicious pattern directly
+      console.error('[SSM Rules] Pattern rejected: too long or potentially dangerous');
+      return false;
+    }
+
+    const regex = new RegExp(sanitizedPattern, 'i');
     return regex.test(content);
   } catch (error) {
-    console.error(`[SSM Rules] Invalid regex pattern: ${rule.pattern}`, error);
+    // Log error without including user-controlled pattern in format string
+    console.error('[SSM Rules] Invalid regex pattern', { patternLength: rule.pattern?.length, error });
     return false;
   }
 }
@@ -212,7 +247,12 @@ function matchCondition(event: SSMEvent, rule: SSMConditionRule): boolean {
 
     case 'matches':
       try {
-        const regex = new RegExp(ruleValue, 'i');
+        // Sanitize the pattern to prevent ReDoS attacks
+        const sanitizedPattern = sanitizeRegexPattern(ruleValue);
+        if (!sanitizedPattern) {
+          return false;
+        }
+        const regex = new RegExp(sanitizedPattern, 'i');
         return regex.test(strValue);
       } catch {
         return false;

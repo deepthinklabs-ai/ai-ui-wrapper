@@ -63,7 +63,9 @@ declare global {
 
 function getSessionStore(): SessionStore {
   if (!global.ssmTrainingSessions) {
-    global.ssmTrainingSessions = {};
+    // Use Object.create(null) to create a prototype-free object
+    // This prevents prototype pollution attacks
+    global.ssmTrainingSessions = Object.create(null) as SessionStore;
   }
   return global.ssmTrainingSessions;
 }
@@ -127,7 +129,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMTraini
 
     // Get or create session
     const sessions = getSessionStore();
-    let session = sessionId ? sessions[sessionId] : null;
+
+    // Validate sessionId to prevent prototype pollution
+    const isValidSessionId = (id: string): boolean => {
+      if (!id) return false;
+      // Block prototype pollution attempts
+      const blockedKeys = ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf'];
+      return !blockedKeys.includes(id) && id.startsWith('train_');
+    };
+
+    let session = (sessionId && isValidSessionId(sessionId)) ? sessions[sessionId] : null;
     const isNewSession = !session;
     let currentSessionId = sessionId || '';
 

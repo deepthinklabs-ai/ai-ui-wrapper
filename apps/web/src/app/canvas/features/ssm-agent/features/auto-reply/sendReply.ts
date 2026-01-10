@@ -123,11 +123,15 @@ export async function sendAutoReply(
 
     // Build raw email
     const emailContent = `${headers}\r\n${body}`;
-    const encodedMessage = Buffer.from(emailContent)
+    let encodedMessage = Buffer.from(emailContent)
       .toString('base64')
       .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
+      .replace(/\//g, '_');
+    // Remove trailing padding (base64 has at most 2 trailing '=' chars)
+    // Using loop instead of regex to avoid potential ReDoS warnings
+    while (encodedMessage.endsWith('=')) {
+      encodedMessage = encodedMessage.slice(0, -1);
+    }
 
     // Prepare request body
     const requestBody: { raw: string; threadId?: string } = {

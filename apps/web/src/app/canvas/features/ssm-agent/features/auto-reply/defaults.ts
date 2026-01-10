@@ -143,8 +143,17 @@ export function shouldSendReply(
   // Check sender pattern if specified
   if (conditions.senderPattern) {
     try {
-      const pattern = new RegExp(conditions.senderPattern, 'i');
-      if (!pattern.test(sender)) {
+      // Validate pattern length and check for dangerous patterns
+      const pattern = conditions.senderPattern;
+      if (pattern.length > 200) {
+        return { shouldSend: false, reason: 'Sender pattern too long' };
+      }
+      // Check for potentially dangerous nested quantifiers (ReDoS patterns)
+      if (/\([^)]*[+*]\)[+*]/.test(pattern) || /\([^)]*\|[^)]*\)[+*]/.test(pattern)) {
+        return { shouldSend: false, reason: 'Invalid sender pattern' };
+      }
+      const regex = new RegExp(pattern, 'i');
+      if (!regex.test(sender)) {
         return { shouldSend: false, reason: 'Sender does not match required pattern' };
       }
     } catch {

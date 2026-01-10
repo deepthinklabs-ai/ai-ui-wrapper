@@ -274,15 +274,23 @@ export function determineNextPhase(
 }
 
 /**
- * Generate a unique message ID
+ * Generate a unique message ID using cryptographically secure randomness
  */
 export function generateMessageId(): string {
-  return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  // Use crypto.randomUUID() for secure random ID generation
+  const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  return `msg_${uuid}`;
 }
 
 /**
- * Generate a unique session ID
+ * Generate a unique session ID using cryptographically secure randomness
  */
 export function generateSessionId(): string {
-  return `train_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  // Use crypto.randomUUID() for secure random ID generation
+  const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  return `train_${uuid}`;
 }
