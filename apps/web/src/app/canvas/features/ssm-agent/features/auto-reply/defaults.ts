@@ -153,7 +153,9 @@ export function shouldSendReply(
       if (!safeRegex(pattern)) {
         return { shouldSend: false, reason: 'Invalid sender pattern (potentially unsafe)' };
       }
-      const regex = new RegExp(pattern, 'i');
+      // CodeQL: Pattern is validated by safe-regex2 above to prevent ReDoS
+      // lgtm[js/regex-injection]
+      const regex = new RegExp(pattern, 'i'); // codeql[js/regex-injection] - validated by safeRegex()
       if (!regex.test(sender)) {
         return { shouldSend: false, reason: 'Sender does not match required pattern' };
       }
