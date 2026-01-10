@@ -24,7 +24,6 @@ import type {
 import {
   DEFAULT_SSM_CONFIG,
   AI_PROVIDER_OPTIONS,
-  MONITORING_EXAMPLES,
   hasRulesConfigured,
   countEnabledRules,
   generateRuleId,
@@ -84,8 +83,6 @@ export default function SSMAgentConfigPanel({
   const currentConfig = formData;
 
   // UI State
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<'claude' | 'openai'>('claude');
   const [testContent, setTestContent] = useState('');
   const [testResult, setTestResult] = useState<{ matched: boolean; rules: string[] } | null>(null);
@@ -261,48 +258,6 @@ export default function SSMAgentConfigPanel({
     provider: selectedProvider,
     onTrainingComplete: handleTrainingComplete,
   });
-
-  /**
-   * Generate rules from description using AI
-   */
-  const handleGenerateRules = useCallback(async () => {
-    if (!currentConfig.monitoring_description?.trim()) {
-      setGenerateError('Please enter a description of what you want to monitor');
-      return;
-    }
-
-    setIsGenerating(true);
-    setGenerateError(null);
-
-    try {
-      const response = await fetch('/api/canvas/ssm/generate-rules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          description: currentConfig.monitoring_description,
-          provider: selectedProvider,
-          userId: userId,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success && result.rules) {
-        await onUpdate({
-          rules: result.rules,
-          response_templates: result.response_templates || currentConfig.response_templates,
-          rules_generated_at: new Date().toISOString(),
-          rules_generated_by: selectedProvider,
-        });
-      } else {
-        setGenerateError(result.error || 'Failed to generate rules');
-      }
-    } catch (error) {
-      setGenerateError('Failed to connect to AI service');
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [currentConfig.monitoring_description, currentConfig.response_templates, selectedProvider, onUpdate]);
 
   /**
    * Test rules against sample content
@@ -615,107 +570,6 @@ export default function SSMAgentConfigPanel({
         </section>
       )}
 
-      {/* Manual Configuration Section - Only show when NOT trained */}
-      {!isTrained && (
-        <>
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-foreground/10" />
-            <span className="text-xs text-foreground/40">or configure manually</span>
-            <div className="flex-1 border-t border-foreground/10" />
-          </div>
-
-          {/* Section: What to Monitor (Manual) */}
-          <section>
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <span>🎯</span> What to Monitor
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-foreground/60 mb-1">
-                  Describe what you want to monitor for:
-                </label>
-                <textarea
-                  value={formData.monitoring_description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, monitoring_description: e.target.value }))}
-                  onBlur={() => {
-                    if (formData.monitoring_description !== config.monitoring_description) {
-                      onUpdate({ monitoring_description: formData.monitoring_description });
-                    }
-                  }}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-foreground/20 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-                  placeholder="e.g., Detect phishing attempts, suspicious links, and urgent money transfer requests..."
-                />
-              </div>
-
-              {/* Example prompts */}
-              <div>
-                <p className="text-xs text-foreground/50 mb-2">Quick examples:</p>
-                <div className="flex flex-wrap gap-2">
-                  {MONITORING_EXAMPLES.map((example) => (
-                    <button
-                      key={example.title}
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({ ...prev, monitoring_description: example.description }));
-                        onUpdate({ monitoring_description: example.description });
-                      }}
-                      className="text-xs px-2 py-1 bg-foreground/5 hover:bg-foreground/10 rounded-full text-foreground/70 transition-colors"
-                    >
-                      {example.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Generate Rules Button */}
-              <div className="pt-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-xs text-foreground/60">Generate with:</label>
-                  <select
-                    value={selectedProvider}
-                    onChange={(e) => setSelectedProvider(e.target.value as 'claude' | 'openai')}
-                    className="text-xs px-2 py-1 border border-foreground/20 rounded bg-white"
-                  >
-                    {AI_PROVIDER_OPTIONS.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleGenerateRules}
-                  disabled={isGenerating || !currentConfig.monitoring_description?.trim()}
-                  className={`
-                    w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors
-                    flex items-center justify-center gap-2
-                    ${isGenerating || !currentConfig.monitoring_description?.trim()
-                      ? 'bg-foreground/10 text-foreground/50 cursor-not-allowed'
-                      : 'bg-teal-500 text-white hover:bg-teal-600'
-                    }
-                  `}
-                >
-                  {isGenerating ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Generating Rules...
-                    </>
-                  ) : (
-                    <>
-                      <span>✨</span>
-                      Generate Rules (~$0.01)
-                    </>
-                  )}
-                </button>
-                {generateError && (
-                  <p className="text-xs text-red-500 mt-2">{generateError}</p>
-                )}
-              </div>
-            </div>
-          </section>
-        </>
-      )}
 
       {/* Section: Generated Rules */}
       {rulesConfigured && (
