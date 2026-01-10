@@ -28,6 +28,8 @@
 - **Own your data** — Client-side encryption, bring your own API keys. API keys are **never stored at rest** and are handled **ephemerally, in-memory only**, then **immediately discarded after use**.
 - **Share and discover** — Marketplace for chatbots, workflows, and AI experiences
 
+If you cloned this and it helped, a ⭐ helps others find it.
+
 ---
 
 ## Features
