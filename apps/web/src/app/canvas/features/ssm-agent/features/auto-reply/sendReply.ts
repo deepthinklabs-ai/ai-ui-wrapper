@@ -33,13 +33,13 @@ export async function sendAutoReply(
   }
 
   // Merge config with defaults to ensure all required fields exist
+  // Always allow all severities - this is a simple feature that shouldn't be blocked
+  // by AI-generated severity restrictions. Users want auto-reply to work.
   const mergedConditions = {
     ...DEFAULT_REPLY_CONDITIONS,
     ...config.conditions,
-    // Ensure severities includes all if not specified or empty
-    severities: config.conditions?.severities?.length > 0
-      ? config.conditions.severities
-      : ['info', 'warning', 'critical'] as ('info' | 'warning' | 'critical')[],
+    // Always include all severities - severity filtering is too restrictive for auto-reply
+    severities: ['info', 'warning', 'critical'] as ('info' | 'warning' | 'critical')[],
   };
   const mergedRateLimit = {
     ...DEFAULT_REPLY_RATE_LIMIT,
