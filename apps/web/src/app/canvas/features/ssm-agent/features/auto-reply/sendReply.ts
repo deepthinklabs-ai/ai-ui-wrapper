@@ -13,6 +13,9 @@ import {
   shouldSendReply,
   checkRateLimit,
   recordSentReply,
+  DEFAULT_REPLY_CONDITIONS,
+  DEFAULT_REPLY_RATE_LIMIT,
+  DEFAULT_REPLY_TEMPLATE,
 } from './defaults';
 
 /**
@@ -29,6 +32,24 @@ export async function sendAutoReply(
     return { success: false, error: 'Auto-reply is disabled' };
   }
 
+  // Merge config with defaults to ensure all required fields exist
+  const mergedConditions = {
+    ...DEFAULT_REPLY_CONDITIONS,
+    ...config.conditions,
+    // Ensure severities includes all if not specified or empty
+    severities: config.conditions?.severities?.length > 0
+      ? config.conditions.severities
+      : ['info', 'warning', 'critical'] as ('info' | 'warning' | 'critical')[],
+  };
+  const mergedRateLimit = {
+    ...DEFAULT_REPLY_RATE_LIMIT,
+    ...config.rateLimit,
+  };
+  const mergedTemplate = {
+    ...DEFAULT_REPLY_TEMPLATE,
+    ...config.template,
+  };
+
   // Extract sender email from event metadata (cast from unknown)
   const senderFull = String(event.metadata?.from || '');
   const senderEmail = extractEmail(senderFull);
@@ -42,14 +63,14 @@ export async function sendAutoReply(
   const conditionCheck = shouldSendReply(
     senderEmail,
     alert.severity,
-    config.conditions
+    mergedConditions
   );
   if (!conditionCheck.shouldSend) {
     return { success: false, error: conditionCheck.reason };
   }
 
   // Check rate limit
-  const rateLimitCheck = checkRateLimit(senderEmail, config.rateLimit);
+  const rateLimitCheck = checkRateLimit(senderEmail, mergedRateLimit);
   if (!rateLimitCheck.allowed) {
     return { success: false, error: rateLimitCheck.reason, rateLimited: true };
   }
@@ -71,16 +92,16 @@ export async function sendAutoReply(
   };
 
   // Replace placeholders in template
-  const subject = replacePlaceholders(config.template.subject, placeholderValues);
-  let body = replacePlaceholders(config.template.body, placeholderValues);
+  const subject = replacePlaceholders(mergedTemplate.subject, placeholderValues);
+  let body = replacePlaceholders(mergedTemplate.body, placeholderValues);
 
   // Add signature if configured
-  if (config.template.signature) {
-    body += `\n\n${config.template.signature}`;
+  if (mergedTemplate.signature) {
+    body += `\n\n${mergedTemplate.signature}`;
   }
 
   // Add original message if configured
-  if (config.template.includeOriginal) {
+  if (mergedTemplate.includeOriginal) {
     body += `\n\n--- Original Message ---\nFrom: ${senderFull}\nSubject: ${subjectValue}\nDate: ${dateValue}\n\n${event.content}`;
   }
 
