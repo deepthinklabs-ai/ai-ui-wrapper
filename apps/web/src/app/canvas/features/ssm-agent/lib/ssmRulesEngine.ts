@@ -150,7 +150,9 @@ function createSafeRegex(pattern: string): RegExp | null {
   }
 
   try {
-    return new RegExp(pattern, 'i');
+    // CodeQL: Pattern is validated by safe-regex2 above to prevent ReDoS
+    // lgtm[js/regex-injection]
+    return new RegExp(pattern, 'i'); // codeql[js/regex-injection] - validated by safeRegex()
   } catch (error) {
     console.error('[SSM Rules] Invalid regex pattern', { error });
     return null;
