@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getAuthHeaders } from "@/lib/apiClient";
 
 type KillSwitch = {
   key: string;
@@ -113,9 +114,7 @@ export default function AdminPage() {
 
     try {
       const response = await fetch("/api/admin/kill-switches", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: getAuthHeaders(accessToken),
       });
 
       if (response.status === 401) {
@@ -195,7 +194,7 @@ export default function AdminPage() {
       const response = await fetch("/api/admin/kill-switches", {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          ...getAuthHeaders(accessToken),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ key, value: newValue }),
