@@ -123,7 +123,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMTraini
         phase: 'greeting',
         extractedInfo: {},
         isComplete: false,
-        error: 'State-Space Model (SSM) requires Pro subscription',
+        error: 'Polling Monitor requires Pro subscription',
       }, { status: 403 });
     }
 
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMTraini
         extractedInfo: session.extractedInfo,
         isComplete: false,
         sessionStartedAt: session.startedAt,
-        error: `Please configure your ${providerName} API key in Settings to use SSM training.`,
+        error: `Please configure your ${providerName} API key in Settings for training.`,
       }, { status: 403 });
     }
 
@@ -270,7 +270,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMTraini
  * Get initial greeting message
  */
 function getGreetingMessage(): string {
-  return `Hi! 👋 I'm here to help you set up monitoring for this SSM node.
+  return `Hi! 👋 I'm here to help you set up your Polling Monitor.
 
 What would you like me to watch for? For example:
 - **Email security** (phishing, suspicious links, impersonation)
