@@ -134,7 +134,7 @@ export interface SSMFinalizeTrainingResponse {
   monitoringDescription: string;
   rules: import('../../../types/ssm').SSMRulesConfig;
   responseTemplates: import('../../../types/ssm').SSMResponseTemplate[];
-  autoReply?: import('../../features/auto-reply/types').SSMAutoReplyConfig;
+  autoReply?: import('../features/auto-reply/types').SSMAutoReplyConfig;
   error?: string;
 }
 
