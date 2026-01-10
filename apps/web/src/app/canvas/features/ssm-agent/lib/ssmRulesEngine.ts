@@ -11,6 +11,7 @@
  * - Response template interpolation
  */
 
+import RE2 from 're2';
 import type {
   SSMRulesConfig,
   SSMKeywordRule,
@@ -132,51 +133,35 @@ function matchKeyword(content: string, rule: SSMKeywordRule): boolean {
 }
 
 /**
- * Sanitize a regex pattern to prevent ReDoS attacks
- * Limits pattern length and checks for known dangerous patterns
+ * Create a safe regex using RE2 (immune to ReDoS attacks)
+ * RE2 uses a linear-time matching algorithm
  */
-function sanitizeRegexPattern(pattern: string): string | null {
-  // Limit pattern length to prevent excessive complexity
+function createSafeRegex(pattern: string): RE2 | null {
+  // Limit pattern length for safety
   if (pattern.length > 500) {
+    console.error('[SSM Rules] Pattern rejected: too long');
     return null;
   }
 
-  // Check for potentially dangerous nested quantifiers (ReDoS patterns)
-  // Patterns like (a+)+ or (a*)*b or (a|aa)+ can cause exponential backtracking
-  const dangerousPatterns = [
-    /\([^)]*[+*]\)[+*]/,  // Nested quantifiers like (a+)+
-    /\([^)]*\|[^)]*\)[+*]/, // Alternation with quantifier like (a|b)+
-  ];
-
-  for (const dangerous of dangerousPatterns) {
-    if (dangerous.test(pattern)) {
-      return null;
-    }
+  try {
+    // RE2 is immune to ReDoS - uses linear-time matching
+    return new RE2(pattern, 'i');
+  } catch (error) {
+    console.error('[SSM Rules] Invalid regex pattern', { error });
+    return null;
   }
-
-  return pattern;
 }
 
 /**
  * Match content against a pattern rule (regex)
+ * Uses RE2 for safe regex matching (immune to ReDoS)
  */
 function matchPattern(content: string, rule: SSMPatternRule): boolean {
-  try {
-    // Sanitize the pattern to prevent ReDoS attacks
-    const sanitizedPattern = sanitizeRegexPattern(rule.pattern);
-    if (!sanitizedPattern) {
-      // Log without including the potentially malicious pattern directly
-      console.error('[SSM Rules] Pattern rejected: too long or potentially dangerous');
-      return false;
-    }
-
-    const regex = new RegExp(sanitizedPattern, 'i');
-    return regex.test(content);
-  } catch (error) {
-    // Log error without including user-controlled pattern in format string
-    console.error('[SSM Rules] Invalid regex pattern', { patternLength: rule.pattern?.length, error });
+  const regex = createSafeRegex(rule.pattern);
+  if (!regex) {
     return false;
   }
+  return regex.test(content);
 }
 
 /**
@@ -245,18 +230,14 @@ function matchCondition(event: SSMEvent, rule: SSMConditionRule): boolean {
     case 'lessThan':
       return parseFloat(strValue) < parseFloat(ruleValue);
 
-    case 'matches':
-      try {
-        // Sanitize the pattern to prevent ReDoS attacks
-        const sanitizedPattern = sanitizeRegexPattern(ruleValue);
-        if (!sanitizedPattern) {
-          return false;
-        }
-        const regex = new RegExp(sanitizedPattern, 'i');
-        return regex.test(strValue);
-      } catch {
+    case 'matches': {
+      // Use RE2 for safe regex matching (immune to ReDoS)
+      const regex = createSafeRegex(ruleValue);
+      if (!regex) {
         return false;
       }
+      return regex.test(strValue);
+    }
 
     default:
       return false;
