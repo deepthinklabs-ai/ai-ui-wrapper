@@ -32,15 +32,41 @@ export default function TwoFactorLogin({
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const hasSentInitialCode = useRef(false);
 
-  // Send verification code on mount (only once, even in React Strict Mode)
-  useEffect(() => {
-    if (!hasSentInitialCode.current) {
-      hasSentInitialCode.current = true;
-      sendVerificationCode();
+  // Use sessionStorage to persist code sent state across component remounts
+  // This prevents re-sending codes when user switches tabs and returns
+  const getCodeSentKey = () => `2fa_login_sent_${userId}`;
+
+  const hasRecentlySentCode = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const sentTime = sessionStorage.getItem(getCodeSentKey());
+    if (!sentTime) return false;
+    // Code is considered "recently sent" if within 60 seconds
+    const elapsed = Date.now() - parseInt(sentTime, 10);
+    return elapsed < 60000;
+  };
+
+  const markCodeSent = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(getCodeSentKey(), Date.now().toString());
     }
-  }, []);
+  };
+
+  // Send verification code on mount (only if not recently sent)
+  useEffect(() => {
+    if (!hasRecentlySentCode()) {
+      markCodeSent();
+      sendVerificationCode();
+    } else {
+      // Code was recently sent, just show the UI with cooldown
+      setCodeSent(true);
+      // Calculate remaining cooldown
+      const sentTime = parseInt(sessionStorage.getItem(getCodeSentKey()) || '0', 10);
+      const elapsed = Math.floor((Date.now() - sentTime) / 1000);
+      const remaining = Math.max(0, 60 - elapsed);
+      setResendCooldown(remaining);
+    }
+  }, [userId]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -75,6 +101,8 @@ export default function TwoFactorLogin({
         throw new Error(data.error || 'Failed to send verification code');
       }
 
+      // Mark code as sent in sessionStorage to prevent re-sends on tab switch
+      markCodeSent();
       setCodeSent(true);
       setResendCooldown(60);
       setSuccess('Verification code sent!');
