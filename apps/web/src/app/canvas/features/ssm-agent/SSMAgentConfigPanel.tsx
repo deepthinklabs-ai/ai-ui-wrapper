@@ -151,14 +151,19 @@ export default function SSMAgentConfigPanel({
   // Check if Gmail is connected
   const isGmailConnected = currentConfig.gmail?.enabled && currentConfig.gmail?.connectionId;
 
-  
+  // Check if Calendar is connected
+  const isCalendarConnected = currentConfig.calendar?.enabled && currentConfig.calendar?.connectionId;
+
+  // At least one data source must be connected for polling
+  const hasDataSource = isGmailConnected || isCalendarConnected;
+
   // Automatic polling interval (60 seconds)
   const POLL_INTERVAL_MS = 60 * 1000;
 
   // Handle poll (used by both manual and automatic)
   const executePoll = useCallback(async (isAutomatic = false) => {
     // Use ref to check polling state to avoid dependency loop
-    if (isPollingRef.current || !isEnabled || !isGmailConnected) return;
+    if (isPollingRef.current || !isEnabled || !hasDataSource) return;
 
     isPollingRef.current = true;
     setIsPolling(true);
@@ -180,6 +185,7 @@ export default function SSMAgentConfigPanel({
         // Pass decrypted config since server can't decrypt
         rules: currentConfig.rules,
         gmail: currentConfig.gmail,
+        calendar: currentConfig.calendar,
         // Pass auto-reply config for automatic email responses
         auto_reply: currentConfig.auto_reply,
       });
@@ -227,11 +233,11 @@ export default function SSMAgentConfigPanel({
       isPollingRef.current = false;
       setIsPolling(false);
     }
-  }, [canvasId, nodeId, userId, isEnabled, isGmailConnected, currentConfig.rules, currentConfig.gmail, currentConfig.auto_reply]);
+  }, [canvasId, nodeId, userId, isEnabled, hasDataSource, currentConfig.rules, currentConfig.gmail, currentConfig.calendar, currentConfig.auto_reply]);
 
-  // Automatic polling when monitoring is enabled and Gmail is connected
+  // Automatic polling when monitoring is enabled and at least one data source is connected
   useEffect(() => {
-    if (!isEnabled || !isGmailConnected) return;
+    if (!isEnabled || !hasDataSource) return;
 
     // Initial poll when monitoring is enabled
     executePoll(true);
@@ -244,7 +250,7 @@ export default function SSMAgentConfigPanel({
     return () => {
       clearInterval(intervalId);
     };
-  }, [isEnabled, isGmailConnected, executePoll]);
+  }, [isEnabled, hasDataSource, executePoll]);
 
   // Handle manual poll (just calls executePoll with isAutomatic=false)
   const handlePollNow = useCallback(() => {
@@ -341,13 +347,13 @@ export default function SSMAgentConfigPanel({
       <section className="p-4 bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{isEnabled && isGmailConnected ? '🟢' : isEnabled ? '🟡' : '⏸️'}</span>
+            <span className="text-2xl">{isEnabled && hasDataSource ? '🟢' : isEnabled ? '🟡' : '⏸️'}</span>
             <div>
               <h3 className="text-sm font-semibold text-foreground">
-                {isEnabled && isGmailConnected
+                {isEnabled && hasDataSource
                   ? 'Monitoring Active'
                   : isEnabled
-                    ? 'Waiting for Gmail Connection'
+                    ? 'Waiting for Data Source'
                     : 'Monitoring Paused'
                 }
               </h3>
@@ -356,8 +362,8 @@ export default function SSMAgentConfigPanel({
                   ? 'Complete training to enable monitoring'
                   : !isEnabled
                     ? 'Click to start monitoring'
-                  : !isGmailConnected
-                    ? 'Connect Gmail below to start polling'
+                  : !hasDataSource
+                    ? 'Connect Gmail or Calendar below to start polling'
                   : 'Auto-polling every 60 seconds'
                 }
               </p>
@@ -381,18 +387,18 @@ export default function SSMAgentConfigPanel({
           </button>
         </div>
 
-        {/* Gmail Connection Warning */}
-        {isEnabled && !isGmailConnected && (
+        {/* Data Source Connection Warning */}
+        {isEnabled && !hasDataSource && (
           <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs text-amber-700 flex items-center gap-2">
               <span>⚠️</span>
-              <span>Connect Gmail in the <strong>Data Source Integrations</strong> section below to enable automatic monitoring.</span>
+              <span>Connect Gmail or Calendar in the <strong>Data Source Integrations</strong> section below to enable automatic monitoring.</span>
             </p>
           </div>
         )}
 
         {/* Auto-polling Status */}
-        {isEnabled && isGmailConnected && (
+        {isEnabled && hasDataSource && (
           <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -407,7 +413,7 @@ export default function SSMAgentConfigPanel({
         )}
 
         {/* Manual Poll Button */}
-        {isEnabled && isGmailConnected && (
+        {isEnabled && hasDataSource && (
           <div className="pt-3 border-t border-gray-200">
             <button
               onClick={handlePollNow}

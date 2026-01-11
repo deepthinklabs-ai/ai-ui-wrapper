@@ -10,11 +10,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getGmailClient } from '@/lib/googleClients';
+import { getGmailClient, getCalendarClient } from '@/lib/googleClients';
 import { matchEvent } from '@/app/canvas/features/ssm-agent/lib/ssmRulesEngine';
 import { processAutoReply } from '@/app/canvas/features/ssm-agent/features/auto-reply/sendReply';
 import type { SSMAgentNodeConfig, SSMAlert, SSMEvent } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
+import type { CalendarOAuthConfig } from '@/app/canvas/features/calendar-oauth/types';
 
 // ============================================================================
 // TYPES
@@ -27,6 +28,7 @@ interface PollRequest {
   // Client passes decrypted config since server can't decrypt
   rules?: SSMAgentNodeConfig['rules'];
   gmail?: SSMAgentNodeConfig['gmail'];
+  calendar?: CalendarOAuthConfig;
   auto_reply?: SSMAutoReplyConfig;
 }
 
@@ -56,7 +58,7 @@ function getSupabaseAdmin() {
 export async function POST(request: NextRequest): Promise<NextResponse<PollResponse>> {
   try {
     const body: PollRequest = await request.json();
-    const { canvasId, nodeId, userId, rules, gmail, auto_reply } = body;
+    const { canvasId, nodeId, userId, rules, gmail, calendar, auto_reply } = body;
 
     // Validate required fields
     if (!canvasId || !nodeId || !userId) {
@@ -118,6 +120,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       trained_by?: string;
       gmail_enabled?: boolean;
       gmail_connection_id?: string;
+      calendar_enabled?: boolean;
+      calendar_connection_id?: string;
       events_processed?: number;
       alerts_triggered?: number;
       processed_event_ids?: string[];
@@ -148,15 +152,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       }, { status: 400 });
     }
 
-    // Check if Gmail is connected (needed for polling)
-    if (!runtimeConfig?.gmail_enabled || !runtimeConfig?.gmail_connection_id) {
-      console.error('[SSM Poll] Gmail not connected:', nodeId);
+    // Check if at least one data source is connected (Gmail or Calendar)
+    const hasGmail = runtimeConfig?.gmail_enabled && runtimeConfig?.gmail_connection_id;
+    const hasCalendar = runtimeConfig?.calendar_enabled && runtimeConfig?.calendar_connection_id;
+
+    if (!hasGmail && !hasCalendar) {
+      console.error('[SSM Poll] No data source connected:', nodeId);
       return NextResponse.json({
         success: false,
         eventsProcessed: 0,
         alertsGenerated: 0,
         alerts: [],
-        error: 'Gmail is not connected for this node',
+        error: 'No data source (Gmail or Calendar) is connected for this node',
       }, { status: 400 });
     }
 
@@ -185,7 +192,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
         gmail,
         last_event_at: undefined, // Will fetch from last hour
       } as SSMAgentNodeConfig;
-      events = await fetchGmailEvents(userId, gmailConfig, node.id);
+      const gmailEvents = await fetchGmailEvents(userId, gmailConfig, node.id);
+      events.push(...gmailEvents);
+    }
+
+    // Check for Calendar integration using the calendar config from request
+    if (calendar?.enabled) {
+      const calendarEvents = await fetchCalendarEvents(userId, calendar);
+      events.push(...calendarEvents);
     }
 
     // Filter out already-processed events to prevent duplicate counting
@@ -224,11 +238,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
             ? 'warning'
             : 'info';
 
+        // Generate appropriate title based on event source
+        let alertTitle: string;
+        if (event.source === 'calendar') {
+          alertTitle = `Calendar Event: ${event.metadata?.summary || 'No title'}`;
+        } else {
+          alertTitle = `Email from ${event.metadata?.from || 'Unknown'}: ${event.metadata?.subject || 'No subject'}`;
+        }
+
         // Create alert
         const alert: SSMAlert = {
           id: `alert_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           severity: highestSeverity as SSMAlert['severity'],
-          title: `Email from ${event.metadata?.from || 'Unknown'}: ${event.metadata?.subject || 'No subject'}`,
+          title: alertTitle,
           message: event.content.substring(0, 500),
           event_id: event.id,
           matched_rules: result.matched_rules.map(r => r.rule_name),
@@ -398,6 +420,93 @@ async function fetchGmailEvents(
     }
   } catch (error: any) {
     console.error('[SSM Poll] Gmail fetch error:', error?.message || error);
+  }
+
+  return events;
+}
+
+// ============================================================================
+// CALENDAR FETCHING
+// ============================================================================
+
+async function fetchCalendarEvents(
+  userId: string,
+  config: CalendarOAuthConfig
+): Promise<SSMEvent[]> {
+  const events: SSMEvent[] = [];
+
+  try {
+    const calendar = await getCalendarClient(userId);
+
+    // Get events from the last hour (to catch recently created events)
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    // List events that were created or updated recently
+    // We use updatedMin to catch new/modified events
+    const listResponse = await calendar.events.list({
+      calendarId: config.defaultCalendarId || 'primary',
+      updatedMin: oneHourAgo.toISOString(),
+      maxResults: 50,
+      singleEvents: true,
+      orderBy: 'updated',
+    });
+
+    const calendarEvents = listResponse.data.items || [];
+
+    for (const calEvent of calendarEvents) {
+      if (!calEvent.id) continue;
+
+      // Get event start time
+      const startTime = calEvent.start?.dateTime || calEvent.start?.date || '';
+      const endTime = calEvent.end?.dateTime || calEvent.end?.date || '';
+
+      // Build attendee list
+      const attendees = calEvent.attendees
+        ?.map(a => a.email || a.displayName)
+        .filter(Boolean)
+        .join(', ') || 'None';
+
+      // Create event content for rules matching
+      const content = `
+Calendar Event: ${calEvent.summary || 'No title'}
+Start: ${startTime}
+End: ${endTime}
+Location: ${calEvent.location || 'Not specified'}
+Description: ${calEvent.description || 'No description'}
+Attendees: ${attendees}
+Organizer: ${calEvent.organizer?.email || 'Unknown'}
+Status: ${calEvent.status || 'Unknown'}
+      `.trim();
+
+      const event: SSMEvent = {
+        id: `cal_${calEvent.id}`,
+        timestamp: calEvent.updated || calEvent.created || now.toISOString(),
+        source: 'calendar',
+        type: 'calendar_event',
+        content,
+        metadata: {
+          eventId: calEvent.id,
+          summary: calEvent.summary,
+          start: startTime,
+          end: endTime,
+          location: calEvent.location,
+          description: calEvent.description,
+          attendees: calEvent.attendees?.map(a => a.email).filter(Boolean),
+          organizer: calEvent.organizer?.email,
+          status: calEvent.status,
+          htmlLink: calEvent.htmlLink,
+          created: calEvent.created,
+          updated: calEvent.updated,
+        },
+      };
+
+      events.push(event);
+    }
+
+    console.log(`[SSM Poll] Fetched ${events.length} calendar events`);
+  } catch (error: any) {
+    console.error('[SSM Poll] Calendar fetch error:', error?.message || error);
   }
 
   return events;
