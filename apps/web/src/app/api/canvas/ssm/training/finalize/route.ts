@@ -142,8 +142,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       .replace('{conversation}', conversationText)
       .replace('{extractedInfo}', extractedInfoText);
 
-    // Generate rules using AI
-    const result = await generateRulesWithAI(prompt, provider, apiKey);
+    // Generate rules using AI, passing conversation text for email extraction
+    const result = await generateRulesWithAI(prompt, provider, apiKey, conversationText);
 
     if (!result.success) {
       return NextResponse.json({
@@ -194,16 +194,17 @@ interface GenerationResult {
 async function generateRulesWithAI(
   prompt: string,
   provider: 'claude' | 'openai',
-  apiKey: string
+  apiKey: string,
+  conversationText: string
 ): Promise<GenerationResult> {
   if (provider === 'claude') {
-    return generateWithClaude(prompt, apiKey);
+    return generateWithClaude(prompt, apiKey, conversationText);
   } else {
-    return generateWithOpenAI(prompt, apiKey);
+    return generateWithOpenAI(prompt, apiKey, conversationText);
   }
 }
 
-async function generateWithClaude(prompt: string, apiKey: string): Promise<GenerationResult> {
+async function generateWithClaude(prompt: string, apiKey: string, conversationText: string): Promise<GenerationResult> {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -230,14 +231,14 @@ async function generateWithClaude(prompt: string, apiKey: string): Promise<Gener
     const data = await response.json();
     const content = data.content?.[0]?.text || '';
 
-    return parseGeneratedRules(content);
+    return parseGeneratedRules(content, conversationText);
   } catch (error) {
     console.error('[SSM Finalize] Claude error:', error);
     return { success: false, error: 'Failed to call Claude API' };
   }
 }
 
-async function generateWithOpenAI(prompt: string, apiKey: string): Promise<GenerationResult> {
+async function generateWithOpenAI(prompt: string, apiKey: string, conversationText: string): Promise<GenerationResult> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -263,7 +264,7 @@ async function generateWithOpenAI(prompt: string, apiKey: string): Promise<Gener
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
-    return parseGeneratedRules(content);
+    return parseGeneratedRules(content, conversationText);
   } catch (error) {
     console.error('[SSM Finalize] OpenAI error:', error);
     return { success: false, error: 'Failed to call OpenAI API' };
@@ -274,7 +275,7 @@ async function generateWithOpenAI(prompt: string, apiKey: string): Promise<Gener
 // PARSING
 // ============================================================================
 
-function parseGeneratedRules(content: string): GenerationResult {
+function parseGeneratedRules(content: string, conversationText: string): GenerationResult {
   try {
     // Try to extract JSON from the response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -320,9 +321,11 @@ function parseGeneratedRules(content: string): GenerationResult {
     // Parse auto_reply configuration if present
     let autoReply: SSMAutoReplyConfig | undefined;
 
-    // Extract notification recipient from monitoring description (for "send email to X" scenarios)
+    // IMPORTANT: Extract notification recipient from the CONVERSATION TEXT, not the AI-generated summary
+    // The user's original request like "send email to dalbin25@gmail.com" is in the conversation
+    const notificationRecipient = extractNotificationRecipient(conversationText);
+    console.log(`[SSM Finalize] Extracted notification recipient from conversation: ${notificationRecipient || 'none'}`);
     const monitoringDescription = parsed.monitoring_description || '';
-    const notificationRecipient = extractNotificationRecipient(monitoringDescription);
 
     if (parsed.auto_reply?.enabled || notificationRecipient) {
       autoReply = {

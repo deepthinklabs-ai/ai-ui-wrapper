@@ -60,6 +60,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
     const body: PollRequest = await request.json();
     const { canvasId, nodeId, userId, rules, gmail, calendar, auto_reply } = body;
 
+    // Debug logging for auto-reply
+    console.log('[SSM Poll] auto_reply config received:', JSON.stringify(auto_reply, null, 2));
+
     // Validate required fields
     if (!canvasId || !nodeId || !userId) {
       console.error('[SSM Poll] Missing fields:', { canvasId: !!canvasId, nodeId: !!nodeId, userId: !!userId });
@@ -272,8 +275,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
         }
 
         // Process auto-reply if configured
+        console.log('[SSM Poll] Checking auto-reply:', {
+          enabled: auto_reply?.enabled,
+          hasNotificationRecipient: !!auto_reply?.notificationRecipient,
+          notificationRecipient: auto_reply?.notificationRecipient,
+          eventSource: event.source
+        });
         if (auto_reply?.enabled) {
           try {
+            console.log('[SSM Poll] Calling processAutoReply with config:', JSON.stringify(auto_reply, null, 2));
             const replyResult = await processAutoReply(userId, event, alert, auto_reply);
             if (replyResult.result.success) {
               console.log(`[SSM Poll] Auto-reply sent to ${replyResult.result.recipient}`);
