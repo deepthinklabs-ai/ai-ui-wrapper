@@ -54,7 +54,10 @@ export async function GET(request: NextRequest) {
 
     // Check if Calendar scopes are present
     const scopes = connection.scopes || [];
-    const hasCalendarScopes = scopes.some((scope: string) =>
+
+    // If scopes array is empty/null, assume legacy connection with all scopes granted
+    // (Settings OAuth flow requests all scopes when no service parameter is provided)
+    const hasCalendarScopes = scopes.length === 0 || scopes.some((scope: string) =>
       scope.includes('calendar')
     );
 

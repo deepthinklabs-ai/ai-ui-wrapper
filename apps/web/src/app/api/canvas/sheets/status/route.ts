@@ -32,7 +32,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if Sheets scope is included
-    const hasSheetScope = connection.scopes?.some((s: string) =>
+    const scopes = connection.scopes || [];
+
+    // If scopes array is empty/null, assume legacy connection with all scopes granted
+    // (Settings OAuth flow requests all scopes when no service parameter is provided)
+    const hasSheetScope = scopes.length === 0 || scopes.some((s: string) =>
       s.includes('spreadsheets')
     );
 

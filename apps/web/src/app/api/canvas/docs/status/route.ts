@@ -30,7 +30,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if scopes include docs
-    const hasDocsScope = connection.scopes?.some((s: string) => s.includes('documents'));
+    const scopes = connection.scopes || [];
+
+    // If scopes array is empty/null, assume legacy connection with all scopes granted
+    // (Settings OAuth flow requests all scopes when no service parameter is provided)
+    const hasDocsScope = scopes.length === 0 || scopes.some((s: string) => s.includes('documents'));
 
     return NextResponse.json({
       connected: true,
