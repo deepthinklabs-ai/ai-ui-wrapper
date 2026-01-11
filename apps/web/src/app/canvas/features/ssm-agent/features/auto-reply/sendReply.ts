@@ -108,7 +108,7 @@ export async function sendAutoReply(
     const eventDescription = String(event.metadata?.description || 'No description');
     const eventOrganizer = String(event.metadata?.organizer || 'Unknown');
 
-    subject = `📅 New Calendar Event: ${eventSummary}`;
+    subject = `New Calendar Event: ${eventSummary}`;
     body = `A new calendar event has been detected:\n\n` +
       `📌 Event: ${eventSummary}\n` +
       `🕐 Start: ${eventStart}\n` +
@@ -159,8 +159,13 @@ export async function sendAutoReply(
     const gmail = await getGmailClient(userId);
 
     // Build email headers
+    // MIME-encode subject if it contains non-ASCII characters (RFC 2047)
+    const encodedSubject = /[^\x00-\x7F]/.test(subject)
+      ? `=?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`
+      : subject;
+
     let headers = `To: ${recipientEmail}\r\n`;
-    headers += `Subject: ${subject}\r\n`;
+    headers += `Subject: ${encodedSubject}\r\n`;
 
     // Add reply headers for proper threading (only for email replies)
     if (messageIdValue) {
