@@ -232,14 +232,25 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       // Use matchEvent instead of testRules to include metadata (from, subject, etc.)
       const result = matchEvent(event, rules);
 
-      if (result.matched) {
+      // Special case: If notificationRecipient is set and this is a calendar event,
+      // treat it as a match even if no rules matched. This handles "notify me of all calendar events" scenarios.
+      const isCalendarNotification = event.source === 'calendar' && auto_reply?.notificationRecipient;
+      if (isCalendarNotification && !result.matched) {
+        console.log(`[SSM Poll] Calendar event with notificationRecipient - forcing match for notification`);
+      }
+
+      if (result.matched || isCalendarNotification) {
         // Determine highest severity
-        const severities = result.matched_rules.map(() => 'warning'); // Default
-        const highestSeverity = severities.includes('critical')
-          ? 'critical'
-          : severities.includes('warning')
-            ? 'warning'
-            : 'info';
+        // For calendar notifications without rule matches, use 'info'
+        let highestSeverity: 'info' | 'warning' | 'critical' = 'info';
+        if (result.matched && result.matched_rules.length > 0) {
+          const severities = result.matched_rules.map(() => 'warning'); // Default
+          highestSeverity = severities.includes('critical')
+            ? 'critical'
+            : severities.includes('warning')
+              ? 'warning'
+              : 'info';
+        }
 
         // Generate appropriate title based on event source
         let alertTitle: string;
@@ -252,11 +263,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
         // Create alert
         const alert: SSMAlert = {
           id: `alert_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          severity: highestSeverity as SSMAlert['severity'],
+          severity: highestSeverity,
           title: alertTitle,
           message: event.content.substring(0, 500),
           event_id: event.id,
-          matched_rules: result.matched_rules.map(r => r.rule_name),
+          matched_rules: result.matched_rules.length > 0
+            ? result.matched_rules.map(r => r.rule_name)
+            : ['Calendar Event Notification'],
           timestamp: new Date().toISOString(),
           acknowledged: false,
           source_node_id: nodeId,
