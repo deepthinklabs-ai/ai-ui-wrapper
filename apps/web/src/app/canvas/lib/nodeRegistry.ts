@@ -144,7 +144,7 @@ export const NODE_DEFINITIONS: Record<CanvasNodeType, NodeDefinition> = {
 
   SSM_AGENT: {
     type: 'SSM_AGENT',
-    label: 'State-Space Model (SSM)',
+    label: 'Polling Monitor',
     description: 'Rules-based event monitoring with $0 runtime cost. LLM generates rules at setup, pure pattern matching at runtime. Ideal for email, security logs, and activity streams.',
     category: 'bot',
     icon: '📊',

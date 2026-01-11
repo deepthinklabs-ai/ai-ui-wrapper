@@ -59,7 +59,10 @@ export async function GET(request: NextRequest) {
       'https://mail.google.com/',                   // Full Gmail access
     ];
     const scopes = connection.scopes || [];
-    const hasGmailScopes = scopes.some((scope: string) =>
+
+    // If scopes array is empty/null, assume legacy connection with all scopes granted
+    // (Settings OAuth flow requests all scopes when no service parameter is provided)
+    const hasGmailScopes = scopes.length === 0 || scopes.some((scope: string) =>
       GMAIL_SCOPE_PATTERNS.some(pattern => scope.startsWith(pattern))
     );
 

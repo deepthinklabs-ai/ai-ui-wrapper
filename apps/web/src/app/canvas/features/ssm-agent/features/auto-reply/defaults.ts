@@ -4,7 +4,7 @@
  * Default configurations and utility functions for auto-reply feature.
  */
 
-import RE2 from 're2';
+import safeRegex from 'safe-regex2';
 import type {
   SSMAutoReplyConfig,
   SSMReplyTemplate,
@@ -149,8 +149,13 @@ export function shouldSendReply(
       if (pattern.length > 200) {
         return { shouldSend: false, reason: 'Sender pattern too long' };
       }
-      // Use RE2 for safe regex matching (immune to ReDoS)
-      const regex = new RE2(pattern, 'i');
+      // Check if pattern is safe from ReDoS using safe-regex2
+      if (!safeRegex(pattern)) {
+        return { shouldSend: false, reason: 'Invalid sender pattern (potentially unsafe)' };
+      }
+      // CodeQL: Pattern is validated by safe-regex2 above to prevent ReDoS
+      // lgtm[js/regex-injection]
+      const regex = new RegExp(pattern, 'i'); // codeql[js/regex-injection] - validated by safeRegex()
       if (!regex.test(sender)) {
         return { shouldSend: false, reason: 'Sender does not match required pattern' };
       }

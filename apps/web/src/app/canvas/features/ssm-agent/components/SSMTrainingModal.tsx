@@ -193,7 +193,7 @@ export function SSMTrainingModal({
           <div className="flex items-center gap-3">
             <span className="text-2xl">📊</span>
             <div>
-              <h2 className="font-semibold text-foreground">Train SSM Monitor</h2>
+              <h2 className="font-semibold text-foreground">Train Polling Monitor</h2>
               <div className="flex items-center gap-2">
                 <p className="text-xs text-foreground/50">{nodeName}</p>
                 {sessionStartedAt && (
@@ -309,7 +309,7 @@ export function SSMTrainingModal({
               Training Complete!
             </h3>
             <p className="text-foreground/60 text-center max-w-sm mb-6">
-              Your monitoring rules have been generated and applied to the SSM node.
+              Your monitoring rules have been generated and applied to the Polling Monitor.
             </p>
             <button
               onClick={onClose}

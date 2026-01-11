@@ -60,7 +60,7 @@ function MessageBubble({ message }: { message: SSMTrainingMessage }) {
       >
         {/* Role indicator */}
         <div className={`text-xs mb-1 ${isUser ? 'text-teal-100' : 'text-foreground/40'}`}>
-          {isUser ? 'You' : 'SSM Trainer'}
+          {isUser ? 'You' : 'Monitor Trainer'}
         </div>
 
         {/* Message content - render markdown-like formatting */}
@@ -226,7 +226,7 @@ export function SSMChatMessages({
           <div className="flex flex-col items-center justify-center h-full text-center">
             <span className="text-4xl mb-3">📊</span>
             <p className="text-foreground/50 text-sm">
-              Start the conversation to train your SSM monitor
+              Start the conversation to train your Polling Monitor
             </p>
           </div>
         )}

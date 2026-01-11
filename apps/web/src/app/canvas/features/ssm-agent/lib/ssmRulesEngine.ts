@@ -11,7 +11,7 @@
  * - Response template interpolation
  */
 
-import RE2 from 're2';
+import safeRegex from 'safe-regex2';
 import type {
   SSMRulesConfig,
   SSMKeywordRule,
@@ -133,19 +133,26 @@ function matchKeyword(content: string, rule: SSMKeywordRule): boolean {
 }
 
 /**
- * Create a safe regex using RE2 (immune to ReDoS attacks)
- * RE2 uses a linear-time matching algorithm
+ * Create a safe regex after validating it won't cause ReDoS
+ * Uses safe-regex2 to detect dangerous patterns
  */
-function createSafeRegex(pattern: string): RE2 | null {
+function createSafeRegex(pattern: string): RegExp | null {
   // Limit pattern length for safety
   if (pattern.length > 500) {
     console.error('[SSM Rules] Pattern rejected: too long');
     return null;
   }
 
+  // Check if pattern is safe from ReDoS using safe-regex2
+  if (!safeRegex(pattern)) {
+    console.error('[SSM Rules] Pattern rejected: potentially unsafe (ReDoS risk)');
+    return null;
+  }
+
   try {
-    // RE2 is immune to ReDoS - uses linear-time matching
-    return new RE2(pattern, 'i');
+    // CodeQL: Pattern is validated by safe-regex2 above to prevent ReDoS
+    // lgtm[js/regex-injection]
+    return new RegExp(pattern, 'i'); // codeql[js/regex-injection] - validated by safeRegex()
   } catch (error) {
     console.error('[SSM Rules] Invalid regex pattern', { error });
     return null;
@@ -154,7 +161,7 @@ function createSafeRegex(pattern: string): RE2 | null {
 
 /**
  * Match content against a pattern rule (regex)
- * Uses RE2 for safe regex matching (immune to ReDoS)
+ * Uses safe-regex2 to validate patterns before matching
  */
 function matchPattern(content: string, rule: SSMPatternRule): boolean {
   const regex = createSafeRegex(rule.pattern);

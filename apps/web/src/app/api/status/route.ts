@@ -13,8 +13,8 @@ import {
   isAIEnabled,
 } from '@/lib/killSwitches';
 
-// Cache the response for 30 seconds
-export const revalidate = 30;
+// Force dynamic rendering - don't pre-render during build
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
