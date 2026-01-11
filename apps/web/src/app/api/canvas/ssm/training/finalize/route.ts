@@ -319,25 +319,33 @@ function parseGeneratedRules(content: string): GenerationResult {
 
     // Parse auto_reply configuration if present
     let autoReply: SSMAutoReplyConfig | undefined;
-    if (parsed.auto_reply?.enabled) {
+
+    // Extract notification recipient from monitoring description (for "send email to X" scenarios)
+    const monitoringDescription = parsed.monitoring_description || '';
+    const notificationRecipient = extractNotificationRecipient(monitoringDescription);
+
+    if (parsed.auto_reply?.enabled || notificationRecipient) {
       autoReply = {
         enabled: true,
         template: {
-          subject: parsed.auto_reply.template?.subject || 'Re: {subject}',
-          body: parsed.auto_reply.template?.body || 'Thank you for your message. We have received it and will respond shortly.',
-          signature: parsed.auto_reply.template?.signature || '',
-          includeOriginal: parsed.auto_reply.template?.includeOriginal ?? false,
+          subject: parsed.auto_reply?.template?.subject || 'Re: {subject}',
+          body: parsed.auto_reply?.template?.body || 'Thank you for your message. We have received it and will respond shortly.',
+          signature: parsed.auto_reply?.template?.signature || '',
+          includeOriginal: parsed.auto_reply?.template?.includeOriginal ?? false,
         },
         conditions: {
-          severities: parsed.auto_reply.conditions?.severities || ['info', 'warning', 'critical'],
-          excludeSenders: parsed.auto_reply.conditions?.excludeSenders || ['noreply@', 'no-reply@', 'automated@'],
+          severities: parsed.auto_reply?.conditions?.severities || ['info', 'warning', 'critical'],
+          excludeSenders: parsed.auto_reply?.conditions?.excludeSenders || ['noreply@', 'no-reply@', 'automated@'],
         },
         rateLimit: {
-          maxRepliesPerSender: parsed.auto_reply.rateLimit?.maxRepliesPerSender || 1,
-          windowMinutes: parsed.auto_reply.rateLimit?.windowMinutes || 60,
+          maxRepliesPerSender: parsed.auto_reply?.rateLimit?.maxRepliesPerSender || 1,
+          windowMinutes: parsed.auto_reply?.rateLimit?.windowMinutes || 60,
           sentReplies: {},
         },
+        // Add notification recipient for calendar events
+        notificationRecipient,
       };
+      console.log(`[SSM Finalize] Auto-reply config created${notificationRecipient ? `, notification recipient: ${notificationRecipient}` : ''}`);
     }
 
     return {
@@ -413,4 +421,26 @@ function getDefaultResponseTemplates(): SSMResponseTemplate[] {
       action: 'forward_to_ai',
     },
   ];
+}
+
+/**
+ * Extract notification recipient email from description.
+ * Looks for patterns like:
+ * - "send email to user@example.com"
+ * - "email user@example.com"
+ * - "notify user@example.com"
+ */
+function extractNotificationRecipient(description: string): string | undefined {
+  // Email regex pattern
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+
+  // Find all email addresses in the description
+  const emails = description.match(emailRegex);
+
+  if (!emails || emails.length === 0) {
+    return undefined;
+  }
+
+  // Return the first email found
+  return emails[0];
 }
