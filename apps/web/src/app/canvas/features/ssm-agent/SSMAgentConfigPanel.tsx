@@ -95,7 +95,7 @@ export default function SSMAgentConfigPanel({
   // Training hook
   const handleTrainingComplete = useCallback(async (result: TrainingResult) => {
     const now = new Date().toISOString();
-    await onUpdate({
+    const updatedConfig = {
       monitoring_description: result.monitoringDescription,
       rules: result.rules,
       response_templates: result.responseTemplates,
@@ -107,20 +107,94 @@ export default function SSMAgentConfigPanel({
       training_summary: result.monitoringDescription, // Use the description as summary
       // Auto-reply config (if user requested it during training)
       auto_reply: result.autoReply,
-    });
-    setFormData(prev => ({
-      ...prev,
-      monitoring_description: result.monitoringDescription,
-      trained_at: now,
-      trained_by: selectedProvider,
-      training_summary: result.monitoringDescription,
-      auto_reply: result.autoReply,
-    }));
-  }, [onUpdate, selectedProvider]);
+    };
+    const success = await onUpdate(updatedConfig);
+    if (success) {
+      const newFormData = {
+        ...formData,
+        ...updatedConfig,
+      };
+      setFormData(newFormData);
+
+      // If monitoring is already enabled, sync server config with new rules
+      if (formData.is_enabled) {
+        // Sync server config asynchronously (don't block training completion)
+        syncServerConfigForTraining(newFormData);
+      }
+    }
+  }, [onUpdate, selectedProvider, formData]);
+
+  // Helper function for syncing after training (to avoid circular dependency)
+  const syncServerConfigForTraining = useCallback(async (configToSync: SSMAgentNodeConfig) => {
+    try {
+      const response = await apiClient.post<{ success: boolean; version?: number; error?: string }>(
+        '/api/canvas/ssm/server-config',
+        {
+          userId,
+          canvasId,
+          nodeId,
+          rules: configToSync.rules,
+          response_templates: configToSync.response_templates || [],
+          auto_reply: configToSync.auto_reply,
+          polling_settings: {
+            gmail_enabled: configToSync.gmail?.enabled || false,
+            gmail_connection_id: configToSync.gmail?.connectionId,
+            calendar_enabled: configToSync.calendar?.enabled || false,
+            calendar_connection_id: configToSync.calendar?.connectionId,
+          },
+          enable_background_polling: true,
+        }
+      );
+
+      if (response.ok && response.data?.success) {
+        console.log(`[SSM] Server config synced after training (version ${response.data.version})`);
+      } else {
+        console.error('[SSM] Server config sync after training failed:', response.data?.error || response.error);
+      }
+    } catch (error) {
+      console.error('[SSM] Server config sync error after training:', error);
+    }
+  }, [userId, canvasId, nodeId]);
 
   // Derived state
   const isTrained = !!currentConfig.trained_at;
   const isEnabled = currentConfig.is_enabled ?? false;
+
+  // Sync server config for background polling
+  // Called when enabling monitoring or when config changes while enabled
+  const syncServerConfig = useCallback(async (configToSync: SSMAgentNodeConfig, enableBackgroundPolling: boolean): Promise<boolean> => {
+    try {
+      const response = await apiClient.post<{ success: boolean; version?: number; error?: string }>(
+        '/api/canvas/ssm/server-config',
+        {
+          userId,
+          canvasId,
+          nodeId,
+          rules: configToSync.rules,
+          response_templates: configToSync.response_templates || [],
+          auto_reply: configToSync.auto_reply,
+          polling_settings: {
+            gmail_enabled: configToSync.gmail?.enabled || false,
+            gmail_connection_id: configToSync.gmail?.connectionId,
+            calendar_enabled: configToSync.calendar?.enabled || false,
+            calendar_connection_id: configToSync.calendar?.connectionId,
+          },
+          enable_background_polling: enableBackgroundPolling,
+        }
+      );
+
+      if (response.ok && response.data?.success) {
+        console.log(`[SSM] Server config synced (version ${response.data.version})`);
+        return true;
+      } else {
+        console.error('[SSM] Server config sync failed:', response.data?.error || response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('[SSM] Server config sync error:', error);
+      return false;
+    }
+  }, [userId, canvasId, nodeId]);
 
   // Handle toggle monitoring on/off
   const handleToggleEnabled = useCallback(async () => {
@@ -131,10 +205,18 @@ export default function SSMAgentConfigPanel({
     const success = await onUpdate({ is_enabled: newState });
     if (success) {
       setFormData(prev => ({ ...prev, is_enabled: newState }));
+
+      // Sync server config when enabling monitoring (for background polling)
+      if (newState) {
+        await syncServerConfig(currentConfig, true);
+      } else {
+        // Disable background polling when monitoring is turned off
+        await syncServerConfig(currentConfig, false);
+      }
     } else {
       console.error('[SSM] Toggle update FAILED - database not updated!');
     }
-  }, [isTrained, isEnabled, onUpdate]);
+  }, [isTrained, isEnabled, onUpdate, currentConfig, syncServerConfig]);
 
   // Polling state - use ref for isPolling to avoid dependency loops
   const isPollingRef = useRef(false);
