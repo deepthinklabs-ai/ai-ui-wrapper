@@ -303,6 +303,7 @@ export function useEncryptedCanvasNodes(canvasId: CanvasId | null): UseEncrypted
               gmail_enabled: config.gmail?.enabled || false,
               gmail_connection_id: config.gmail?.connectionId,
               calendar_enabled: config.calendar?.enabled || false,
+              calendar_connection_id: config.calendar?.connectionId,
               sheets_enabled: config.sheets?.enabled || false,
               docs_enabled: config.docs?.enabled || false,
               slack_enabled: config.slack?.enabled || false,

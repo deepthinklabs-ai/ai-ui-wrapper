@@ -20,6 +20,12 @@ export interface SSMAutoReplyConfig {
 
   /** Rate limiting to prevent spam */
   rateLimit: SSMReplyRateLimit;
+
+  /**
+   * For calendar events: send notification to this email instead of replying to sender.
+   * This enables "send email to X when calendar event occurs" use cases.
+   */
+  notificationRecipient?: string;
 }
 
 /**

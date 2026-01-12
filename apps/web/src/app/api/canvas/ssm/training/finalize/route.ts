@@ -142,8 +142,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       .replace('{conversation}', conversationText)
       .replace('{extractedInfo}', extractedInfoText);
 
-    // Generate rules using AI
-    const result = await generateRulesWithAI(prompt, provider, apiKey);
+    // Generate rules using AI, passing conversation text for email extraction
+    const result = await generateRulesWithAI(prompt, provider, apiKey, conversationText);
 
     if (!result.success) {
       return NextResponse.json({
@@ -194,16 +194,17 @@ interface GenerationResult {
 async function generateRulesWithAI(
   prompt: string,
   provider: 'claude' | 'openai',
-  apiKey: string
+  apiKey: string,
+  conversationText: string
 ): Promise<GenerationResult> {
   if (provider === 'claude') {
-    return generateWithClaude(prompt, apiKey);
+    return generateWithClaude(prompt, apiKey, conversationText);
   } else {
-    return generateWithOpenAI(prompt, apiKey);
+    return generateWithOpenAI(prompt, apiKey, conversationText);
   }
 }
 
-async function generateWithClaude(prompt: string, apiKey: string): Promise<GenerationResult> {
+async function generateWithClaude(prompt: string, apiKey: string, conversationText: string): Promise<GenerationResult> {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -230,14 +231,14 @@ async function generateWithClaude(prompt: string, apiKey: string): Promise<Gener
     const data = await response.json();
     const content = data.content?.[0]?.text || '';
 
-    return parseGeneratedRules(content);
+    return parseGeneratedRules(content, conversationText);
   } catch (error) {
     console.error('[SSM Finalize] Claude error:', error);
     return { success: false, error: 'Failed to call Claude API' };
   }
 }
 
-async function generateWithOpenAI(prompt: string, apiKey: string): Promise<GenerationResult> {
+async function generateWithOpenAI(prompt: string, apiKey: string, conversationText: string): Promise<GenerationResult> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -263,7 +264,7 @@ async function generateWithOpenAI(prompt: string, apiKey: string): Promise<Gener
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
-    return parseGeneratedRules(content);
+    return parseGeneratedRules(content, conversationText);
   } catch (error) {
     console.error('[SSM Finalize] OpenAI error:', error);
     return { success: false, error: 'Failed to call OpenAI API' };
@@ -274,7 +275,7 @@ async function generateWithOpenAI(prompt: string, apiKey: string): Promise<Gener
 // PARSING
 // ============================================================================
 
-function parseGeneratedRules(content: string): GenerationResult {
+function parseGeneratedRules(content: string, conversationText: string): GenerationResult {
   try {
     // Try to extract JSON from the response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -319,25 +320,35 @@ function parseGeneratedRules(content: string): GenerationResult {
 
     // Parse auto_reply configuration if present
     let autoReply: SSMAutoReplyConfig | undefined;
-    if (parsed.auto_reply?.enabled) {
+
+    // IMPORTANT: Extract notification recipient from the CONVERSATION TEXT, not the AI-generated summary
+    // The user's original request like "send email to dalbin25@gmail.com" is in the conversation
+    const notificationRecipient = extractNotificationRecipient(conversationText);
+    console.log(`[SSM Finalize] Extracted notification recipient from conversation: ${notificationRecipient || 'none'}`);
+    const monitoringDescription = parsed.monitoring_description || '';
+
+    if (parsed.auto_reply?.enabled || notificationRecipient) {
       autoReply = {
         enabled: true,
         template: {
-          subject: parsed.auto_reply.template?.subject || 'Re: {subject}',
-          body: parsed.auto_reply.template?.body || 'Thank you for your message. We have received it and will respond shortly.',
-          signature: parsed.auto_reply.template?.signature || '',
-          includeOriginal: parsed.auto_reply.template?.includeOriginal ?? false,
+          subject: parsed.auto_reply?.template?.subject || 'Re: {subject}',
+          body: parsed.auto_reply?.template?.body || 'Thank you for your message. We have received it and will respond shortly.',
+          signature: parsed.auto_reply?.template?.signature || '',
+          includeOriginal: parsed.auto_reply?.template?.includeOriginal ?? false,
         },
         conditions: {
-          severities: parsed.auto_reply.conditions?.severities || ['info', 'warning', 'critical'],
-          excludeSenders: parsed.auto_reply.conditions?.excludeSenders || ['noreply@', 'no-reply@', 'automated@'],
+          severities: parsed.auto_reply?.conditions?.severities || ['info', 'warning', 'critical'],
+          excludeSenders: parsed.auto_reply?.conditions?.excludeSenders || ['noreply@', 'no-reply@', 'automated@'],
         },
         rateLimit: {
-          maxRepliesPerSender: parsed.auto_reply.rateLimit?.maxRepliesPerSender || 1,
-          windowMinutes: parsed.auto_reply.rateLimit?.windowMinutes || 60,
+          maxRepliesPerSender: parsed.auto_reply?.rateLimit?.maxRepliesPerSender || 1,
+          windowMinutes: parsed.auto_reply?.rateLimit?.windowMinutes || 60,
           sentReplies: {},
         },
+        // Add notification recipient for calendar events
+        notificationRecipient,
       };
+      console.log(`[SSM Finalize] Auto-reply config created${notificationRecipient ? `, notification recipient: ${notificationRecipient}` : ''}`);
     }
 
     return {
@@ -413,4 +424,26 @@ function getDefaultResponseTemplates(): SSMResponseTemplate[] {
       action: 'forward_to_ai',
     },
   ];
+}
+
+/**
+ * Extract notification recipient email from description.
+ * Looks for patterns like:
+ * - "send email to user@example.com"
+ * - "email user@example.com"
+ * - "notify user@example.com"
+ */
+function extractNotificationRecipient(description: string): string | undefined {
+  // Email regex pattern
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+
+  // Find all email addresses in the description
+  const emails = description.match(emailRegex);
+
+  if (!emails || emails.length === 0) {
+    return undefined;
+  }
+
+  // Return the first email found
+  return emails[0];
 }

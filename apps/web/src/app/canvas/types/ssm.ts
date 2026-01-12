@@ -269,6 +269,8 @@ export interface SSMGenerateRulesResponse {
   success: boolean;
   rules?: SSMRulesConfig;
   response_templates?: SSMResponseTemplate[];
+  /** Extracted notification recipient email (for calendar events that send notifications) */
+  notification_recipient?: string;
   error?: string;
 }
 

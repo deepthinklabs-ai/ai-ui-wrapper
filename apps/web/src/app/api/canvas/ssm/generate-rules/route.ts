@@ -20,6 +20,7 @@ import type {
   SSMRulesConfig,
   SSMResponseTemplate,
 } from '@/app/canvas/types/ssm';
+import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 import { getProviderKey } from '@/lib/secretManager/getKey';
 
 // ============================================================================
@@ -201,10 +202,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMGenera
       }, { status: 400 });
     }
 
+    // Extract notification recipient email from description (for calendar events)
+    // Looks for patterns like "send email to user@example.com" or "email user@example.com"
+    const notification_recipient = extractNotificationRecipient(description);
+
     return NextResponse.json({
       success: true,
       rules,
       response_templates,
+      notification_recipient,
     });
 
   } catch (error) {
@@ -363,4 +369,28 @@ function getDefaultTemplates(): SSMResponseTemplate[] {
       action: 'forward_to_ai',
     },
   ];
+}
+
+/**
+ * Extract notification recipient email from description.
+ * Looks for patterns like:
+ * - "send email to user@example.com"
+ * - "email user@example.com"
+ * - "notify user@example.com"
+ * - "send notification to user@example.com"
+ */
+function extractNotificationRecipient(description: string): string | undefined {
+  // Email regex pattern
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+
+  // Find all email addresses in the description
+  const emails = description.match(emailRegex);
+
+  if (!emails || emails.length === 0) {
+    return undefined;
+  }
+
+  // Return the first email found (most likely the notification recipient)
+  console.log(`[SSM Generate Rules] Extracted notification recipient: ${emails[0]}`);
+  return emails[0];
 }
