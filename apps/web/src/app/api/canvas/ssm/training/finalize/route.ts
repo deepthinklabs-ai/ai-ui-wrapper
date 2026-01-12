@@ -427,6 +427,22 @@ function getDefaultResponseTemplates(): SSMResponseTemplate[] {
 }
 
 /**
+ * Trim non-alphanumeric characters from start and end of string.
+ * Uses simple loop instead of regex to avoid ReDoS vulnerabilities.
+ */
+function trimNonAlphanumeric(str: string): string {
+  const isAlphanumeric = (char: string) => /[a-zA-Z0-9]/.test(char);
+
+  let start = 0;
+  let end = str.length;
+
+  while (start < end && !isAlphanumeric(str[start])) start++;
+  while (end > start && !isAlphanumeric(str[end - 1])) end--;
+
+  return str.slice(start, end);
+}
+
+/**
  * Extract notification recipient email from description.
  * Looks for patterns like:
  * - "send email to user@example.com"
@@ -444,7 +460,8 @@ function extractNotificationRecipient(description: string): string | undefined {
     if (atIndex <= 0 || atIndex >= word.length - 1) continue;
 
     // Clean up punctuation that might be attached (e.g., "email@example.com.")
-    const cleaned = word.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
+    // Use simple loop instead of regex to avoid ReDoS
+    const cleaned = trimNonAlphanumeric(word);
 
     // Validate basic email structure: local@domain.tld
     const parts = cleaned.split('@');

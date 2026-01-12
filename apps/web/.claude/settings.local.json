@@ -115,7 +115,8 @@
       "Bash(do)",
       "Bash(done)",
       "Bash(for branch in security/fix-portal-open-redirect security/https-only-bridge security/kill-switches security/sentry-account-deletion security-audit-api-keys)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(gh pr close:*)"
     ],
     "deny": [],
     "ask": []
