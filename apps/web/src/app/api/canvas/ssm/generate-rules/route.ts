@@ -380,17 +380,34 @@ function getDefaultTemplates(): SSMResponseTemplate[] {
  * - "send notification to user@example.com"
  */
 function extractNotificationRecipient(description: string): string | undefined {
-  // Email regex pattern
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  // Split by whitespace and find words containing @
+  // This avoids ReDoS vulnerabilities from complex email regex patterns
+  const words = description.split(/\s+/);
 
-  // Find all email addresses in the description
-  const emails = description.match(emailRegex);
+  for (const word of words) {
+    // Quick check: must contain @ and have content on both sides
+    const atIndex = word.indexOf('@');
+    if (atIndex <= 0 || atIndex >= word.length - 1) continue;
 
-  if (!emails || emails.length === 0) {
-    return undefined;
+    // Clean up punctuation that might be attached (e.g., "email@example.com.")
+    const cleaned = word.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
+
+    // Validate basic email structure: local@domain.tld
+    const parts = cleaned.split('@');
+    if (parts.length !== 2) continue;
+
+    const [local, domain] = parts;
+    // Local part must be non-empty and alphanumeric with allowed chars
+    if (!local || !/^[a-zA-Z0-9._%+-]+$/.test(local)) continue;
+    // Domain must have at least one dot and valid chars
+    if (!domain || !domain.includes('.') || !/^[a-zA-Z0-9.-]+$/.test(domain)) continue;
+    // TLD must be at least 2 chars
+    const tld = domain.split('.').pop();
+    if (!tld || tld.length < 2) continue;
+
+    console.log(`[SSM Generate Rules] Extracted notification recipient: ${cleaned}`);
+    return cleaned;
   }
 
-  // Return the first email found (most likely the notification recipient)
-  console.log(`[SSM Generate Rules] Extracted notification recipient: ${emails[0]}`);
-  return emails[0];
+  return undefined;
 }
