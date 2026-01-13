@@ -5,6 +5,9 @@ on:
     branches:
       - staging
 
+# Restrict GITHUB_TOKEN permissions - this workflow only needs to call external URL
+permissions: {}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
