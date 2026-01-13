@@ -1,11 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "crons": [
-    {
-      "path": "/api/cron/ssm-poll",
-      "schedule": "* * * * *"
-    }
-  ]
+  "regions": ["iad1"]
 }

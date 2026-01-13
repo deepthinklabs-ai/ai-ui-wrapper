@@ -10,6 +10,7 @@
  * - matchRules.ts - Rules matching
  * - executeAutoReply.ts - Auto-reply execution
  * - pollNode.ts - Main orchestrator
+ * - parallelProcess.ts - Controlled concurrency utility
  */
 
 // Types
@@ -41,3 +42,11 @@ export { executeAutoReplies } from './executeAutoReply';
 
 // Main orchestrator
 export { pollSSMNode } from './pollNode';
+
+// Parallel processing utility
+export {
+  processInParallel,
+  processInParallelDefault,
+  type ParallelProcessOptions,
+  type ParallelProcessResult,
+} from './parallelProcess';
