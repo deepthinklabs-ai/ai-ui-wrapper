@@ -14,6 +14,7 @@
 
 import type { GmailOAuthConfig } from '../features/gmail-oauth/types';
 import type { CalendarOAuthConfig } from '../features/calendar-oauth/types';
+import type { DriveOAuthConfig } from '../features/drive-oauth/types';
 import type { SheetsOAuthConfig } from '../features/sheets-oauth/types';
 import type { DocsOAuthConfig } from '../features/docs-oauth/types';
 import type { SlackOAuthConfig } from '../features/slack-oauth/types';
@@ -183,6 +184,7 @@ export interface SSMAgentNodeConfig {
   // OAuth Integrations (for data source access)
   gmail?: GmailOAuthConfig;
   calendar?: CalendarOAuthConfig;
+  drive?: DriveOAuthConfig;
   sheets?: SheetsOAuthConfig;
   docs?: DocsOAuthConfig;
   slack?: SlackOAuthConfig;

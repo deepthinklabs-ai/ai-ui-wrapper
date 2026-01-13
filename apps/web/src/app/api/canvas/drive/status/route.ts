@@ -1,8 +1,8 @@
 /**
- * Calendar OAuth Status API Route
+ * Google Drive OAuth Status API Route
  *
- * Returns the current Google Calendar OAuth connection status for a user.
- * Used by Genesis Bot nodes to check if Calendar is connected.
+ * Returns the current Google Drive OAuth connection status for a user.
+ * Used by Genesis Bot nodes to check if Drive is connected.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Fetch OAuth connection for Google (which includes Calendar)
+    // Fetch OAuth connection for Google (which includes Drive)
     const { data: connection, error } = await supabase
       .from('oauth_connections')
       .select('*')
@@ -50,20 +50,24 @@ export async function GET(request: NextRequest) {
         ? 'expired'
         : 'disconnected';
 
-    // Check if Calendar scopes are present
+    // Check if Drive scopes are present
+    // SECURITY: Use exact patterns for Google OAuth scope validation
+    const DRIVE_SCOPE_PATTERNS = [
+      'https://www.googleapis.com/auth/drive',      // Drive API scopes prefix
+    ];
     const scopes = connection.scopes || [];
 
     // If scopes array is empty/null, assume legacy connection with all scopes granted
     // (Settings OAuth flow requests all scopes when no service parameter is provided)
-    const hasCalendarScopes = scopes.length === 0 || scopes.some((scope: string) =>
-      scope.includes('calendar')
+    const hasDriveScopes = scopes.length === 0 || scopes.some((scope: string) =>
+      DRIVE_SCOPE_PATTERNS.some(pattern => scope.startsWith(pattern))
     );
 
-    if (!hasCalendarScopes) {
+    if (!hasDriveScopes) {
       return NextResponse.json({
         connected: false,
         status: 'disconnected',
-        reason: 'Calendar scopes not granted. Please reconnect your Google account to grant Calendar access.',
+        reason: 'Drive scopes not granted. Please reconnect your Google account to grant Drive access.',
       });
     }
 
@@ -79,7 +83,7 @@ export async function GET(request: NextRequest) {
       scopes: connection.scopes,
     });
   } catch (error) {
-    console.error('[Calendar Status API] Error:', error);
+    console.error('[Drive Status API] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

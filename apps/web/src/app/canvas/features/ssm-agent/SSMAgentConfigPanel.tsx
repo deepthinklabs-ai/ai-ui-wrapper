@@ -47,6 +47,8 @@ import { DocsOAuthPanel } from '../../features/docs-oauth/components/DocsOAuthPa
 import { DEFAULT_DOCS_CONFIG, type DocsOAuthConfig } from '../../features/docs-oauth/types';
 import { SlackOAuthPanel } from '../../features/slack-oauth/components/SlackOAuthPanel';
 import { DEFAULT_SLACK_CONFIG, type SlackOAuthConfig } from '../../features/slack-oauth/types';
+import { DriveOAuthPanel } from '../../features/drive-oauth/components/DriveOAuthPanel';
+import { DEFAULT_DRIVE_CONFIG, type DriveOAuthConfig } from '../../features/drive-oauth/types';
 
 // ============================================================================
 // TYPES
@@ -941,6 +943,17 @@ export default function SSMAgentConfigPanel({
           onConfigChange={(calendarConfig: CalendarOAuthConfig) => {
             setFormData(prev => ({ ...prev, calendar: calendarConfig }));
             onUpdate({ calendar: calendarConfig });
+          }}
+        />
+
+        <div className="my-4 border-t border-foreground/10" />
+
+        {/* Drive OAuth Panel */}
+        <DriveOAuthPanel
+          config={formData.drive || DEFAULT_DRIVE_CONFIG}
+          onConfigChange={(driveConfig: DriveOAuthConfig) => {
+            setFormData(prev => ({ ...prev, drive: driveConfig }));
+            onUpdate({ drive: driveConfig });
           }}
         />
 
