@@ -135,6 +135,7 @@ export interface SSMFinalizeTrainingResponse {
   rules: import('../../../types/ssm').SSMRulesConfig;
   responseTemplates: import('../../../types/ssm').SSMResponseTemplate[];
   autoReply?: import('../features/auto-reply/types').SSMAutoReplyConfig;
+  sheetsAction?: import('../../../types/ssm').SSMSheetsActionConfig;
   error?: string;
 }
 

@@ -21,7 +21,7 @@ import type {
   SSMFinalizeTrainingRequest,
   SSMFinalizeTrainingResponse,
 } from '../types/training';
-import type { SSMRulesConfig, SSMResponseTemplate } from '../../../types/ssm';
+import type { SSMRulesConfig, SSMResponseTemplate, SSMSheetsActionConfig } from '../../../types/ssm';
 import type { SSMAutoReplyConfig } from '../features/auto-reply/types';
 import { apiClient } from '@/lib/apiClient';
 
@@ -42,6 +42,7 @@ export interface TrainingResult {
   rules: SSMRulesConfig;
   responseTemplates: SSMResponseTemplate[];
   autoReply?: SSMAutoReplyConfig;
+  sheetsAction?: SSMSheetsActionConfig;
 }
 
 export interface UseSSMTrainingReturn {
@@ -55,6 +56,7 @@ export interface UseSSMTrainingReturn {
   extractedInfo: SSMExtractedInfo;
   error: string | null;
   sessionStartedAt: string | null; // For countdown timer
+  lastResult: TrainingResult | null; // Generated config from training
 
   // Actions
   openTraining: () => void;
@@ -93,6 +95,7 @@ export function useSSMTraining(options: UseSSMTrainingOptions): UseSSMTrainingRe
   const [session, setSession] = useState<SSMTrainingSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<TrainingResult | null>(null);
 
   // Session ID ref (persists across renders)
   const sessionIdRef = useRef<string | null>(null);
@@ -251,7 +254,11 @@ export function useSSMTraining(options: UseSSMTrainingOptions): UseSSMTrainingRe
         rules: data.rules,
         responseTemplates: data.responseTemplates,
         autoReply: data.autoReply,
+        sheetsAction: data.sheetsAction,
       };
+
+      // Store the result for display
+      setLastResult(result);
 
       // Update session to complete
       setSession(prev => prev ? {
@@ -290,6 +297,7 @@ export function useSSMTraining(options: UseSSMTrainingOptions): UseSSMTrainingRe
     setIsLoading(false);
     setIsFinalizing(false);
     setSessionStartedAt(null);
+    setLastResult(null);
     sessionIdRef.current = null;
   }, []);
 
@@ -308,6 +316,7 @@ export function useSSMTraining(options: UseSSMTrainingOptions): UseSSMTrainingRe
     extractedInfo,
     error,
     sessionStartedAt,
+    lastResult,
 
     // Actions
     openTraining,

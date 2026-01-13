@@ -21,6 +21,65 @@ import type { SlackOAuthConfig } from '../features/slack-oauth/types';
 import type { SSMAutoReplyConfig } from '../features/ssm-agent/features/auto-reply/types';
 
 // ============================================================================
+// SHEETS ACTION CONFIGURATION
+// ============================================================================
+
+/**
+ * Configuration for logging events to Google Sheets
+ * When rules match, append event data to a specified spreadsheet
+ */
+export interface SSMSheetsActionConfig {
+  /** Whether sheets logging is enabled */
+  enabled: boolean;
+
+  /** Name of the spreadsheet to log to (will be created if doesn't exist) */
+  spreadsheetName: string;
+
+  /** ID of an existing spreadsheet (optional - if not set, uses spreadsheetName to create/find) */
+  spreadsheetId?: string;
+
+  /** Name of the sheet/tab within the spreadsheet */
+  sheetName: string;
+
+  /** Columns to log (maps event fields to column headers) */
+  columns: SSMSheetsColumn[];
+
+  /** Whether to create the spreadsheet if it doesn't exist */
+  createIfMissing: boolean;
+
+  /** Whether to add headers as the first row */
+  includeHeaders: boolean;
+
+  /** Cached spreadsheet ID after creation */
+  cachedSpreadsheetId?: string;
+}
+
+/**
+ * Column definition for Sheets logging
+ */
+export interface SSMSheetsColumn {
+  /** Column header name */
+  header: string;
+
+  /** Event field to extract (e.g., 'from', 'subject', 'timestamp', 'body', 'matched_rules') */
+  field: SSMSheetsField;
+}
+
+/**
+ * Available fields to log from events
+ */
+export type SSMSheetsField =
+  | 'from'           // Sender email
+  | 'subject'        // Email subject
+  | 'timestamp'      // Event timestamp
+  | 'body'           // Full email body content
+  | 'body_preview'   // First 500 chars of body
+  | 'matched_rules'  // Rules that matched
+  | 'severity'       // Alert severity
+  | 'source'         // Event source (gmail, calendar)
+  | 'event_id';      // Unique event ID
+
+// ============================================================================
 // ALERT SEVERITY
 // ============================================================================
 
@@ -102,7 +161,7 @@ export interface SSMRulesConfig {
 /**
  * Actions that can be taken when rules match
  */
-export type SSMResponseAction = 'log' | 'alert' | 'forward_to_ai' | 'send_reply';
+export type SSMResponseAction = 'log' | 'alert' | 'forward_to_ai' | 'send_reply' | 'log_to_sheets';
 
 /**
  * A response template for a specific severity level
@@ -191,6 +250,9 @@ export interface SSMAgentNodeConfig {
 
   // Auto-reply configuration
   auto_reply?: SSMAutoReplyConfig;
+
+  // Sheets logging configuration
+  sheets_action?: SSMSheetsActionConfig;
 }
 
 // ============================================================================

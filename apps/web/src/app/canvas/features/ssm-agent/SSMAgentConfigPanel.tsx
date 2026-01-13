@@ -20,6 +20,7 @@ import type {
   SSMKeywordRule,
   SSMPatternRule,
   SSMAlert,
+  SSMSheetsActionConfig,
 } from '../../types/ssm';
 import {
   DEFAULT_SSM_CONFIG,
@@ -97,6 +98,23 @@ export default function SSMAgentConfigPanel({
   // Training hook
   const handleTrainingComplete = useCallback(async (result: TrainingResult) => {
     const now = new Date().toISOString();
+
+    // Log the training result for debugging
+    console.log('[SSM Training] Training completed with result:', {
+      monitoringDescription: result.monitoringDescription,
+      rulesCount: {
+        keywords: result.rules.keywords.length,
+        patterns: result.rules.patterns.length,
+        conditions: result.rules.conditions.length,
+      },
+      hasAutoReply: !!result.autoReply,
+      autoReply: result.autoReply,
+      hasSheetsAction: !!result.sheetsAction,
+      sheetsAction: result.sheetsAction,
+    });
+
+    // IMPORTANT: Explicitly reset previous action configs to null if not provided
+    // This ensures old configs don't persist from previous training sessions
     const updatedConfig = {
       monitoring_description: result.monitoringDescription,
       rules: result.rules,
@@ -106,10 +124,18 @@ export default function SSMAgentConfigPanel({
       // New training fields
       trained_at: now,
       trained_by: selectedProvider,
-      training_summary: result.monitoringDescription, // Use the description as summary
-      // Auto-reply config (if user requested it during training)
-      auto_reply: result.autoReply,
+      training_summary: result.monitoringDescription,
+      // RESET action configs - use undefined to explicitly clear, or the new value
+      // This prevents previous training configs from persisting
+      auto_reply: result.autoReply || undefined,
+      sheets_action: result.sheetsAction || undefined,
     };
+
+    console.log('[SSM Training] Saving updated config:', {
+      auto_reply: updatedConfig.auto_reply,
+      sheets_action: updatedConfig.sheets_action,
+    });
+
     const success = await onUpdate(updatedConfig);
     if (success) {
       const newFormData = {
@@ -272,6 +298,8 @@ export default function SSMAgentConfigPanel({
         calendar: currentConfig.calendar,
         // Pass auto-reply config for automatic email responses
         auto_reply: currentConfig.auto_reply,
+        // Pass sheets action config for logging to Google Sheets
+        sheets_action: currentConfig.sheets_action,
       });
 
       setLastPollTime(new Date());
@@ -317,7 +345,7 @@ export default function SSMAgentConfigPanel({
       isPollingRef.current = false;
       setIsPolling(false);
     }
-  }, [canvasId, nodeId, userId, isEnabled, hasDataSource, currentConfig.rules, currentConfig.gmail, currentConfig.calendar, currentConfig.auto_reply]);
+  }, [canvasId, nodeId, userId, isEnabled, hasDataSource, currentConfig.rules, currentConfig.gmail, currentConfig.calendar, currentConfig.auto_reply, currentConfig.sheets_action]);
 
   // Automatic polling when monitoring is enabled and at least one data source is connected
   useEffect(() => {
@@ -621,6 +649,53 @@ export default function SSMAgentConfigPanel({
             <span>🔄</span>
             Retrain with New Conversation
           </button>
+        </section>
+      )}
+
+      {/* Section: Configured Actions (Node Inspector) */}
+      {isTrained && (currentConfig.sheets_action?.enabled || currentConfig.auto_reply?.enabled) && (
+        <section className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+            <span>⚡</span> Configured Actions
+          </h3>
+
+          {/* Sheets Logging Action */}
+          {currentConfig.sheets_action?.enabled && (
+            <div className="p-3 bg-white/70 rounded-lg mb-2">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">📊</span>
+                <p className="text-xs font-medium text-blue-700">Log to Google Sheets</p>
+                <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">Active</span>
+              </div>
+              <div className="space-y-1 text-xs text-foreground/70">
+                <p><strong>Spreadsheet:</strong> {currentConfig.sheets_action.spreadsheetName}</p>
+                <p><strong>Sheet:</strong> {currentConfig.sheets_action.sheetName}</p>
+                <p><strong>Columns:</strong> {currentConfig.sheets_action.columns.map(c => c.header).join(', ')}</p>
+                {currentConfig.sheets_action.createIfMissing && (
+                  <p className="text-green-600">✓ Will create spreadsheet if missing</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Auto-Reply Action */}
+          {currentConfig.auto_reply?.enabled && (
+            <div className="p-3 bg-white/70 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">✉️</span>
+                <p className="text-xs font-medium text-blue-700">Auto-Reply</p>
+                <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">Active</span>
+              </div>
+              <div className="space-y-1 text-xs text-foreground/70">
+                {currentConfig.auto_reply.notificationRecipient ? (
+                  <p><strong>Notification To:</strong> {currentConfig.auto_reply.notificationRecipient}</p>
+                ) : (
+                  <p><strong>Mode:</strong> Reply to sender</p>
+                )}
+                <p><strong>Subject:</strong> {currentConfig.auto_reply.template.subject}</p>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -1016,6 +1091,7 @@ export default function SSMAgentConfigPanel({
         isFinalizing={training.isFinalizing}
         error={training.error}
         sessionStartedAt={training.sessionStartedAt}
+        lastResult={training.lastResult}
         onSendMessage={training.sendMessage}
         onFinalize={training.finalize}
         onReset={training.reset}
