@@ -34,7 +34,12 @@ export async function GET(request: NextRequest) {
       .eq('provider', 'google')
       .single();
 
+    console.log('[Gmail Status API] Query result for userId:', userId);
+    console.log('[Gmail Status API] Connection:', connection ? { id: connection.id, status: connection.status, scopes: connection.scopes } : null);
+    console.log('[Gmail Status API] Error:', error?.message || 'none');
+
     if (error || !connection) {
+      console.log('[Gmail Status API] No connection found, returning disconnected');
       return NextResponse.json({
         connected: false,
         status: 'disconnected',
