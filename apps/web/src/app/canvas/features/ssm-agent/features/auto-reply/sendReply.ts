@@ -20,6 +20,9 @@ import {
 
 /**
  * Send an auto-reply for a matched SSM event
+ * Supports both:
+ * - Email replies (replies to the original sender)
+ * - Calendar notifications (sends to a configured recipient)
  */
 export async function sendAutoReply(
   userId: string,
@@ -50,70 +53,121 @@ export async function sendAutoReply(
     ...config.template,
   };
 
-  // Extract sender email from event metadata (cast from unknown)
-  const senderFull = String(event.metadata?.from || '');
-  const senderEmail = extractEmail(senderFull);
-  const senderName = extractName(senderFull);
+  // Determine recipient based on event source
+  let recipientEmail: string;
+  let senderName: string = '';
+  let isCalendarNotification = false;
 
-  if (!senderEmail) {
-    return { success: false, error: 'Could not extract sender email' };
+  if (event.source === 'calendar') {
+    // For calendar events, use the configured notification recipient
+    if (!config.notificationRecipient) {
+      return { success: false, error: 'No notification recipient configured for calendar events' };
+    }
+    recipientEmail = config.notificationRecipient;
+    isCalendarNotification = true;
+    console.log(`[SSM Auto-Reply] Calendar event - sending notification to ${recipientEmail}`);
+  } else {
+    // For emails, reply to the sender
+    const senderFull = String(event.metadata?.from || '');
+    recipientEmail = extractEmail(senderFull);
+    senderName = extractName(senderFull);
+
+    if (!recipientEmail) {
+      return { success: false, error: 'Could not extract sender email' };
+    }
   }
 
-  // Check if we should send based on conditions
-  const conditionCheck = shouldSendReply(
-    senderEmail,
-    alert.severity,
-    mergedConditions
-  );
-  if (!conditionCheck.shouldSend) {
-    return { success: false, error: conditionCheck.reason };
+  // Check if we should send based on conditions (skip for calendar notifications)
+  if (!isCalendarNotification) {
+    const conditionCheck = shouldSendReply(
+      recipientEmail,
+      alert.severity,
+      mergedConditions
+    );
+    if (!conditionCheck.shouldSend) {
+      return { success: false, error: conditionCheck.reason };
+    }
   }
 
   // Check rate limit
-  const rateLimitCheck = checkRateLimit(senderEmail, mergedRateLimit);
+  const rateLimitCheck = checkRateLimit(recipientEmail, mergedRateLimit);
   if (!rateLimitCheck.allowed) {
     return { success: false, error: rateLimitCheck.reason, rateLimited: true };
   }
 
-  // Build placeholder values (cast metadata fields from unknown)
-  const subjectValue = String(event.metadata?.subject || 'No subject');
-  const dateValue = String(event.metadata?.date || event.timestamp);
-  const messageIdValue = String(event.metadata?.messageId || '');
-  const threadIdValue = String(event.metadata?.threadId || '');
+  // Build placeholder values based on event type
+  let subject: string;
+  let body: string;
 
-  const placeholderValues: Record<string, string> = {
-    sender: senderEmail,
-    sender_name: senderName || senderEmail,
-    subject: subjectValue,
-    matched_rules: alert.matched_rules.join(', '),
-    severity: alert.severity,
-    timestamp: event.timestamp,
-    content_preview: event.content.substring(0, 100),
-  };
+  if (isCalendarNotification) {
+    // Build calendar notification email
+    const eventSummary = String(event.metadata?.summary || 'No title');
+    const eventStart = String(event.metadata?.start || 'Not specified');
+    const eventEnd = String(event.metadata?.end || 'Not specified');
+    const eventLocation = String(event.metadata?.location || 'Not specified');
+    const eventDescription = String(event.metadata?.description || 'No description');
+    const eventOrganizer = String(event.metadata?.organizer || 'Unknown');
 
-  // Replace placeholders in template
-  const subject = replacePlaceholders(mergedTemplate.subject, placeholderValues);
-  let body = replacePlaceholders(mergedTemplate.body, placeholderValues);
+    subject = `New Calendar Event: ${eventSummary}`;
+    body = `A new calendar event has been detected:\n\n` +
+      `📌 Event: ${eventSummary}\n` +
+      `🕐 Start: ${eventStart}\n` +
+      `🕑 End: ${eventEnd}\n` +
+      `📍 Location: ${eventLocation}\n` +
+      `👤 Organizer: ${eventOrganizer}\n\n` +
+      `📝 Description:\n${eventDescription}\n\n` +
+      `---\nMatched rules: ${alert.matched_rules.join(', ')}\n` +
+      `Severity: ${alert.severity}`;
 
-  // Add signature if configured
-  if (mergedTemplate.signature) {
-    body += `\n\n${mergedTemplate.signature}`;
+    if (mergedTemplate.signature) {
+      body += `\n\n${mergedTemplate.signature}`;
+    }
+  } else {
+    // Build email reply (original logic)
+    const subjectValue = String(event.metadata?.subject || 'No subject');
+    const dateValue = String(event.metadata?.date || event.timestamp);
+    const senderFull = String(event.metadata?.from || '');
+
+    const placeholderValues: Record<string, string> = {
+      sender: recipientEmail,
+      sender_name: senderName || recipientEmail,
+      subject: subjectValue,
+      matched_rules: alert.matched_rules.join(', '),
+      severity: alert.severity,
+      timestamp: event.timestamp,
+      content_preview: event.content.substring(0, 100),
+    };
+
+    subject = replacePlaceholders(mergedTemplate.subject, placeholderValues);
+    body = replacePlaceholders(mergedTemplate.body, placeholderValues);
+
+    if (mergedTemplate.signature) {
+      body += `\n\n${mergedTemplate.signature}`;
+    }
+
+    if (mergedTemplate.includeOriginal) {
+      body += `\n\n--- Original Message ---\nFrom: ${senderFull}\nSubject: ${subjectValue}\nDate: ${dateValue}\n\n${event.content}`;
+    }
   }
 
-  // Add original message if configured
-  if (mergedTemplate.includeOriginal) {
-    body += `\n\n--- Original Message ---\nFrom: ${senderFull}\nSubject: ${subjectValue}\nDate: ${dateValue}\n\n${event.content}`;
-  }
+  // Get threading info (only for email replies)
+  const messageIdValue = isCalendarNotification ? '' : String(event.metadata?.messageId || '');
+  const threadIdValue = isCalendarNotification ? '' : String(event.metadata?.threadId || '');
 
   try {
     // Get Gmail client
     const gmail = await getGmailClient(userId);
 
     // Build email headers
-    let headers = `To: ${senderEmail}\r\n`;
-    headers += `Subject: ${subject}\r\n`;
+    // MIME-encode subject if it contains non-ASCII characters (RFC 2047)
+    const encodedSubject = /[^\x00-\x7F]/.test(subject)
+      ? `=?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`
+      : subject;
 
-    // Add reply headers for proper threading
+    let headers = `To: ${recipientEmail}\r\n`;
+    headers += `Subject: ${encodedSubject}\r\n`;
+
+    // Add reply headers for proper threading (only for email replies)
     if (messageIdValue) {
       headers += `In-Reply-To: <${messageIdValue}>\r\n`;
       headers += `References: <${messageIdValue}>\r\n`;
@@ -138,7 +192,7 @@ export async function sendAutoReply(
       raw: encodedMessage,
     };
 
-    // Add threadId for proper Gmail threading
+    // Add threadId for proper Gmail threading (only for email replies)
     if (threadIdValue) {
       requestBody.threadId = threadIdValue;
     }
@@ -149,13 +203,13 @@ export async function sendAutoReply(
       requestBody,
     });
 
-    console.log(`[SSM Auto-Reply] Sent reply to ${senderEmail}, messageId: ${response.data.id}`);
+    console.log(`[SSM Auto-Reply] Sent ${isCalendarNotification ? 'notification' : 'reply'} to ${recipientEmail}, messageId: ${response.data.id}`);
 
     return {
       success: true,
       messageId: response.data.id ?? undefined,
       threadId: response.data.threadId ?? undefined,
-      recipient: senderEmail,
+      recipient: recipientEmail,
     };
   } catch (error) {
     console.error('[SSM Auto-Reply] Failed to send:', error);

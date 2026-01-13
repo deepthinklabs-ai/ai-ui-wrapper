@@ -20,6 +20,7 @@ import type {
   SSMRulesConfig,
   SSMResponseTemplate,
 } from '@/app/canvas/types/ssm';
+import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 import { getProviderKey } from '@/lib/secretManager/getKey';
 
 // ============================================================================
@@ -201,10 +202,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMGenera
       }, { status: 400 });
     }
 
+    // Extract notification recipient email from description (for calendar events)
+    // Looks for patterns like "send email to user@example.com" or "email user@example.com"
+    const notification_recipient = extractNotificationRecipient(description);
+
     return NextResponse.json({
       success: true,
       rules,
       response_templates,
+      notification_recipient,
     });
 
   } catch (error) {
@@ -363,4 +369,62 @@ function getDefaultTemplates(): SSMResponseTemplate[] {
       action: 'forward_to_ai',
     },
   ];
+}
+
+/**
+ * Trim non-alphanumeric characters from start and end of string.
+ * Uses simple loop instead of regex to avoid ReDoS vulnerabilities.
+ */
+function trimNonAlphanumeric(str: string): string {
+  const isAlphanumeric = (char: string) => /[a-zA-Z0-9]/.test(char);
+
+  let start = 0;
+  let end = str.length;
+
+  while (start < end && !isAlphanumeric(str[start])) start++;
+  while (end > start && !isAlphanumeric(str[end - 1])) end--;
+
+  return str.slice(start, end);
+}
+
+/**
+ * Extract notification recipient email from description.
+ * Looks for patterns like:
+ * - "send email to user@example.com"
+ * - "email user@example.com"
+ * - "notify user@example.com"
+ * - "send notification to user@example.com"
+ */
+function extractNotificationRecipient(description: string): string | undefined {
+  // Split by whitespace and find words containing @
+  // This avoids ReDoS vulnerabilities from complex email regex patterns
+  const words = description.split(/\s+/);
+
+  for (const word of words) {
+    // Quick check: must contain @ and have content on both sides
+    const atIndex = word.indexOf('@');
+    if (atIndex <= 0 || atIndex >= word.length - 1) continue;
+
+    // Clean up punctuation that might be attached (e.g., "email@example.com.")
+    // Use simple loop instead of regex to avoid ReDoS
+    const cleaned = trimNonAlphanumeric(word);
+
+    // Validate basic email structure: local@domain.tld
+    const parts = cleaned.split('@');
+    if (parts.length !== 2) continue;
+
+    const [local, domain] = parts;
+    // Local part must be non-empty and alphanumeric with allowed chars
+    if (!local || !/^[a-zA-Z0-9._%+-]+$/.test(local)) continue;
+    // Domain must have at least one dot and valid chars
+    if (!domain || !domain.includes('.') || !/^[a-zA-Z0-9.-]+$/.test(domain)) continue;
+    // TLD must be at least 2 chars
+    const tld = domain.split('.').pop();
+    if (!tld || tld.length < 2) continue;
+
+    console.log(`[SSM Generate Rules] Extracted notification recipient: ${cleaned}`);
+    return cleaned;
+  }
+
+  return undefined;
 }
