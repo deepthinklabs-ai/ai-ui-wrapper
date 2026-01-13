@@ -35,7 +35,10 @@ export function useGmailOAuth(): UseGmailOAuthResult {
    * Fetch current connection status
    */
   const refreshStatus = useCallback(async () => {
+    console.log('[useGmailOAuth] refreshStatus called, user:', user?.id);
+
     if (!user?.id) {
+      console.log('[useGmailOAuth] No user ID available yet');
       setStatus('disconnected');
       setConnection(null);
       setIsLoading(false);
@@ -46,11 +49,14 @@ export function useGmailOAuth(): UseGmailOAuthResult {
       setIsLoading(true);
       setError(null);
 
+      console.log('[useGmailOAuth] Fetching /api/canvas/gmail/status?userId=' + user.id);
       const response = await fetch(`/api/canvas/gmail/status?userId=${user.id}`);
+      console.log('[useGmailOAuth] Response status:', response.status);
 
       if (!response.ok) {
         if (response.status === 404) {
           // No connection exists
+          console.log('[useGmailOAuth] 404 - No connection found');
           setStatus('disconnected');
           setConnection(null);
           return;
@@ -59,8 +65,10 @@ export function useGmailOAuth(): UseGmailOAuthResult {
       }
 
       const data = await response.json();
+      console.log('[useGmailOAuth] API response:', JSON.stringify(data, null, 2));
 
       if (data.connected) {
+        console.log('[useGmailOAuth] Setting connected state');
         setConnection({
           id: data.connectionId,
           email: data.email,
@@ -73,6 +81,7 @@ export function useGmailOAuth(): UseGmailOAuthResult {
         });
         setStatus(data.status as GmailConnectionStatus);
       } else {
+        console.log('[useGmailOAuth] API returned connected=false, full response:', data);
         setStatus('disconnected');
         setConnection(null);
       }
