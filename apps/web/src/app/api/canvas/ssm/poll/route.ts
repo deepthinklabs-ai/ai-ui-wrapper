@@ -10,10 +10,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getGmailClient, getCalendarClient } from '@/lib/googleClients';
+import { getGmailClient, getCalendarClient, getSheetsClient, getDriveClient } from '@/lib/googleClients';
 import { matchEvent } from '@/app/canvas/features/ssm-agent/lib/ssmRulesEngine';
 import { processAutoReply } from '@/app/canvas/features/ssm-agent/features/auto-reply/sendReply';
-import type { SSMAgentNodeConfig, SSMAlert, SSMEvent } from '@/app/canvas/types/ssm';
+import type { SSMAgentNodeConfig, SSMAlert, SSMEvent, SSMSheetsActionConfig, SSMSheetsField } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 import type { CalendarOAuthConfig } from '@/app/canvas/features/calendar-oauth/types';
 
@@ -30,6 +30,7 @@ interface PollRequest {
   gmail?: SSMAgentNodeConfig['gmail'];
   calendar?: CalendarOAuthConfig;
   auto_reply?: SSMAutoReplyConfig;
+  sheets_action?: SSMSheetsActionConfig;
 }
 
 interface PollResponse {
@@ -58,10 +59,11 @@ function getSupabaseAdmin() {
 export async function POST(request: NextRequest): Promise<NextResponse<PollResponse>> {
   try {
     const body: PollRequest = await request.json();
-    const { canvasId, nodeId, userId, rules, gmail, calendar, auto_reply } = body;
+    const { canvasId, nodeId, userId, rules, gmail, calendar, auto_reply, sheets_action } = body;
 
-    // Debug logging for auto-reply
+    // Debug logging for actions
     console.log('[SSM Poll] auto_reply config received:', JSON.stringify(auto_reply, null, 2));
+    console.log('[SSM Poll] sheets_action config received:', JSON.stringify(sheets_action, null, 2));
 
     // Validate required fields
     if (!canvasId || !nodeId || !userId) {
@@ -307,6 +309,26 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
             }
           } catch (replyError) {
             console.error('[SSM Poll] Auto-reply error:', replyError);
+          }
+        }
+
+        // Process Sheets logging if configured
+        console.log('[SSM Poll] Checking sheets_action:', {
+          enabled: sheets_action?.enabled,
+          spreadsheetName: sheets_action?.spreadsheetName,
+          eventSource: event.source
+        });
+        if (sheets_action?.enabled) {
+          try {
+            console.log('[SSM Poll] Logging to Sheets:', sheets_action.spreadsheetName);
+            const sheetsResult = await logEventToSheets(userId, event, alert, sheets_action, supabase, nodeId);
+            if (sheetsResult.success) {
+              console.log(`[SSM Poll] Logged to Sheets: ${sheetsResult.spreadsheetId}`);
+            } else {
+              console.warn(`[SSM Poll] Sheets logging failed: ${sheetsResult.error}`);
+            }
+          } catch (sheetsError) {
+            console.error('[SSM Poll] Sheets logging error:', sheetsError);
           }
         }
       }
@@ -696,4 +718,190 @@ async function createWorkflowExecution(
     console.error('[SSM Poll] Failed to create execution:', error);
     return '';
   }
+}
+
+// ============================================================================
+// SHEETS LOGGING
+// ============================================================================
+
+interface SheetsLogResult {
+  success: boolean;
+  spreadsheetId?: string;
+  error?: string;
+}
+
+/**
+ * Log an SSM event to a Google Sheets spreadsheet
+ * Creates the spreadsheet if it doesn't exist
+ */
+async function logEventToSheets(
+  userId: string,
+  event: SSMEvent,
+  alert: SSMAlert,
+  config: SSMSheetsActionConfig,
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  nodeId: string
+): Promise<SheetsLogResult> {
+  try {
+    // Get Sheets and Drive clients
+    const sheets = await getSheetsClient(userId);
+    const drive = await getDriveClient(userId);
+
+    let spreadsheetId = config.spreadsheetId || config.cachedSpreadsheetId;
+
+    // If no spreadsheet ID, try to find or create the spreadsheet
+    if (!spreadsheetId) {
+      // Search for existing spreadsheet by name
+      const searchResponse = await drive.files.list({
+        q: `name='${config.spreadsheetName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`,
+        spaces: 'drive',
+        fields: 'files(id, name)',
+      });
+
+      const existingFiles = searchResponse.data.files || [];
+
+      if (existingFiles.length > 0 && existingFiles[0].id) {
+        spreadsheetId = existingFiles[0].id;
+        console.log(`[SSM Sheets] Found existing spreadsheet: ${spreadsheetId}`);
+      } else if (config.createIfMissing) {
+        // Create new spreadsheet
+        const createResponse = await sheets.spreadsheets.create({
+          requestBody: {
+            properties: {
+              title: config.spreadsheetName,
+            },
+            sheets: [
+              {
+                properties: {
+                  title: config.sheetName || 'Events',
+                },
+              },
+            ],
+          },
+        });
+
+        spreadsheetId = createResponse.data.spreadsheetId ?? undefined;
+        console.log(`[SSM Sheets] Created new spreadsheet: ${spreadsheetId}`);
+
+        // Add headers if configured
+        if (spreadsheetId && config.includeHeaders && config.columns.length > 0) {
+          const headers = config.columns.map(col => col.header);
+          await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range: `${config.sheetName || 'Events'}!A1`,
+            valueInputOption: 'RAW',
+            requestBody: {
+              values: [headers],
+            },
+          });
+          console.log(`[SSM Sheets] Added headers: ${headers.join(', ')}`);
+        }
+
+        // Cache the spreadsheet ID in the node's runtime_config
+        if (spreadsheetId) {
+          const { data: node } = await supabase
+            .from('canvas_nodes')
+            .select('runtime_config')
+            .eq('id', nodeId)
+            .single();
+
+          if (node) {
+            await supabase
+              .from('canvas_nodes')
+              .update({
+                runtime_config: {
+                  ...node.runtime_config,
+                  sheets_spreadsheet_id: spreadsheetId,
+                },
+              })
+              .eq('id', nodeId);
+          }
+        }
+      } else {
+        return {
+          success: false,
+          error: `Spreadsheet "${config.spreadsheetName}" not found and createIfMissing is false`,
+        };
+      }
+    }
+
+    if (!spreadsheetId) {
+      return { success: false, error: 'Failed to get or create spreadsheet' };
+    }
+
+    // Extract field values from the event
+    const rowData = config.columns.map(col => extractFieldValue(col.field, event, alert));
+
+    // Append row to the spreadsheet
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `${config.sheetName || 'Events'}!A:Z`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: [rowData],
+      },
+    });
+
+    console.log(`[SSM Sheets] Logged event to spreadsheet ${spreadsheetId}: ${rowData.join(', ')}`);
+
+    return { success: true, spreadsheetId };
+  } catch (error: any) {
+    console.error('[SSM Sheets] Error logging to sheets:', error?.message || error);
+    return { success: false, error: error?.message || 'Failed to log to sheets' };
+  }
+}
+
+/**
+ * Extract a field value from an SSM event for Sheets logging
+ */
+function extractFieldValue(field: SSMSheetsField, event: SSMEvent, alert: SSMAlert): string {
+  switch (field) {
+    case 'from':
+      return String(event.metadata?.from || '');
+    case 'subject':
+      return String(event.metadata?.subject || '');
+    case 'timestamp':
+      return event.timestamp || new Date().toISOString();
+    case 'body':
+      // Get full body - extract from content after the header info
+      const content = event.content || '';
+      // For emails, body starts after the double newline following headers
+      const bodyMatch = content.split('\n\n');
+      return bodyMatch.length > 1 ? bodyMatch.slice(1).join('\n\n') : content;
+    case 'body_preview':
+      const preview = event.content || '';
+      return preview.substring(0, 500);
+    case 'matched_rules':
+      return alert.matched_rules.join(', ');
+    case 'severity':
+      return alert.severity;
+    case 'source':
+      return event.source || '';
+    case 'event_id':
+      return event.id;
+    default:
+      return '';
+  }
+}
+
+/**
+ * Get default Sheets action config
+ */
+export function getDefaultSheetsActionConfig(): SSMSheetsActionConfig {
+  return {
+    enabled: false,
+    spreadsheetName: 'SSM Event Log',
+    sheetName: 'Events',
+    columns: [
+      { header: 'Timestamp', field: 'timestamp' },
+      { header: 'From', field: 'from' },
+      { header: 'Subject', field: 'subject' },
+      { header: 'Body', field: 'body' },
+      { header: 'Matched Rules', field: 'matched_rules' },
+      { header: 'Severity', field: 'severity' },
+    ],
+    createIfMissing: true,
+    includeHeaders: true,
+  };
 }
