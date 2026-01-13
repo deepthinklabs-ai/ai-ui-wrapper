@@ -35,7 +35,7 @@ export async function DELETE(req: NextRequest) {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const rateLimitResult = await strictRatelimitAsync(`delete-account:${ip}`);
     if (!rateLimitResult.success) {
-      return rateLimitErrorResponse(rateLimitResult);
+      return NextResponse.json(rateLimitErrorResponse(rateLimitResult), { status: 429 });
     }
 
     // Authenticate user

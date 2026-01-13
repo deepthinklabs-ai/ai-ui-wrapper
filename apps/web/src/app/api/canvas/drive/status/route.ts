@@ -1,8 +1,8 @@
 /**
- * Gmail OAuth Status API Route
+ * Google Drive OAuth Status API Route
  *
- * Returns the current Gmail OAuth connection status for a user.
- * Used by Genesis Bot nodes to check if Gmail is connected.
+ * Returns the current Google Drive OAuth connection status for a user.
+ * Used by Genesis Bot nodes to check if Drive is connected.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Fetch OAuth connection for Google (which includes Gmail)
+    // Fetch OAuth connection for Google (which includes Drive)
     const { data: connection, error } = await supabase
       .from('oauth_connections')
       .select('*')
@@ -44,32 +44,30 @@ export async function GET(request: NextRequest) {
     // Use the database status field directly
     // Note: access tokens expire hourly but are auto-refreshed via refresh_token
     // The status is only set to 'expired' when the refresh actually fails
-    // So we should NOT check token_expires_at here - it's a false positive
     const status = connection.status === 'active'
       ? 'connected'
       : connection.status === 'expired'
         ? 'expired'
         : 'disconnected';
 
-    // Check if Gmail scopes are present
+    // Check if Drive scopes are present
     // SECURITY: Use exact patterns for Google OAuth scope validation
-    const GMAIL_SCOPE_PATTERNS = [
-      'https://www.googleapis.com/auth/gmail',     // Gmail API scopes prefix
-      'https://mail.google.com/',                   // Full Gmail access
+    const DRIVE_SCOPE_PATTERNS = [
+      'https://www.googleapis.com/auth/drive',      // Drive API scopes prefix
     ];
     const scopes = connection.scopes || [];
 
     // If scopes array is empty/null, assume legacy connection with all scopes granted
     // (Settings OAuth flow requests all scopes when no service parameter is provided)
-    const hasGmailScopes = scopes.length === 0 || scopes.some((scope: string) =>
-      GMAIL_SCOPE_PATTERNS.some(pattern => scope.startsWith(pattern))
+    const hasDriveScopes = scopes.length === 0 || scopes.some((scope: string) =>
+      DRIVE_SCOPE_PATTERNS.some(pattern => scope.startsWith(pattern))
     );
 
-    if (!hasGmailScopes) {
+    if (!hasDriveScopes) {
       return NextResponse.json({
         connected: false,
         status: 'disconnected',
-        reason: 'Gmail scopes not granted',
+        reason: 'Drive scopes not granted. Please reconnect your Google account to grant Drive access.',
       });
     }
 
@@ -85,7 +83,7 @@ export async function GET(request: NextRequest) {
       scopes: connection.scopes,
     });
   } catch (error) {
-    console.error('[Gmail Status API] Error:', error);
+    console.error('[Drive Status API] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

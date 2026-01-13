@@ -20,6 +20,7 @@ import type {
   SSMKeywordRule,
   SSMPatternRule,
   SSMAlert,
+  SSMSheetsActionConfig,
 } from '../../types/ssm';
 import {
   DEFAULT_SSM_CONFIG,
@@ -47,6 +48,8 @@ import { DocsOAuthPanel } from '../../features/docs-oauth/components/DocsOAuthPa
 import { DEFAULT_DOCS_CONFIG, type DocsOAuthConfig } from '../../features/docs-oauth/types';
 import { SlackOAuthPanel } from '../../features/slack-oauth/components/SlackOAuthPanel';
 import { DEFAULT_SLACK_CONFIG, type SlackOAuthConfig } from '../../features/slack-oauth/types';
+import { DriveOAuthPanel } from '../../features/drive-oauth/components/DriveOAuthPanel';
+import { DEFAULT_DRIVE_CONFIG, type DriveOAuthConfig } from '../../features/drive-oauth/types';
 
 // ============================================================================
 // TYPES
@@ -95,7 +98,24 @@ export default function SSMAgentConfigPanel({
   // Training hook
   const handleTrainingComplete = useCallback(async (result: TrainingResult) => {
     const now = new Date().toISOString();
-    await onUpdate({
+
+    // Log the training result for debugging
+    console.log('[SSM Training] Training completed with result:', {
+      monitoringDescription: result.monitoringDescription,
+      rulesCount: {
+        keywords: result.rules.keywords.length,
+        patterns: result.rules.patterns.length,
+        conditions: result.rules.conditions.length,
+      },
+      hasAutoReply: !!result.autoReply,
+      autoReply: result.autoReply,
+      hasSheetsAction: !!result.sheetsAction,
+      sheetsAction: result.sheetsAction,
+    });
+
+    // IMPORTANT: Explicitly reset previous action configs to null if not provided
+    // This ensures old configs don't persist from previous training sessions
+    const updatedConfig = {
       monitoring_description: result.monitoringDescription,
       rules: result.rules,
       response_templates: result.responseTemplates,
@@ -104,23 +124,105 @@ export default function SSMAgentConfigPanel({
       // New training fields
       trained_at: now,
       trained_by: selectedProvider,
-      training_summary: result.monitoringDescription, // Use the description as summary
-      // Auto-reply config (if user requested it during training)
-      auto_reply: result.autoReply,
-    });
-    setFormData(prev => ({
-      ...prev,
-      monitoring_description: result.monitoringDescription,
-      trained_at: now,
-      trained_by: selectedProvider,
       training_summary: result.monitoringDescription,
-      auto_reply: result.autoReply,
-    }));
-  }, [onUpdate, selectedProvider]);
+      // RESET action configs - use undefined to explicitly clear, or the new value
+      // This prevents previous training configs from persisting
+      auto_reply: result.autoReply || undefined,
+      sheets_action: result.sheetsAction || undefined,
+    };
+
+    console.log('[SSM Training] Saving updated config:', {
+      auto_reply: updatedConfig.auto_reply,
+      sheets_action: updatedConfig.sheets_action,
+    });
+
+    const success = await onUpdate(updatedConfig);
+    if (success) {
+      const newFormData = {
+        ...formData,
+        ...updatedConfig,
+      };
+      setFormData(newFormData);
+
+      // If monitoring is already enabled, sync server config with new rules
+      if (formData.is_enabled) {
+        // Sync server config asynchronously (don't block training completion)
+        syncServerConfigForTraining(newFormData);
+      }
+    }
+  }, [onUpdate, selectedProvider, formData]);
+
+  // Helper function for syncing after training (to avoid circular dependency)
+  const syncServerConfigForTraining = useCallback(async (configToSync: SSMAgentNodeConfig) => {
+    try {
+      const response = await apiClient.post<{ success: boolean; version?: number; error?: string }>(
+        '/api/canvas/ssm/server-config',
+        {
+          userId,
+          canvasId,
+          nodeId,
+          rules: configToSync.rules,
+          response_templates: configToSync.response_templates || [],
+          auto_reply: configToSync.auto_reply,
+          polling_settings: {
+            gmail_enabled: configToSync.gmail?.enabled || false,
+            gmail_connection_id: configToSync.gmail?.connectionId,
+            calendar_enabled: configToSync.calendar?.enabled || false,
+            calendar_connection_id: configToSync.calendar?.connectionId,
+          },
+          enable_background_polling: true,
+        }
+      );
+
+      if (response.ok && response.data?.success) {
+        console.log(`[SSM] Server config synced after training (version ${response.data.version})`);
+      } else {
+        console.error('[SSM] Server config sync after training failed:', response.data?.error || response.error);
+      }
+    } catch (error) {
+      console.error('[SSM] Server config sync error after training:', error);
+    }
+  }, [userId, canvasId, nodeId]);
 
   // Derived state
   const isTrained = !!currentConfig.trained_at;
   const isEnabled = currentConfig.is_enabled ?? false;
+
+  // Sync server config for background polling
+  // Called when enabling monitoring or when config changes while enabled
+  const syncServerConfig = useCallback(async (configToSync: SSMAgentNodeConfig, enableBackgroundPolling: boolean): Promise<boolean> => {
+    try {
+      const response = await apiClient.post<{ success: boolean; version?: number; error?: string }>(
+        '/api/canvas/ssm/server-config',
+        {
+          userId,
+          canvasId,
+          nodeId,
+          rules: configToSync.rules,
+          response_templates: configToSync.response_templates || [],
+          auto_reply: configToSync.auto_reply,
+          polling_settings: {
+            gmail_enabled: configToSync.gmail?.enabled || false,
+            gmail_connection_id: configToSync.gmail?.connectionId,
+            calendar_enabled: configToSync.calendar?.enabled || false,
+            calendar_connection_id: configToSync.calendar?.connectionId,
+          },
+          enable_background_polling: enableBackgroundPolling,
+        }
+      );
+
+      if (response.ok && response.data?.success) {
+        console.log(`[SSM] Server config synced (version ${response.data.version})`);
+        return true;
+      } else {
+        console.error('[SSM] Server config sync failed:', response.data?.error || response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('[SSM] Server config sync error:', error);
+      return false;
+    }
+  }, [userId, canvasId, nodeId]);
 
   // Handle toggle monitoring on/off
   const handleToggleEnabled = useCallback(async () => {
@@ -131,10 +233,18 @@ export default function SSMAgentConfigPanel({
     const success = await onUpdate({ is_enabled: newState });
     if (success) {
       setFormData(prev => ({ ...prev, is_enabled: newState }));
+
+      // Sync server config when enabling monitoring (for background polling)
+      if (newState) {
+        await syncServerConfig(currentConfig, true);
+      } else {
+        // Disable background polling when monitoring is turned off
+        await syncServerConfig(currentConfig, false);
+      }
     } else {
       console.error('[SSM] Toggle update FAILED - database not updated!');
     }
-  }, [isTrained, isEnabled, onUpdate]);
+  }, [isTrained, isEnabled, onUpdate, currentConfig, syncServerConfig]);
 
   // Polling state - use ref for isPolling to avoid dependency loops
   const isPollingRef = useRef(false);
@@ -188,6 +298,8 @@ export default function SSMAgentConfigPanel({
         calendar: currentConfig.calendar,
         // Pass auto-reply config for automatic email responses
         auto_reply: currentConfig.auto_reply,
+        // Pass sheets action config for logging to Google Sheets
+        sheets_action: currentConfig.sheets_action,
       });
 
       setLastPollTime(new Date());
@@ -233,7 +345,7 @@ export default function SSMAgentConfigPanel({
       isPollingRef.current = false;
       setIsPolling(false);
     }
-  }, [canvasId, nodeId, userId, isEnabled, hasDataSource, currentConfig.rules, currentConfig.gmail, currentConfig.calendar, currentConfig.auto_reply]);
+  }, [canvasId, nodeId, userId, isEnabled, hasDataSource, currentConfig.rules, currentConfig.gmail, currentConfig.calendar, currentConfig.auto_reply, currentConfig.sheets_action]);
 
   // Automatic polling when monitoring is enabled and at least one data source is connected
   useEffect(() => {
@@ -537,6 +649,53 @@ export default function SSMAgentConfigPanel({
             <span>🔄</span>
             Retrain with New Conversation
           </button>
+        </section>
+      )}
+
+      {/* Section: Configured Actions (Node Inspector) */}
+      {isTrained && (currentConfig.sheets_action?.enabled || currentConfig.auto_reply?.enabled) && (
+        <section className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+            <span>⚡</span> Configured Actions
+          </h3>
+
+          {/* Sheets Logging Action */}
+          {currentConfig.sheets_action?.enabled && (
+            <div className="p-3 bg-white/70 rounded-lg mb-2">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">📊</span>
+                <p className="text-xs font-medium text-blue-700">Log to Google Sheets</p>
+                <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">Active</span>
+              </div>
+              <div className="space-y-1 text-xs text-foreground/70">
+                <p><strong>Spreadsheet:</strong> {currentConfig.sheets_action.spreadsheetName}</p>
+                <p><strong>Sheet:</strong> {currentConfig.sheets_action.sheetName}</p>
+                <p><strong>Columns:</strong> {currentConfig.sheets_action.columns.map(c => c.header).join(', ')}</p>
+                {currentConfig.sheets_action.createIfMissing && (
+                  <p className="text-green-600">✓ Will create spreadsheet if missing</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Auto-Reply Action */}
+          {currentConfig.auto_reply?.enabled && (
+            <div className="p-3 bg-white/70 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">✉️</span>
+                <p className="text-xs font-medium text-blue-700">Auto-Reply</p>
+                <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">Active</span>
+              </div>
+              <div className="space-y-1 text-xs text-foreground/70">
+                {currentConfig.auto_reply.notificationRecipient ? (
+                  <p><strong>Notification To:</strong> {currentConfig.auto_reply.notificationRecipient}</p>
+                ) : (
+                  <p><strong>Mode:</strong> Reply to sender</p>
+                )}
+                <p><strong>Subject:</strong> {currentConfig.auto_reply.template.subject}</p>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -864,6 +1023,17 @@ export default function SSMAgentConfigPanel({
 
         <div className="my-4 border-t border-foreground/10" />
 
+        {/* Drive OAuth Panel */}
+        <DriveOAuthPanel
+          config={formData.drive || DEFAULT_DRIVE_CONFIG}
+          onConfigChange={(driveConfig: DriveOAuthConfig) => {
+            setFormData(prev => ({ ...prev, drive: driveConfig }));
+            onUpdate({ drive: driveConfig });
+          }}
+        />
+
+        <div className="my-4 border-t border-foreground/10" />
+
         {/* Sheets OAuth Panel */}
         <SheetsOAuthPanel
           config={formData.sheets || DEFAULT_SHEETS_CONFIG}
@@ -921,6 +1091,7 @@ export default function SSMAgentConfigPanel({
         isFinalizing={training.isFinalizing}
         error={training.error}
         sessionStartedAt={training.sessionStartedAt}
+        lastResult={training.lastResult}
         onSendMessage={training.sendMessage}
         onFinalize={training.finalize}
         onReset={training.reset}

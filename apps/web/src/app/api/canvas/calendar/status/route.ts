@@ -41,16 +41,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check if token is expired
-    const tokenExpired = connection.token_expires_at
-      ? new Date(connection.token_expires_at) < new Date()
-      : false;
-
-    const status = connection.status === 'revoked'
-      ? 'disconnected'
-      : tokenExpired
+    // Use the database status field directly
+    // Note: access tokens expire hourly but are auto-refreshed via refresh_token
+    // The status is only set to 'expired' when the refresh actually fails
+    const status = connection.status === 'active'
+      ? 'connected'
+      : connection.status === 'expired'
         ? 'expired'
-        : 'connected';
+        : 'disconnected';
 
     // Check if Calendar scopes are present
     const scopes = connection.scopes || [];

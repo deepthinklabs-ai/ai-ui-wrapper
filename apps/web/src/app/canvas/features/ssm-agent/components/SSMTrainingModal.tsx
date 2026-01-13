@@ -22,6 +22,7 @@ import type {
   SSMTrainingPhase,
   SSMExtractedInfo,
 } from '../types/training';
+import type { TrainingResult } from '../hooks/useSSMTraining';
 
 // ============================================================================
 // CONSTANTS
@@ -46,6 +47,7 @@ export interface SSMTrainingModalProps {
   isFinalizing: boolean;
   error: string | null;
   sessionStartedAt: string | null;
+  lastResult: TrainingResult | null;
 
   // Actions from hook
   onSendMessage: (message: string) => Promise<void>;
@@ -119,6 +121,7 @@ export function SSMTrainingModal({
   isFinalizing,
   error,
   sessionStartedAt,
+  lastResult,
   onSendMessage,
   onFinalize,
   onReset,
@@ -303,25 +306,94 @@ export function SSMTrainingModal({
 
         {/* Completion overlay */}
         {phase === 'complete' && (
-          <div className="absolute inset-0 bg-white/90 flex flex-col items-center justify-center">
-            <span className="text-6xl mb-4">✅</span>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Training Complete!
-            </h3>
-            <p className="text-foreground/60 text-center max-w-sm mb-6">
-              Your monitoring rules have been generated and applied to the Polling Monitor.
-            </p>
-            <button
-              onClick={onClose}
-              className="
-                px-6 py-2 rounded-lg
-                bg-teal-500 text-white
-                hover:bg-teal-600
-                transition-colors
-              "
-            >
-              Close
-            </button>
+          <div className="absolute inset-0 bg-white overflow-y-auto">
+            <div className="p-6 max-w-xl mx-auto">
+              <div className="text-center mb-6">
+                <span className="text-6xl mb-4 block">✅</span>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  Training Complete!
+                </h3>
+                <p className="text-foreground/60">
+                  Your monitoring rules have been generated and applied.
+                </p>
+              </div>
+
+              {/* Generated Config Display */}
+              {lastResult && (
+                <div className="space-y-4 mb-6">
+                  {/* Monitoring Description */}
+                  <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                    <p className="text-xs font-medium text-teal-700 mb-1">Monitoring For:</p>
+                    <p className="text-sm text-teal-800">{lastResult.monitoringDescription}</p>
+                  </div>
+
+                  {/* Rules Summary */}
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs font-medium text-blue-700 mb-2">Generated Rules:</p>
+                    <div className="flex gap-2 flex-wrap">
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                        {lastResult.rules.keywords.length} keywords
+                      </span>
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                        {lastResult.rules.patterns.length} patterns
+                      </span>
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                        {lastResult.rules.conditions.length} conditions
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Sheets Action Config */}
+                  {lastResult.sheetsAction?.enabled && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-xs font-medium text-green-700 mb-2">📊 Sheets Logging:</p>
+                      <div className="space-y-1 text-xs text-green-800">
+                        <p><strong>Spreadsheet:</strong> {lastResult.sheetsAction.spreadsheetName}</p>
+                        <p><strong>Columns:</strong> {lastResult.sheetsAction.columns.map(c => c.header).join(', ')}</p>
+                        <p className="text-green-600">✓ Will create spreadsheet if missing</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Auto-Reply Config */}
+                  {lastResult.autoReply?.enabled && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-xs font-medium text-amber-700 mb-2">✉️ Auto-Reply:</p>
+                      <div className="space-y-1 text-xs text-amber-800">
+                        {lastResult.autoReply.notificationRecipient ? (
+                          <p><strong>Send notification to:</strong> {lastResult.autoReply.notificationRecipient}</p>
+                        ) : (
+                          <p><strong>Mode:</strong> Reply to sender</p>
+                        )}
+                        <p><strong>Subject:</strong> {lastResult.autoReply.template.subject}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Actions Warning */}
+                  {!lastResult.sheetsAction?.enabled && !lastResult.autoReply?.enabled && (
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <p className="text-xs text-gray-600">
+                        ℹ️ No actions configured. Events will be logged internally when rules match.
+                        Retrain and mention "log to spreadsheet" or "send notification" to add actions.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={onClose}
+                className="
+                  w-full px-6 py-2 rounded-lg
+                  bg-teal-500 text-white
+                  hover:bg-teal-600
+                  transition-colors
+                "
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
       </div>

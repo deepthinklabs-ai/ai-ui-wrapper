@@ -25,6 +25,8 @@ import type {
   SSMKeywordRule,
   SSMPatternRule,
   SSMConditionRule,
+  SSMSheetsActionConfig,
+  SSMSheetsColumn,
 } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 import { DEFAULT_AUTO_REPLY_CONFIG } from '@/app/canvas/features/ssm-agent/features/auto-reply/defaults';
@@ -164,6 +166,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       rules: result.rules || { keywords: [], patterns: [], conditions: [] },
       responseTemplates: result.responseTemplates || getDefaultResponseTemplates(),
       autoReply: result.autoReply,
+      sheetsAction: result.sheetsAction,
     });
 
   } catch (error) {
@@ -188,6 +191,7 @@ interface GenerationResult {
   rules?: SSMRulesConfig;
   responseTemplates?: SSMResponseTemplate[];
   autoReply?: SSMAutoReplyConfig;
+  sheetsAction?: SSMSheetsActionConfig;
   error?: string;
 }
 
@@ -351,6 +355,12 @@ function parseGeneratedRules(content: string, conversationText: string): Generat
       console.log(`[SSM Finalize] Auto-reply config created${notificationRecipient ? `, notification recipient: ${notificationRecipient}` : ''}`);
     }
 
+    // Extract Sheets action config from conversation
+    const sheetsAction = extractSheetsAction(conversationText);
+    if (sheetsAction) {
+      console.log(`[SSM Finalize] Sheets action extracted:`, JSON.stringify(sheetsAction, null, 2));
+    }
+
     return {
       success: true,
       monitoringDescription: parsed.monitoring_description || 'Custom monitoring based on training',
@@ -359,6 +369,7 @@ function parseGeneratedRules(content: string, conversationText: string): Generat
         ? parsed.response_templates
         : getDefaultResponseTemplates(),
       autoReply,
+      sheetsAction,
     };
 
   } catch (error) {
@@ -444,23 +455,55 @@ function trimNonAlphanumeric(str: string): string {
 
 /**
  * Extract notification recipient email from description.
- * Looks for patterns like:
+ * ONLY extracts emails when the context indicates sending TO that email, not monitoring FROM.
+ *
+ * Valid patterns (extracts email):
  * - "send email to user@example.com"
- * - "email user@example.com"
  * - "notify user@example.com"
+ * - "email user@example.com when..."
+ * - "send notification to user@example.com"
+ *
+ * Invalid patterns (does NOT extract - these are source filters):
+ * - "monitor emails from user@example.com"
+ * - "watch for emails from user@example.com"
+ * - "track emails sent by user@example.com"
  */
 function extractNotificationRecipient(description: string): string | undefined {
+  const lowerDesc = description.toLowerCase();
+
+  // Keywords that indicate SENDING TO an email (notification recipient)
+  const sendToPatterns = [
+    'send email to',
+    'send notification to',
+    'notify ',
+    'email to',
+    'send to',
+    'alert to',
+    'forward to',
+  ];
+
+  // Keywords that indicate RECEIVING FROM an email (source filter - NOT a recipient)
+  const receiveFromPatterns = [
+    'from ',
+    'sent by ',
+    'emails from ',
+    'mail from ',
+    'monitor from ',
+    'watch from ',
+    'track from ',
+  ];
+
   // Split by whitespace and find words containing @
-  // This avoids ReDoS vulnerabilities from complex email regex patterns
   const words = description.split(/\s+/);
 
-  for (const word of words) {
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+
     // Quick check: must contain @ and have content on both sides
     const atIndex = word.indexOf('@');
     if (atIndex <= 0 || atIndex >= word.length - 1) continue;
 
     // Clean up punctuation that might be attached (e.g., "email@example.com.")
-    // Use simple loop instead of regex to avoid ReDoS
     const cleaned = trimNonAlphanumeric(word);
 
     // Validate basic email structure: local@domain.tld
@@ -468,16 +511,173 @@ function extractNotificationRecipient(description: string): string | undefined {
     if (parts.length !== 2) continue;
 
     const [local, domain] = parts;
-    // Local part must be non-empty and alphanumeric with allowed chars
     if (!local || !/^[a-zA-Z0-9._%+-]+$/.test(local)) continue;
-    // Domain must have at least one dot and valid chars
     if (!domain || !domain.includes('.') || !/^[a-zA-Z0-9.-]+$/.test(domain)) continue;
-    // TLD must be at least 2 chars
     const tld = domain.split('.').pop();
     if (!tld || tld.length < 2) continue;
 
-    return cleaned;
+    // Now check the CONTEXT around this email
+    // Get the text before this email (up to 50 chars for context)
+    const textBeforeEmail = words.slice(Math.max(0, i - 5), i).join(' ').toLowerCase();
+
+    // Check if this email is preceded by "from" patterns (source filter - skip)
+    const isFromContext = receiveFromPatterns.some(pattern => textBeforeEmail.includes(pattern.trim()));
+    if (isFromContext) {
+      console.log(`[SSM Finalize] Skipping email ${cleaned} - appears to be a source filter (FROM context)`);
+      continue;
+    }
+
+    // Check if this email is preceded by "to" patterns (notification recipient)
+    const isToContext = sendToPatterns.some(pattern => textBeforeEmail.includes(pattern.trim()));
+    if (isToContext) {
+      console.log(`[SSM Finalize] Found notification recipient: ${cleaned} (TO context)`);
+      return cleaned;
+    }
+
+    // If no clear context, don't extract - be conservative
+    console.log(`[SSM Finalize] Email ${cleaned} found but context unclear - not extracting as recipient`);
   }
 
   return undefined;
+}
+
+/**
+ * Extract Sheets action configuration from the conversation.
+ * Detects patterns like:
+ * - "log to a Google Sheet"
+ * - "track in a spreadsheet called 'Email Tracking'"
+ * - "save to sheets"
+ * - "create a spreadsheet"
+ * - "log sender, subject, timestamp, and body"
+ */
+function extractSheetsAction(description: string): SSMSheetsActionConfig | undefined {
+  const lowerDesc = description.toLowerCase();
+
+  console.log(`[SSM Finalize] Checking for Sheets keywords in conversation...`);
+  console.log(`[SSM Finalize] Conversation text (first 500 chars): ${description.substring(0, 500)}`);
+
+  // Keywords that indicate Sheets logging
+  const sheetsKeywords = [
+    'google sheet',
+    'spreadsheet',
+    'excel',
+    'log to sheet',
+    'log in sheet',
+    'track in sheet',
+    'save to sheet',
+    'log to a sheet',
+    'log in a sheet',
+    'track in a sheet',
+    'save to a sheet',
+    'sheet titled',
+    'sheet called',
+    'sheet named',
+    'create a spreadsheet',
+    'create spreadsheet',
+    'create a sheet',
+    'create sheet',
+    'log the details',
+    'log details',
+    'log in a spreadsheet',
+    'log to spreadsheet',
+    'record in sheet',
+    'record to sheet',
+    'write to sheet',
+    'add to sheet',
+    'email tracking',
+  ];
+
+  // Check if any Sheets keywords are present
+  const matchedKeyword = sheetsKeywords.find(kw => lowerDesc.includes(kw));
+  const wantsSheetsLogging = !!matchedKeyword;
+
+  if (!wantsSheetsLogging) {
+    console.log(`[SSM Finalize] No Sheets logging keywords found in conversation`);
+    return undefined;
+  }
+
+  console.log(`[SSM Finalize] Detected Sheets logging intent (matched keyword: "${matchedKeyword}")`);
+
+  // Extract spreadsheet name if specified
+  // Look for patterns like: "titled 'Email Tracking'", "called 'Email Log'", "named 'My Sheet'"
+  let spreadsheetName = 'Email Tracking'; // Default name
+
+  // Try to find quoted spreadsheet name - multiple patterns
+  const quotedNamePatterns = [
+    // Match "spreadsheet called 'Name'" or "spreadsheet called Name"
+    /spreadsheet\s+called\s+['"]([^'"]+)['"]/i,
+    /spreadsheet\s+called\s+([A-Za-z][A-Za-z0-9\s]+?)(?:\s*[,.]|\s+and|\s+with|\s+to|\s+on|$)/i,
+    // Match "sheet called 'Name'" or "sheet called Name"
+    /sheet\s+called\s+['"]([^'"]+)['"]/i,
+    /sheet\s+called\s+([A-Za-z][A-Za-z0-9\s]+?)(?:\s*[,.]|\s+and|\s+with|\s+to|\s+on|$)/i,
+    // Match "titled 'Name'" or "named 'Name'"
+    /(?:titled|named)\s+['"]([^'"]+)['"]/i,
+    /(?:titled|named)\s+([A-Za-z][A-Za-z0-9\s]+?)(?:\s*[,.]|\s+and|\s+with|\s+to|\s+on|$)/i,
+    // Match quoted names after spreadsheet/sheet
+    /spreadsheet\s+['"]([^'"]+)['"]/i,
+    /sheet\s+['"]([^'"]+)['"]/i,
+  ];
+
+  for (const pattern of quotedNamePatterns) {
+    const match = description.match(pattern);
+    if (match && match[1]) {
+      // Clean up the name - remove trailing punctuation and trim
+      spreadsheetName = match[1].trim().replace(/[,.\s]+$/, '');
+      console.log(`[SSM Finalize] Extracted spreadsheet name: "${spreadsheetName}" (pattern: ${pattern})`);
+      break;
+    }
+  }
+
+  // Determine columns to log based on conversation mentions
+  const columns: SSMSheetsColumn[] = [];
+
+  // Check for each field type
+  const fieldMappings: Array<{ keywords: string[]; field: 'from' | 'subject' | 'timestamp' | 'body' | 'body_preview' | 'matched_rules' | 'severity'; header: string }> = [
+    { keywords: ['sender', 'from', 'who sent', 'email from'], field: 'from', header: 'Sender' },
+    { keywords: ['subject', 'title', 'email subject'], field: 'subject', header: 'Subject' },
+    { keywords: ['timestamp', 'time', 'date', 'when', 'received'], field: 'timestamp', header: 'Timestamp' },
+    { keywords: ['body', 'content', 'message', 'full email', 'email body', 'details', 'email details'], field: 'body', header: 'Body' },
+    { keywords: ['preview', 'snippet'], field: 'body_preview', header: 'Preview' },
+    { keywords: ['rules', 'matched'], field: 'matched_rules', header: 'Matched Rules' },
+    { keywords: ['severity', 'priority'], field: 'severity', header: 'Severity' },
+  ];
+
+  for (const mapping of fieldMappings) {
+    if (mapping.keywords.some(kw => lowerDesc.includes(kw))) {
+      columns.push({ header: mapping.header, field: mapping.field });
+      console.log(`[SSM Finalize] Matched column field: ${mapping.header}`);
+    }
+  }
+
+  // If no specific columns were mentioned, use sensible defaults
+  if (columns.length === 0) {
+    console.log(`[SSM Finalize] No specific columns mentioned, using defaults`);
+    columns.push(
+      { header: 'Timestamp', field: 'timestamp' },
+      { header: 'Sender', field: 'from' },
+      { header: 'Subject', field: 'subject' },
+      { header: 'Body', field: 'body' },
+      { header: 'Matched Rules', field: 'matched_rules' }
+    );
+  } else {
+    // Always include timestamp as the first column if not already present
+    if (!columns.some(c => c.field === 'timestamp')) {
+      columns.unshift({ header: 'Timestamp', field: 'timestamp' });
+    }
+  }
+
+  console.log(`[SSM Finalize] Final columns to log: ${columns.map(c => c.header).join(', ')}`);
+
+  const sheetsConfig: SSMSheetsActionConfig = {
+    enabled: true,
+    spreadsheetName,
+    sheetName: 'Events',
+    columns,
+    createIfMissing: true,
+    includeHeaders: true,
+  };
+
+  console.log(`[SSM Finalize] Sheets action config:`, JSON.stringify(sheetsConfig, null, 2));
+
+  return sheetsConfig;
 }
