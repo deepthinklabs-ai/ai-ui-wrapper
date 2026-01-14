@@ -6,8 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revokeGoogleToken } from '@/lib/googleOAuth';
 import { getOAuthConnection, deleteOAuthConnection, decryptToken } from '@/lib/googleTokenStorage';
+import { withDebug } from '@/lib/debug';
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   try {
     const { userId } = await request.json();
 
@@ -43,4 +44,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

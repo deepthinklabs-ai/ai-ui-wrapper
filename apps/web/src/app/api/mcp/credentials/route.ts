@@ -23,7 +23,7 @@
  * - DELETE /api/mcp/credentials/:id - Delete credentials
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getAuthenticatedSupabaseClient } from "@/lib/serverAuth";
 import {
@@ -37,6 +37,7 @@ import {
   sanitizeString,
 } from "@/lib/inputValidation";
 import { validateForFeature } from "@/lib/validateEnv";
+import { withDebug } from "@/lib/debug";
 
 // Database record type
 interface MCPCredentialRecord {
@@ -56,7 +57,7 @@ interface MCPCredentialRecord {
  * GET /api/mcp/credentials
  * List all MCP servers for the authenticated user
  */
-export async function GET(request: Request) {
+export const GET = withDebug(async (request, sessionId) => {
   // Validate MCP configuration
   const envCheck = validateForFeature("mcp");
   if (!envCheck.valid) {
@@ -137,13 +138,13 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/mcp/credentials
  * Save new encrypted MCP server credentials
  */
-export async function POST(request: Request) {
+export const POST = withDebug(async (request, sessionId) => {
   // Validate MCP configuration
   const envCheck = validateForFeature("mcp");
   if (!envCheck.valid) {
@@ -264,13 +265,13 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PUT /api/mcp/credentials
  * Update existing MCP server credentials
  */
-export async function PUT(request: Request) {
+export const PUT = withDebug(async (request, sessionId) => {
   // SECURITY: Require authentication
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
@@ -337,13 +338,13 @@ export async function PUT(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE /api/mcp/credentials
  * Delete MCP server credentials
  */
-export async function DELETE(request: Request) {
+export const DELETE = withDebug(async (request, sessionId) => {
   // SECURITY: Require authentication
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
@@ -397,4 +398,4 @@ export async function DELETE(request: Request) {
       { status: 500 }
     );
   }
-}
+});

@@ -15,6 +15,7 @@ import type {
 } from '@/app/canvas/types';
 import { executeSmartRouter } from '@/app/canvas/features/smart-router';
 import { getInternalBaseUrl } from '@/lib/internalApiUrl';
+import { withDebug } from '@/lib/debug';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,7 +75,7 @@ function buildAgentInfoFromNode(node: {
   };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   const startTime = Date.now();
 
   try {
@@ -217,4 +218,4 @@ export async function POST(request: NextRequest) {
       error: error.message || 'Smart Router execution failed',
     }, { status: 500 });
   }
-}
+});

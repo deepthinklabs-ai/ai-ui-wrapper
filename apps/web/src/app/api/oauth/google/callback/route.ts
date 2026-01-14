@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { exchangeCodeForTokens, getGoogleUserInfo } from '@/lib/googleOAuth';
 import { storeOAuthTokens } from '@/lib/googleTokenStorage';
+import { withDebug } from '@/lib/debug';
 
 // Server-side Supabase client
 const supabase = createClient(
@@ -34,7 +35,7 @@ const getAppUrl = () => {
   return 'http://localhost:3000';
 };
 
-export async function GET(request: NextRequest) {
+export const GET = withDebug(async (request, sessionId) => {
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
@@ -107,4 +108,4 @@ export async function GET(request: NextRequest) {
       )}`
     );
   }
-}
+});

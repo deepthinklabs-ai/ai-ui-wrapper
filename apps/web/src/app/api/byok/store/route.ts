@@ -22,16 +22,17 @@
  * - Never logs or returns the key
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
 import { strictRatelimitAsync, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { updateUserKey, getUserKeyStatus, type BYOKProvider } from '@/lib/secretManager';
 import { validateKeyFormat, testApiKey } from '@/lib/secretManager/validation';
 import { auditApiKey, auditSecurity } from '@/lib/auditLog';
+import { withDebug } from '@/lib/debug';
 
 const VALID_PROVIDERS: BYOKProvider[] = ['openai', 'claude', 'grok', 'gemini'];
 
-export async function POST(request: Request) {
+export const POST = withDebug(async (request, sessionId) => {
   try {
     // 1. Authenticate user
     const { user, error: authError } = await getAuthenticatedUser(request);
@@ -156,4 +157,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

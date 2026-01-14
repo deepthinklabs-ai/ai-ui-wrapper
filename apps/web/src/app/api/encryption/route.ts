@@ -9,11 +9,12 @@
  * - PUT /api/encryption/recovery - Update recovery bundle (mark codes as used)
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedSupabaseClient } from "@/lib/serverAuth";
 import { standardRatelimitAsync } from "@/lib/ratelimit";
 import { headers } from "next/headers";
 import { apiError, APIErrors, handleAPIError } from "@/lib/apiErrors";
+import { withDebug } from "@/lib/debug";
 
 interface EncryptionBundle {
   salt: string;
@@ -44,7 +45,7 @@ interface UserProfile {
  * GET /api/encryption
  * Get user's encryption bundle and recovery codes status
  */
-export async function GET(request: Request) {
+export const GET = withDebug(async (request, sessionId) => {
   // SECURITY: Require authentication
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
@@ -104,13 +105,13 @@ export async function GET(request: Request) {
   } catch (error) {
     return handleAPIError(error, '[Encryption API] GET');
   }
-}
+});
 
 /**
  * POST /api/encryption
  * Save encryption bundle and recovery codes
  */
-export async function POST(request: Request) {
+export const POST = withDebug(async (request, sessionId) => {
   // SECURITY: Require authentication
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
@@ -177,13 +178,13 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleAPIError(error, '[Encryption API] POST');
   }
-}
+});
 
 /**
  * PUT /api/encryption
  * Update encryption settings (e.g., mark recovery codes as used)
  */
-export async function PUT(request: Request) {
+export const PUT = withDebug(async (request, sessionId) => {
   // SECURITY: Require authentication
   const { supabase, user, error: authError } = await getAuthenticatedSupabaseClient(request);
 
@@ -244,7 +245,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     return handleAPIError(error, '[Encryption API] PUT');
   }
-}
+});
 
 /**
  * Helper: Log encryption event to audit table

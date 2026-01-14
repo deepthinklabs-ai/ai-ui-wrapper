@@ -28,6 +28,7 @@ import { createClient } from '@supabase/supabase-js';
 import { decryptSSMServerConfig } from '@/lib/ssmServerEncryption';
 import { pollSSMNode, toPollingConfig, processInParallel } from '@/lib/ssmPolling';
 import type { SSMServerConfig } from '@/lib/ssmServerConfig/types';
+import { withDebug } from '@/lib/debug';
 
 // ============================================================================
 // CONFIGURATION
@@ -101,7 +102,7 @@ function getSupabaseAdmin() {
 // MAIN HANDLER
 // ============================================================================
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export const GET = withDebug(async (request, sessionId): Promise<NextResponse> => {
   const startTime = Date.now();
 
   // -------------------------------------------------------------------------
@@ -170,7 +171,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     ...results,
     duration_ms: duration,
   });
-}
+});
 
 // ============================================================================
 // STEP 1: AUTHORIZATION

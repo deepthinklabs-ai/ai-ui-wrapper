@@ -32,6 +32,7 @@ import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/feature
 import { DEFAULT_AUTO_REPLY_CONFIG } from '@/app/canvas/features/ssm-agent/features/auto-reply/defaults';
 import { RULES_GENERATION_PROMPT } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+import { withDebug } from '@/lib/debug';
 
 // ============================================================================
 // SUPABASE CLIENT
@@ -70,7 +71,7 @@ function getSessionStore() {
 // HANDLER
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse<SSMFinalizeTrainingResponse>> {
+export const POST = withDebug(async (request, debugSessionId): Promise<NextResponse<SSMFinalizeTrainingResponse>> => {
   try {
     const body: SSMFinalizeTrainingRequest = await request.json();
     const { sessionId, nodeId, provider } = body;
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMFinali
       error: 'Failed to finalize training',
     }, { status: 500 });
   }
-}
+});
 
 // ============================================================================
 // AI GENERATION

@@ -21,6 +21,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { randomInt } from 'crypto';
 import { auditAuth, auditSecurity } from '@/lib/auditLog';
+import { withDebug } from '@/lib/debug';
 
 // Initialize Supabase admin client
 const supabaseAdmin = createClient(
@@ -36,7 +37,7 @@ function generateVerificationCode(): string {
   return randomInt(100000, 1000000).toString();
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   try {
     const body = await req.json();
     const { userId, email, purpose = 'login' } = body;
@@ -188,4 +189,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

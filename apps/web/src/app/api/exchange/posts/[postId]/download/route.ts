@@ -13,13 +13,14 @@ import { CHATBOT_FILE_EXTENSION } from '@/types/chatbotFile';
 import { CANVAS_FILE_EXTENSION } from '@/types/canvasFile';
 import { THREAD_FILE_EXTENSION } from '@/types/threadFile';
 import { BUNDLE_FILE_EXTENSION, BUNDLE_FILE_VERSION } from '@/app/exchange/types';
+import { withDebug } from '@/lib/debug';
 
 type RouteParams = { params: Promise<{ postId: string }> };
 
 /**
  * GET - Download files from a post
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withDebug(async (req, sessionId, { params }: RouteParams) => {
   try {
     const { postId } = await params;
     const { searchParams } = new URL(req.url);
@@ -173,4 +174,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

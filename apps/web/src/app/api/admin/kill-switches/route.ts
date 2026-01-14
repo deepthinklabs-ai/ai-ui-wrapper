@@ -17,6 +17,7 @@ import {
 } from "@/lib/killSwitches";
 import { notifyAllAdmins } from "@/lib/email";
 import { logAuditEvent } from "@/lib/auditLog";
+import { withDebug } from "@/lib/debug";
 
 const VALID_KILL_SWITCHES: KillSwitchKey[] = [
   "master_kill_switch",
@@ -38,7 +39,7 @@ const SWITCH_NAMES: Record<KillSwitchKey, string> = {
 /**
  * GET: Retrieve all kill switch states
  */
-export async function GET(req: NextRequest) {
+export const GET = withDebug(async (req, sessionId) => {
   const { result, errorResponse } = await requireAdmin(req);
   if (errorResponse) return errorResponse;
 
@@ -76,12 +77,12 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PATCH: Toggle a specific kill switch
  */
-export async function PATCH(req: NextRequest) {
+export const PATCH = withDebug(async (req, sessionId) => {
   const { result, errorResponse } = await requireAdmin(req);
   if (errorResponse) return errorResponse;
 
@@ -192,4 +193,4 @@ export async function PATCH(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -15,6 +15,7 @@ import type {
   TriggerWorkflowRequest,
   MasterTriggerOutput,
 } from '@/app/canvas/features/master-trigger/types';
+import { withDebug } from '@/lib/debug';
 import type {
   GenesisBotNodeConfig,
   SmartRouterNodeConfig,
@@ -270,15 +271,15 @@ async function callAgentAskAnswer(
 /**
  * GET handler for debugging - verifies the route is loading correctly
  */
-export async function GET() {
+export const GET = withDebug(async (request, sessionId) => {
   return NextResponse.json({
     status: 'ok',
     message: 'Workflow trigger route is loaded. Use POST to trigger workflows.',
     timestamp: new Date().toISOString(),
   });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   const startTime = Date.now();
   const executionId = crypto.randomUUID();
 
@@ -1093,4 +1094,4 @@ export async function POST(request: NextRequest) {
       error: error.message || 'Workflow execution failed',
     }, { status: 500 });
   }
-}
+});

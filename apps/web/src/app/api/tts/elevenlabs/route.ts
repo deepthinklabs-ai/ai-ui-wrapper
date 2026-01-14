@@ -5,12 +5,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withDebug } from '@/lib/debug';
 
 // SECURITY: Validate voiceId to prevent SSRF attacks
 // ElevenLabs voice IDs are alphanumeric strings (e.g., 'EXAVITQu4vr4xnSDxMaL')
 const VOICE_ID_PATTERN = /^[a-zA-Z0-9]{10,30}$/;
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   try {
     const body = await req.json();
     const { text, voiceId = 'EXAVITQu4vr4xnSDxMaL' } = body; // Default: Sarah voice
@@ -83,4 +84,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

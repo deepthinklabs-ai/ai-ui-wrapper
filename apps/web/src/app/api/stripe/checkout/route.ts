@@ -21,6 +21,7 @@ import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
 import { validateForFeature } from '@/lib/validateEnv';
 import { checkPaymentsEnabled } from '@/lib/killSwitches';
+import { withDebug } from '@/lib/debug';
 
 // SECURITY: Allowed origins for redirect URLs
 const ALLOWED_ORIGINS = [
@@ -48,7 +49,7 @@ const VERCEL_PREVIEW_PATTERN = getVercelPreviewPattern();
 // SECURITY: Maximum allowed trial days
 const MAX_TRIAL_DAYS = 14;
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   // Validate Stripe configuration
   const envCheck = validateForFeature('stripe');
   if (!envCheck.valid) {
@@ -249,4 +250,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

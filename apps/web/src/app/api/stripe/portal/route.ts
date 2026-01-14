@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { withDebug } from '@/lib/debug';
 
 // SECURITY: Allowed origins for redirect URLs
 const ALLOWED_ORIGINS = [
@@ -26,7 +27,7 @@ const ALLOWED_ORIGINS = [
   process.env.APP_URL,
 ].filter(Boolean) as string[];
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   try {
     // SECURITY: Require authentication
     const authResult = await getAuthenticatedUser(req);
@@ -102,4 +103,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

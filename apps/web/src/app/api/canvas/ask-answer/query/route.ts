@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withDebug } from '@/lib/debug';
 import type { GenesisBotNodeConfig } from '@/app/canvas/types';
 import {
   getEnabledGmailTools,
@@ -75,7 +76,7 @@ interface QueryRequestBody {
   uploadedAttachments?: UploadedAttachment[]; // Files uploaded by user in dashboard
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   const startTime = Date.now();
 
   try {
@@ -722,4 +723,4 @@ CRITICAL: When sending emails (gmail_send) or creating drafts (gmail_draft) and 
       { status: 500 }
     );
   }
-}
+});

@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { getProviderKey } from '@/lib/secretManager/getKey';
 import type { ChatbotFileProvider } from '@/types/chatbotFile';
+import { withDebug } from '@/lib/debug';
 
 type RouteParams = { params: Promise<{ sessionId: string }> };
 
@@ -39,7 +40,7 @@ interface SandboxMessage {
 /**
  * POST - Send a message in sandbox session
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withDebug(async (req, sessionId, { params }: RouteParams) => {
   let userApiKey: string | null = null;
 
   try {
@@ -296,7 +297,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * Call OpenAI API

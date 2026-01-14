@@ -11,15 +11,16 @@
  * - Deletes key from Secret Manager
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
 import { strictRatelimitAsync, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { deleteUserKey, deleteAllUserKeys, type BYOKProvider } from '@/lib/secretManager';
 import { auditApiKey, auditSecurity, logAuditEvent } from '@/lib/auditLog';
+import { withDebug } from '@/lib/debug';
 
 const VALID_PROVIDERS: BYOKProvider[] = ['openai', 'claude', 'grok', 'gemini'];
 
-export async function DELETE(request: Request) {
+export const DELETE = withDebug(async (request, sessionId) => {
   try {
     // 1. Authenticate user
     const { user, error: authError } = await getAuthenticatedUser(request);
@@ -105,4 +106,4 @@ export async function DELETE(request: Request) {
       { status: 500 }
     );
   }
-}
+});

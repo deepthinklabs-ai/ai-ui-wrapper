@@ -31,6 +31,7 @@ import {
 import { getProviderKey } from '@/lib/secretManager/getKey';
 import { getAuthenticatedUserOrService } from '@/lib/serverAuth';
 import { checkAIEnabled } from '@/lib/killSwitches';
+import { withDebug } from '@/lib/debug';
 
 // Map our internal model names to Gemini API model names
 // Using stable model names (not experimental -exp versions)
@@ -42,7 +43,7 @@ const GEMINI_MODEL_MAP: Record<string, string> = {
   'gemini-1.5-flash': 'gemini-1.5-flash',
 };
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   // Declare outside try so it can be cleared in catch/finally
   let userApiKey: string | null = null;
 
@@ -281,4 +282,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

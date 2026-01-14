@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { WebClient } from '@slack/web-api';
 import { getSlackBotToken } from '@/lib/slackTokenStorage';
 import type { SlackPermissions } from '@/app/canvas/features/slack-oauth/types';
+import { withDebug } from '@/lib/debug';
 
 interface ExecuteRequestBody {
   toolName: string;
@@ -17,7 +18,7 @@ interface ExecuteRequestBody {
   permissions: SlackPermissions;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   try {
     const body: ExecuteRequestBody = await request.json();
     const { toolName, params, userId, nodeId, permissions } = body;
@@ -244,4 +245,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

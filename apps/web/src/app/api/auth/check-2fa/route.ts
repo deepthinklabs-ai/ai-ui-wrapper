@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { withDebug } from '@/lib/debug';
 
 // Initialize Supabase admin client
 const supabaseAdmin = createClient(
@@ -23,7 +24,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   try {
     const body = await req.json();
     const { email } = body;
@@ -102,4 +103,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

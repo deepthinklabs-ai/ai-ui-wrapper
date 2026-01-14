@@ -6,8 +6,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { withDebug } from '@/lib/debug';
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   try {
     const body = await req.json();
     const { post_id } = body;
@@ -133,4 +134,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

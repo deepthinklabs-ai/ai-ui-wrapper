@@ -6,8 +6,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { withDebug } from '@/lib/debug';
 
-export async function GET(req: NextRequest) {
+export const GET = withDebug(async (req, sessionId) => {
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');
@@ -49,4 +50,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

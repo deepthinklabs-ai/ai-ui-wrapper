@@ -12,11 +12,12 @@ import {
   isPaymentsEnabled,
   isAIEnabled,
 } from '@/lib/killSwitches';
+import { withDebug } from '@/lib/debug';
 
 // Force dynamic rendering - don't pre-render during build
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export const GET = withDebug(async (request, sessionId) => {
   try {
     // Fetch all relevant statuses in parallel
     const [signups, oauth, payments, ai] = await Promise.all([
@@ -42,4 +43,4 @@ export async function GET() {
       ai_enabled: true,
     });
   }
-}
+});

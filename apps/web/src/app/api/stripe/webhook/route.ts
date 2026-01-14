@@ -23,8 +23,9 @@ import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
 import { mapStripeStatusToTier } from '@/lib/config/tiers';
 import Stripe from 'stripe';
 import { auditPayment } from '@/lib/auditLog';
+import { withDebug } from '@/lib/debug';
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   const body = await req.text();
   const signature = req.headers.get('stripe-signature');
 
@@ -315,4 +316,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

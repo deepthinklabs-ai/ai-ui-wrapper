@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDocsClient, getDriveClient } from '@/lib/googleClients';
 import type { DocsPermissions } from '@/app/canvas/features/docs-oauth/types';
 import { extractPlainText, getDocumentEndIndex } from '@/app/canvas/features/docs-oauth/lib/utils';
+import { withDebug } from '@/lib/debug';
 
 interface ExecuteRequestBody {
   toolName: string;
@@ -17,7 +18,7 @@ interface ExecuteRequestBody {
   permissions: DocsPermissions;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   try {
     const body: ExecuteRequestBody = await request.json();
     const { toolName, params, userId, nodeId, permissions } = body;
@@ -240,4 +241,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

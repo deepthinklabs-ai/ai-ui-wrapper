@@ -23,6 +23,7 @@ import { encryptSSMServerConfig } from '@/lib/ssmServerEncryption';
 import type { SSMServerConfig, SSMPollingSettings } from '@/lib/ssmServerConfig/types';
 import type { SSMRulesConfig, SSMResponseTemplate, SSMSheetsActionConfig } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
+import { withDebug } from '@/lib/debug';
 
 // ============================================================================
 // TYPES
@@ -71,7 +72,7 @@ function getSupabaseAdmin() {
 // HANDLER
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse<SyncServerConfigResponse>> {
+export const POST = withDebug(async (request, sessionId): Promise<NextResponse<SyncServerConfigResponse>> => {
   const startTime = Date.now();
 
   try {
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SyncServe
       error: 'Failed to sync server config',
     }, { status: 500 });
   }
-}
+});
 
 /**
  * DELETE /api/canvas/ssm/server-config
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SyncServe
  * Disables background polling and clears server config.
  * Called when user disables monitoring or deletes SSM node.
  */
-export async function DELETE(request: NextRequest): Promise<NextResponse<SyncServerConfigResponse>> {
+export const DELETE = withDebug(async (request, sessionId): Promise<NextResponse<SyncServerConfigResponse>> => {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
@@ -299,4 +300,4 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<SyncSer
       error: 'Failed to clear server config',
     }, { status: 500 });
   }
-}
+});

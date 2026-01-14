@@ -22,6 +22,7 @@ import type {
 } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+import { withDebug } from '@/lib/debug';
 
 // ============================================================================
 // SUPABASE CLIENT
@@ -122,7 +123,7 @@ USER'S MONITORING DESCRIPTION:
 // HANDLER
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse<SSMGenerateRulesResponse>> {
+export const POST = withDebug(async (request, sessionId): Promise<NextResponse<SSMGenerateRulesResponse>> => {
   try {
     const body: SSMGenerateRulesRequest = await request.json();
     const { description, provider, userId, examples } = body;
@@ -220,7 +221,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMGenera
       error: 'Failed to generate rules',
     }, { status: 500 });
   }
-}
+});
 
 // ============================================================================
 // AI PROVIDER FUNCTIONS

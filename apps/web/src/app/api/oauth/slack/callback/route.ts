@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { storeSlackTokens, type SlackOAuthResponse } from '@/lib/slackTokenStorage';
+import { withDebug } from '@/lib/debug';
 
 // Server-side Supabase client
 const supabase = createClient(
@@ -30,7 +31,7 @@ const SLACK_CLIENT_SECRET = process.env.SLACK_CLIENT_SECRET!;
 // Helper to get app URL (prefer server-side APP_URL to avoid Next.js auto-override)
 const getAppUrl = () => process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
 
-export async function GET(request: NextRequest) {
+export const GET = withDebug(async (request, sessionId) => {
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
@@ -128,4 +129,4 @@ export async function GET(request: NextRequest) {
       )}&provider=slack`
     );
   }
-}
+});
