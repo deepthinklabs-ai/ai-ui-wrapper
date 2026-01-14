@@ -4,7 +4,7 @@
  * Types used across all polling modules.
  */
 
-import type { SSMEvent, SSMAlert, SSMRulesConfig, SSMResponseTemplate } from '@/app/canvas/types/ssm';
+import type { SSMEvent, SSMAlert, SSMRulesConfig, SSMResponseTemplate, SSMSheetsActionConfig } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 import type { SSMServerConfig, SSMPollingSettings } from '@/lib/ssmServerConfig/types';
 
@@ -64,6 +64,20 @@ export interface AutoReplyResult {
 }
 
 /**
+ * Result of sheets logging operation
+ */
+export interface SheetsLogResult {
+  /** Whether logging was successful */
+  success: boolean;
+  /** Spreadsheet ID used */
+  spreadsheetId?: string;
+  /** Number of rows logged */
+  rows_logged: number;
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
  * Full result of a poll operation
  */
 export interface PollResult {
@@ -77,6 +91,8 @@ export interface PollResult {
   alerts_generated: number;
   /** Number of auto-replies sent */
   auto_replies_sent: number;
+  /** Number of rows logged to sheets */
+  sheets_rows_logged: number;
   /** Generated alerts */
   alerts: SSMAlert[];
   /** Execution duration in ms */
@@ -101,6 +117,8 @@ export interface PollingConfig {
   response_templates: SSMResponseTemplate[];
   /** Auto-reply configuration */
   auto_reply?: SSMAutoReplyConfig;
+  /** Sheets logging action configuration */
+  sheets_action?: SSMSheetsActionConfig;
   /** Polling settings */
   polling_settings: SSMPollingSettings;
   /** User ID */
@@ -137,6 +155,7 @@ export function toPollingConfig(serverConfig: SSMServerConfig): PollingConfig {
     rules: serverConfig.rules,
     response_templates: serverConfig.response_templates,
     auto_reply: serverConfig.auto_reply,
+    sheets_action: serverConfig.sheets_action,
     polling_settings: serverConfig.polling_settings,
     user_id: serverConfig.user_id,
     node_id: serverConfig.node_id,

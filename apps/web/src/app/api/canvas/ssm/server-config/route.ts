@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { encryptSSMServerConfig } from '@/lib/ssmServerEncryption';
 import type { SSMServerConfig, SSMPollingSettings } from '@/lib/ssmServerConfig/types';
-import type { SSMRulesConfig, SSMResponseTemplate } from '@/app/canvas/types/ssm';
+import type { SSMRulesConfig, SSMResponseTemplate, SSMSheetsActionConfig } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 
 // ============================================================================
@@ -41,6 +41,8 @@ interface SyncServerConfigRequest {
   response_templates: SSMResponseTemplate[];
   /** Auto-reply configuration (optional) */
   auto_reply?: SSMAutoReplyConfig;
+  /** Sheets logging action configuration (optional) */
+  sheets_action?: SSMSheetsActionConfig;
   /** Polling settings */
   polling_settings: Partial<SSMPollingSettings>;
   /** Enable background polling */
@@ -81,6 +83,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SyncServe
       rules,
       response_templates,
       auto_reply,
+      sheets_action,
       polling_settings,
       enable_background_polling,
     } = body;
@@ -161,6 +164,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SyncServe
       rules,
       response_templates: response_templates || [],
       auto_reply,
+      sheets_action,
       polling_settings: fullPollingSettings,
       version: newVersion,
       user_id: userId,

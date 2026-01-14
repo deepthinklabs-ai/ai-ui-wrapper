@@ -12,6 +12,7 @@
 import type {
   SSMRulesConfig,
   SSMResponseTemplate,
+  SSMSheetsActionConfig,
 } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 
@@ -50,6 +51,9 @@ export interface SSMServerConfig {
   /** Auto-reply configuration (optional) */
   auto_reply?: SSMAutoReplyConfig;
 
+  /** Sheets logging action configuration (optional) */
+  sheets_action?: SSMSheetsActionConfig;
+
   /** Polling settings for background execution */
   polling_settings: SSMPollingSettings;
 
@@ -87,6 +91,9 @@ export interface SSMPollResult {
 
   /** Number of auto-replies sent */
   auto_replies_sent: number;
+
+  /** Number of rows logged to sheets */
+  sheets_rows_logged: number;
 
   /** Execution duration in ms */
   duration_ms: number;

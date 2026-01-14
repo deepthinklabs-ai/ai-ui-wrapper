@@ -69,6 +69,7 @@ interface NodeProcessResult {
   events: number;
   alerts: number;
   replies: number;
+  sheets_rows: number;
   error?: string;
 }
 
@@ -81,6 +82,7 @@ interface CronResults {
   total_events: number;
   total_alerts: number;
   total_replies: number;
+  total_sheets_rows: number;
   errors: string[];
 }
 
@@ -160,7 +162,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     `[SSM Cron] Complete: ${results.nodes_processed} processed, ` +
     `${results.nodes_skipped} skipped, ${results.nodes_failed} failed, ` +
     `${results.total_events} events, ${results.total_alerts} alerts, ` +
-    `${results.total_replies} replies, ${duration}ms`
+    `${results.total_replies} replies, ${results.total_sheets_rows} rows logged, ${duration}ms`
   );
 
   return NextResponse.json({
@@ -252,6 +254,7 @@ async function processNodesInParallel(nodes: NodeRow[]): Promise<CronResults> {
     total_events: 0,
     total_alerts: 0,
     total_replies: 0,
+    total_sheets_rows: 0,
     errors: [],
   };
 
@@ -275,6 +278,7 @@ async function processNodesInParallel(nodes: NodeRow[]): Promise<CronResults> {
       results.total_events += nodeResult.events;
       results.total_alerts += nodeResult.alerts;
       results.total_replies += nodeResult.replies;
+      results.total_sheets_rows += nodeResult.sheets_rows;
     } else {
       results.nodes_failed++;
       if (nodeResult.error) {
@@ -312,6 +316,7 @@ async function processSingleNode(node: NodeRow): Promise<NodeProcessResult> {
       events: 0,
       alerts: 0,
       replies: 0,
+      sheets_rows: 0,
     };
   }
 
@@ -328,6 +333,7 @@ async function processSingleNode(node: NodeRow): Promise<NodeProcessResult> {
       events: 0,
       alerts: 0,
       replies: 0,
+      sheets_rows: 0,
     };
   }
 
@@ -351,6 +357,7 @@ async function processSingleNode(node: NodeRow): Promise<NodeProcessResult> {
       events: 0,
       alerts: 0,
       replies: 0,
+      sheets_rows: 0,
       error: 'Decrypt failed',
     };
   }
@@ -370,6 +377,7 @@ async function processSingleNode(node: NodeRow): Promise<NodeProcessResult> {
         events: pollResult.events_fetched,
         alerts: pollResult.alerts_generated,
         replies: pollResult.auto_replies_sent,
+        sheets_rows: pollResult.sheets_rows_logged,
       };
     } else {
       return {
@@ -379,6 +387,7 @@ async function processSingleNode(node: NodeRow): Promise<NodeProcessResult> {
         events: pollResult.events_fetched,
         alerts: pollResult.alerts_generated,
         replies: pollResult.auto_replies_sent,
+        sheets_rows: pollResult.sheets_rows_logged,
         error: pollResult.error,
       };
     }
@@ -396,6 +405,7 @@ async function processSingleNode(node: NodeRow): Promise<NodeProcessResult> {
       events: 0,
       alerts: 0,
       replies: 0,
+      sheets_rows: 0,
       error: errorMsg,
     };
   }
