@@ -71,6 +71,10 @@ export default function SplitChatView({
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Independent model state for each panel
+  const [leftModel, setLeftModel] = useState<AIModel>(selectedModel);
+  const [rightModel, setRightModel] = useState<AIModel>(selectedModel);
+
   const leftThread = threads.find((t) => t.id === leftThreadId) || null;
   const rightThread = threads.find((t) => t.id === rightThreadId) || null;
 
@@ -362,8 +366,8 @@ export default function SplitChatView({
               thread={leftThread}
               userId={userId}
               userTier={userTier}
-              selectedModel={selectedModel}
-              onModelChange={onModelChange}
+              selectedModel={leftModel}
+              onModelChange={setLeftModel}
               onThreadTitleUpdated={onThreadTitleUpdated}
               onCreateThread={handleCreateLeftThread}
               onForkThread={onForkThread}
@@ -436,8 +440,8 @@ export default function SplitChatView({
               thread={rightThread}
               userId={userId}
               userTier={userTier}
-              selectedModel={selectedModel}
-              onModelChange={onModelChange}
+              selectedModel={rightModel}
+              onModelChange={setRightModel}
               onThreadTitleUpdated={onThreadTitleUpdated}
               onCreateThread={handleCreateRightThread}
               onForkThread={onForkThread}
