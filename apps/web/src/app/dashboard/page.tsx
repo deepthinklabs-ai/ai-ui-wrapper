@@ -347,6 +347,12 @@ export default function DashboardPage() {
     }
   }, [activeChatbot]);
 
+  // Handle opening settings for the default chatbot (no chatbot assigned)
+  const handleEditDefaultChatbot = useCallback(() => {
+    console.log('[Dashboard] Opening settings for default chatbot');
+    setEditingChatbotId('__default__');
+  }, []);
+
 
   // Handle chatbot selection for thread (from MessageComposer)
   const handleChatbotChange = useCallback(async (chatbot: { id: string } | null) => {
@@ -868,6 +874,7 @@ export default function DashboardPage() {
                       onShowInfo={() => selectedThreadId && setThreadInfoId(selectedThreadId)}
                       activeChatbot={previewChatbot}
                       onEditChatbot={handleEditActiveChatbot}
+                      onEditDefaultChatbot={handleEditDefaultChatbot}
                       isEditingChatbot={isEditingChatbot}
                     />
                   </div>

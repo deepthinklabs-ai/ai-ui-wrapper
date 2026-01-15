@@ -7,12 +7,20 @@
  * Slides in from the right side without blocking the main UI.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import type { Chatbot } from "@/types/chatbot";
 import type { ChatbotFileConfig, ChatbotFileProvider } from "@/types/chatbotFile";
 import type { FeatureId, FeatureCategory } from "@/types/features";
 import { FEATURE_DEFINITIONS, FEATURE_CATEGORIES } from "@/types/features";
 import type { AIModel } from "@/lib/apiKeyStorage";
+import {
+  isPushToTalkEnabled,
+  setPushToTalkEnabled,
+  getPushToTalkKeybind,
+  setPushToTalkKeybind,
+  formatKeybind,
+  type KeyBinding,
+} from "@/lib/pushToTalkStorage";
 
 type ChatbotSettingsPanelProps = {
   /** The chatbot being edited */
@@ -111,12 +119,21 @@ export function ChatbotSettingsPanel({
   const [draftConfig, setDraftConfig] = useState<ChatbotFileConfig>(chatbot.config);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Push-to-Talk settings (stored in localStorage, global across chatbots)
+  const [pttEnabled, setPttEnabled] = useState(false);
+  const [pttKeybind, setPttKeybind] = useState<KeyBinding>({ key: " " });
+  const [isRecordingKey, setIsRecordingKey] = useState(false);
+  const [recordedKey, setRecordedKey] = useState<KeyBinding | null>(null);
+
   // Reset draft when chatbot changes or panel opens
   useEffect(() => {
     if (isOpen) {
       console.log('[ChatbotSettingsPanel] Opening panel for chatbot:', chatbot.name, chatbot.id);
       console.log('[ChatbotSettingsPanel] Current config:', chatbot.config);
       setDraftConfig(chatbot.config);
+      // Load PTT settings from localStorage
+      setPttEnabled(isPushToTalkEnabled());
+      setPttKeybind(getPushToTalkKeybind());
     }
   }, [isOpen, chatbot.config, chatbot.name, chatbot.id]);
 
@@ -201,6 +218,74 @@ export function ChatbotSettingsPanel({
     }));
   };
 
+  // PTT toggle handler - also toggles the push_to_talk feature flag
+  const handlePttToggle = useCallback(() => {
+    const newEnabled = !pttEnabled;
+    setPttEnabled(newEnabled);
+    setPushToTalkEnabled(newEnabled);
+    // Also update the feature flag in the draft config
+    setDraftConfig((prev) => ({
+      ...prev,
+      features: {
+        ...prev.features,
+        push_to_talk: newEnabled,
+      },
+    }));
+  }, [pttEnabled]);
+
+  // PTT keybind recording
+  const startRecordingKey = useCallback(() => {
+    setIsRecordingKey(true);
+    setRecordedKey(null);
+  }, []);
+
+  const cancelRecordingKey = useCallback(() => {
+    setIsRecordingKey(false);
+    setRecordedKey(null);
+  }, []);
+
+  const saveNewKeybind = useCallback(() => {
+    if (recordedKey) {
+      setPttKeybind(recordedKey);
+      setPushToTalkKeybind(recordedKey);
+      setIsRecordingKey(false);
+      setRecordedKey(null);
+    }
+  }, [recordedKey]);
+
+  // Listen for key press when recording
+  useEffect(() => {
+    if (!isRecordingKey) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      event.preventDefault();
+
+      // Ignore modifier-only keys
+      if (
+        event.key === "Control" ||
+        event.key === "Alt" ||
+        event.key === "Shift" ||
+        event.key === "Meta"
+      ) {
+        return;
+      }
+
+      // Record the key combination
+      const newKeybind: KeyBinding = {
+        key: event.key,
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
+      };
+
+      setRecordedKey(newKeybind);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isRecordingKey]);
+
   // Handle step-by-step option change (radio behavior - only one can be selected)
   const handleStepByStepOptionChange = (option: "with_explanation" | "no_explanation") => {
     setDraftConfig((prev) => ({
@@ -236,15 +321,16 @@ export function ChatbotSettingsPanel({
   const featuresByCategory = getFeaturesByCategory();
   const currentProvider = draftConfig.model?.provider || "openai";
   const currentModel = draftConfig.model?.model_name || "gpt-4o";
+  const isDefaultChatbot = chatbot.id === '__default__';
 
   return (
     <div className="fixed right-0 top-0 h-screen w-96 bg-slate-900 border-l border-slate-700 shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-300">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3 bg-slate-900 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-cyan-500" />
+          <div className={`h-2 w-2 rounded-full ${isDefaultChatbot ? 'bg-slate-500' : 'bg-cyan-500'}`} />
           <h2 className="text-sm font-semibold text-slate-100 truncate">
-            Edit {chatbot.name}.chatbot
+            {isDefaultChatbot ? 'Customize default.chatbot' : `Edit ${chatbot.name}.chatbot`}
           </h2>
         </div>
         <button
@@ -458,6 +544,87 @@ export function ChatbotSettingsPanel({
           </div>
         </div>
 
+        {/* Push-to-Talk Section */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Push-to-Talk</h3>
+          <p className="text-xs text-slate-500">
+            Hold a key to activate voice input. Release to stop recording.
+          </p>
+          <div className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-2">
+            <p className="text-xs text-cyan-400">
+              <strong>💡 Tip:</strong> Use a non-alphanumeric key (Space, Tab, CapsLock) to avoid conflicts when typing.
+            </p>
+          </div>
+
+          {/* Enable Toggle */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm text-slate-200">Enable Push-to-Talk</span>
+            <button
+              onClick={handlePttToggle}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                pttEnabled ? "bg-cyan-500" : "bg-slate-600"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  pttEnabled ? "translate-x-5" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Key Binding */}
+          {pttEnabled && (
+            <div className="space-y-2 pt-1">
+              <label className="text-xs text-slate-500">Key Binding</label>
+
+              {!isRecordingKey ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2">
+                    <span className="font-mono text-sm text-slate-200">{formatKeybind(pttKeybind)}</span>
+                  </div>
+                  <button
+                    onClick={startRecordingKey}
+                    className="rounded-md bg-cyan-600 px-3 py-2 text-xs font-medium text-white hover:bg-cyan-500 transition-colors"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="rounded-md border border-cyan-500/50 bg-cyan-500/10 px-3 py-2">
+                    <p className="text-xs text-cyan-400 mb-1">Press any key combination...</p>
+                    {recordedKey ? (
+                      <span className="font-mono text-sm text-slate-200">{formatKeybind(recordedKey)}</span>
+                    ) : (
+                      <span className="text-xs text-slate-500">Waiting for input...</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveNewKeybind}
+                      disabled={!recordedKey}
+                      className="flex-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={cancelRecordingKey}
+                      className="flex-1 rounded-md border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-amber-400">
+                ⚠️ Avoid letters and numbers - they may interfere when typing messages.
+              </p>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Footer */}
@@ -474,7 +641,7 @@ export function ChatbotSettingsPanel({
           disabled={isSaving}
           className="flex-1 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isSaving ? "Saving..." : "Save"}
+          {isSaving ? "Saving..." : isDefaultChatbot ? "Save as New Chatbot" : "Save"}
         </button>
       </div>
     </div>
