@@ -28,6 +28,12 @@ export function useSpeechRecognition({
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef(false); // Track listening state for event handlers
 
+  // Store onTranscript in a ref to avoid effect re-runs when callback changes
+  const onTranscriptRef = useRef(onTranscript);
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  }, [onTranscript]);
+
   // Check browser support
   useEffect(() => {
     const SpeechRecognition =
@@ -48,9 +54,9 @@ export function useSpeechRecognition({
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
             const transcriptText = event.results[i][0].transcript.trim();
-            if (transcriptText && onTranscript) {
+            if (transcriptText && onTranscriptRef.current) {
               setTranscript(transcriptText);
-              onTranscript(transcriptText);
+              onTranscriptRef.current(transcriptText);
             }
           }
         }
@@ -121,7 +127,7 @@ export function useSpeechRecognition({
         recognitionRef.current.abort();
       }
     };
-  }, [continuous, interimResults, language, onTranscript]);
+  }, [continuous, interimResults, language]); // onTranscript is stored in a ref to prevent re-runs
 
   const startListening = useCallback(() => {
     if (!isSupported) {
