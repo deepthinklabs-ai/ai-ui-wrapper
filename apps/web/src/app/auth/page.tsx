@@ -295,7 +295,7 @@ function AuthPageContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-black bg-white/80 px-3 py-2 text-black placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
+                className="mt-1 block w-full rounded-md border border-black bg-white/80 px-3 py-2 text-black placeholder-foreground/60 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                 placeholder={emailPlaceholder}
               />
             </div>
@@ -314,7 +314,7 @@ function AuthPageContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-md border border-black bg-white/80 px-3 py-2 pr-10 text-black placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
+                  className="block w-full rounded-md border border-black bg-white/80 px-3 py-2 pr-10 text-black placeholder-foreground/60 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                   placeholder="••••••••"
                   minLength={8}
                 />
