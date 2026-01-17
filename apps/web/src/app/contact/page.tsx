@@ -43,10 +43,10 @@ export default function ContactPage() {
                   For general inquiries and support:
                 </p>
                 <a
-                  href="mailto:support@aiuiw.com"
-                  className="text-sky hover:text-sky/80 transition-colors"
+                  href="mailto:dave@deepthinklabs.ai"
+                  className="text-blue-600 hover:text-blue-800 underline transition-colors"
                 >
-                  support@aiuiw.com
+                  dave@deepthinklabs.ai
                 </a>
               </div>
 
@@ -65,29 +65,40 @@ export default function ContactPage() {
               <li>
                 <Link
                   href={ROUTES.DOCS}
-                  className="text-sky hover:text-sky/80 transition-colors"
+                  className="text-blue-600 hover:text-blue-800 underline transition-colors"
                 >
                   Documentation
                 </Link>
-                <span className="text-foreground/60"> - Learn how to use the platform</span>
+                <span className="text-foreground/80"> - Learn how to use the platform</span>
               </li>
               <li>
                 <Link
                   href={ROUTES.PRIVACY_POLICY}
-                  className="text-sky hover:text-sky/80 transition-colors"
+                  className="text-blue-600 hover:text-blue-800 underline transition-colors"
                 >
                   Privacy Policy
                 </Link>
-                <span className="text-foreground/60"> - How we handle your data</span>
+                <span className="text-foreground/80"> - How we handle your data</span>
               </li>
               <li>
                 <Link
                   href={ROUTES.TERMS}
-                  className="text-sky hover:text-sky/80 transition-colors"
+                  className="text-blue-600 hover:text-blue-800 underline transition-colors"
                 >
                   Terms of Service
                 </Link>
-                <span className="text-foreground/60"> - Our service agreement</span>
+                <span className="text-foreground/80"> - Our service agreement</span>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/deepthinklabs-ai/ai-ui-wrapper"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline transition-colors"
+                >
+                  GitHub
+                </a>
+                <span className="text-foreground/80"> - View source code and contribute</span>
               </li>
             </ul>
           </section>
