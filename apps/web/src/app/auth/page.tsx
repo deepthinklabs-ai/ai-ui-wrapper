@@ -40,6 +40,13 @@ const EMAIL_PLACEHOLDERS = [
   "email@one.more.step",
 ];
 
+// Secure random selection helper (satisfies code scanning)
+function getSecureRandomIndex(length: number): number {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return array[0] % length;
+}
+
 // Humorous forgot password phrases
 const FORGOT_PASSWORD_PHRASES = [
   "Shall I retrieve the key, Your Grace?",
@@ -109,12 +116,12 @@ function AuthPageContent() {
 
   // Random email placeholder (stable per mount)
   const emailPlaceholder = useMemo(() => {
-    return EMAIL_PLACEHOLDERS[Math.floor(Math.random() * EMAIL_PLACEHOLDERS.length)];
+    return EMAIL_PLACEHOLDERS[getSecureRandomIndex(EMAIL_PLACEHOLDERS.length)];
   }, []);
 
   // Random forgot password phrase (stable per mount)
   const forgotPasswordPhrase = useMemo(() => {
-    return FORGOT_PASSWORD_PHRASES[Math.floor(Math.random() * FORGOT_PASSWORD_PHRASES.length)];
+    return FORGOT_PASSWORD_PHRASES[getSecureRandomIndex(FORGOT_PASSWORD_PHRASES.length)];
   }, []);
 
   // Check for session timeout reason in URL
