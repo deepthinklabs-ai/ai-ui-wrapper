@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useEffect, Suspense } from "react";
+import { useState, FormEvent, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { usePasswordStrength } from "@/hooks/usePasswordStrength";
@@ -15,6 +15,30 @@ const SESSION_TIMEOUT_MESSAGES: Record<string, string> = {
   absolute_timeout: "Your session has expired. Please sign in again.",
   manual_logout: "You have been signed out successfully.",
 };
+
+// Humorous email placeholders
+const EMAIL_PLACEHOLDERS = [
+  "type@your.email",
+  "email@goes.here",
+  "you@typehere.com",
+  "your@email.here",
+  "insert@email.now",
+  "hello@itsme.com",
+  "definitely@real.email",
+  "not@aspam.bot",
+  "human@verified.yes",
+  "cool@person.vibes",
+  "awesome@human.here",
+  "email@required.pls",
+  "type@something.fun",
+  "yes@thisis.email",
+  "real@human.promise",
+  "totally@legit.email",
+  "your@inbox.awaits",
+  "mail@me.maybe",
+  "ping@my.inbox",
+  "drop@aline.here",
+];
 
 // Loading fallback for Suspense
 function AuthPageLoading() {
@@ -58,6 +82,11 @@ function AuthPageContent() {
 
   // Session timeout message
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
+
+  // Random email placeholder (stable per mount)
+  const emailPlaceholder = useMemo(() => {
+    return EMAIL_PLACEHOLDERS[Math.floor(Math.random() * EMAIL_PLACEHOLDERS.length)];
+  }, []);
 
   // Check for session timeout reason in URL
   useEffect(() => {
@@ -267,7 +296,7 @@ function AuthPageContent() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 block w-full rounded-md border border-black bg-white/80 px-3 py-2 text-black placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
-                placeholder="you@example.com"
+                placeholder={emailPlaceholder}
               />
             </div>
 
