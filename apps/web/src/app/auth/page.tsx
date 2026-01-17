@@ -40,6 +40,30 @@ const EMAIL_PLACEHOLDERS = [
   "email@one.more.step",
 ];
 
+// Humorous forgot password phrases
+const FORGOT_PASSWORD_PHRASES = [
+  "Shall I retrieve the key, Your Grace?",
+  "Your secret shall be restored.",
+  "Allow me to recover it for you.",
+  "The records will be consulted at once.",
+  "Fear not — I'll fetch it immediately.",
+  "Your access will be returned, my liege.",
+  "I will see this corrected promptly.",
+  "The vault may be reopened.",
+  "Your credentials await recovery.",
+  "All is not lost, Your Majesty.",
+  "I shall return what was misplaced.",
+  "Your passage may be restored.",
+  "The seal can be reforged.",
+  "Permit me to recover the key.",
+  "Your authority remains intact.",
+  "The door can be opened once more.",
+  "I will ensure your return.",
+  "The matter will be discreetly handled.",
+  "Your access shall be renewed.",
+  "Let me attend to this at once.",
+];
+
 // Loading fallback for Suspense
 function AuthPageLoading() {
   return (
@@ -86,6 +110,11 @@ function AuthPageContent() {
   // Random email placeholder (stable per mount)
   const emailPlaceholder = useMemo(() => {
     return EMAIL_PLACEHOLDERS[Math.floor(Math.random() * EMAIL_PLACEHOLDERS.length)];
+  }, []);
+
+  // Random forgot password phrase (stable per mount)
+  const forgotPasswordPhrase = useMemo(() => {
+    return FORGOT_PASSWORD_PHRASES[Math.floor(Math.random() * FORGOT_PASSWORD_PHRASES.length)];
   }, []);
 
   // Check for session timeout reason in URL
@@ -360,7 +389,7 @@ function AuthPageContent() {
                     onClick={() => setShowForgotPassword(true)}
                     className="text-sm text-black hover:text-black/80"
                   >
-                    Forgot password?
+                    {forgotPasswordPhrase}
                   </button>
                 </div>
               )}
