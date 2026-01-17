@@ -7,19 +7,23 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { withDebug } from '@/lib/debug';
 
 interface ImportRequest {
   /** Optional folder ID to place the imported thread */
   folder_id?: string | null;
 }
 
+type RouteParams = { params: Promise<{ postId: string }> };
+
 /**
  * POST - Import thread from Exchange post into user's account
  */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ postId: string }> }
-) {
+export const POST = withDebug(async (
+  req,
+  sessionId,
+  { params }: RouteParams
+) => {
   const { postId } = await params;
 
   console.log('[ImportThread] Starting import for post:', postId);
@@ -212,4 +216,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

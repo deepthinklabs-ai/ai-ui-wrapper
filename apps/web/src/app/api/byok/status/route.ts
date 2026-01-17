@@ -12,13 +12,14 @@
  * - Only returns boolean values and timestamps, never keys
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
 import { lenientRatelimitAsync, rateLimitErrorResponse } from '@/lib/ratelimit';
 import { getUserKeyStatus, hasAnyKey, getKeyRotationStatus, getProvidersNeedingRotation } from '@/lib/secretManager';
 import { auditApiKey } from '@/lib/auditLog';
+import { withDebug } from '@/lib/debug';
 
-export async function GET(request: Request) {
+export const GET = withDebug(async (request, sessionId) => {
   try {
     // 1. Authenticate user
     const { user, error: authError } = await getAuthenticatedUser(request);
@@ -101,4 +102,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+});

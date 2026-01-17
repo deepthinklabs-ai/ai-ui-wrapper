@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
+import DebugPanelWrapper from '@/components/DebugPanelWrapper';
+import Footer from '@/components/Footer';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,11 +32,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          {/* App-wide wrapper so pages can control their own flex layout */}
-          <div id="app-root" className="h-screen w-screen overflow-hidden">
-            {children}
+          {/* App-wide wrapper with flex column for footer */}
+          <div id="app-root" className="flex flex-col h-screen w-screen overflow-hidden">
+            <div className="flex-1 overflow-hidden">
+              {children}
+            </div>
+            <Footer />
           </div>
         </Providers>
+        <DebugPanelWrapper />
       </body>
     </html>
   );

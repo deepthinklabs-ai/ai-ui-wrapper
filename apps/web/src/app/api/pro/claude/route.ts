@@ -30,6 +30,7 @@ import {
 import { getProviderKey } from '@/lib/secretManager/getKey';
 import { getAuthenticatedUserOrService } from '@/lib/serverAuth';
 import { checkAIEnabled } from '@/lib/killSwitches';
+import { withDebug } from '@/lib/debug';
 
 // Map our internal model names to Claude API model names
 const CLAUDE_API_MODEL_MAP: Record<string, string> = {
@@ -40,7 +41,7 @@ const CLAUDE_API_MODEL_MAP: Record<string, string> = {
   'claude-haiku-3-5': 'claude-3-5-haiku-20241022',
 };
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   // Declare outside try so it can be cleared in catch/finally
   let userApiKey: string | null = null;
 
@@ -436,5 +437,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 // force recompile

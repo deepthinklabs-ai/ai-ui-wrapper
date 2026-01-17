@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getCalendarClient } from '@/lib/googleClients';
 import type { CalendarPermissions, CalendarEvent } from '@/app/canvas/features/calendar-oauth/types';
+import { withDebug } from '@/lib/debug';
 
 interface ExecuteRequest {
   userId: string;
@@ -18,7 +19,7 @@ interface ExecuteRequest {
   permissions: CalendarPermissions;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   try {
     const body: ExecuteRequest = await request.json();
     const { userId, nodeId, toolName, parameters, permissions } = body;
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // Tool execution functions
 

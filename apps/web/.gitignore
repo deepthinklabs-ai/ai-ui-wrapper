@@ -24,6 +24,17 @@
 .DS_Store
 *.pem
 
+# Screenshots and images in root (except public/)
+/*.png
+/*.jpg
+/*.jpeg
+/*.JPG
+/*.PNG
+/*.JPEG
+/*.gif
+/*.bmp
+/*.webp
+
 # Windows reserved device names
 NUL
 CON

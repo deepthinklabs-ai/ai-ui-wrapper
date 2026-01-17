@@ -17,6 +17,7 @@ import { deleteAllUserKeys } from "@/lib/secretManager";
 import { stripe } from "@/lib/stripe";
 import { auditAuth } from "@/lib/auditLog";
 import { strictRatelimitAsync, rateLimitErrorResponse } from "@/lib/ratelimit";
+import { withDebug } from "@/lib/debug";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +30,7 @@ const supabaseAdmin = createClient(
  * Permanently deletes the user's account and all associated data.
  * Requires confirmation in request body.
  */
-export async function DELETE(req: NextRequest) {
+export const DELETE = withDebug(async (req, sessionId) => {
   try {
     // Rate limit: 3 attempts per minute (prevent abuse)
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -156,4 +157,4 @@ export async function DELETE(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

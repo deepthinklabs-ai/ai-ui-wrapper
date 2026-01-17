@@ -14,6 +14,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fetchAllEvents } from './fetchEvents';
 import { matchEventsToRules } from './matchRules';
 import { executeAutoReplies } from './executeAutoReply';
+import { executeSheetsLogging } from './executeSheetsLogging';
 import type { PollingConfig, PollOptions, PollResult, NodeRuntimeState } from './types';
 
 // ============================================================================
@@ -51,6 +52,7 @@ export async function pollSSMNode(
     events_fetched: 0,
     alerts_generated: 0,
     auto_replies_sent: 0,
+    sheets_rows_logged: 0,
     alerts: [],
     duration_ms: 0,
     source: options.source,
@@ -137,6 +139,23 @@ export async function pollSSMNode(
       result.auto_replies_sent = autoReplyResult.sent_count;
     }
 
+    // Process sheets logging for matched events
+    if (config.sheets_action?.enabled && matchResult.alerts.length > 0) {
+      // Get events that generated alerts
+      const alertEventIds = new Set(matchResult.alerts.map(a => a.event_id));
+      const matchedEvents = fetchResult.events.filter(e => alertEventIds.has(e.id));
+
+      const sheetsResult = await executeSheetsLogging(
+        user_id,
+        matchedEvents,
+        matchResult.alerts,
+        config.sheets_action,
+        node_id
+      );
+
+      result.sheets_rows_logged = sheetsResult.rows_logged;
+    }
+
     // Update runtime config with new stats
     await updateNodeRuntimeStats(
       supabase,
@@ -182,7 +201,7 @@ function finalizePollResult(result: PollResult, startTime: number): PollResult {
   console.log(
     `[SSM Polling] ${result.source} poll ${status}: ` +
     `${result.events_fetched} events, ${result.alerts_generated} alerts, ` +
-    `${result.auto_replies_sent} replies, ${result.duration_ms}ms` +
+    `${result.auto_replies_sent} replies, ${result.sheets_rows_logged} rows logged, ${result.duration_ms}ms` +
     (result.error ? ` (${result.error})` : '')
   );
 

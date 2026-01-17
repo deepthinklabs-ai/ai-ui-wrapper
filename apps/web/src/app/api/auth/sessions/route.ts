@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getAuthenticatedUser } from "@/lib/serverAuth";
 import { auditSession } from "@/lib/auditLog";
+import { withDebug } from "@/lib/debug";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +13,7 @@ const supabaseAdmin = createClient(
  * GET /api/auth/sessions
  * Get current user's session info
  */
-export async function GET(req: NextRequest) {
+export const GET = withDebug(async (req, sessionId) => {
   try {
     const { user, error: authError } = await getAuthenticatedUser(req);
 
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE /api/auth/sessions
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
  * Query params:
  * - scope: "all" | "current" (default: "current")
  */
-export async function DELETE(req: NextRequest) {
+export const DELETE = withDebug(async (req, sessionId) => {
   try {
     const { user, error: authError } = await getAuthenticatedUser(req);
 
@@ -120,4 +121,4 @@ export async function DELETE(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

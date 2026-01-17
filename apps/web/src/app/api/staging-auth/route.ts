@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual, createHmac, randomBytes } from 'crypto';
+import { withDebug } from '@/lib/debug';
 
 export const STAGING_COOKIE_NAME = 'staging_auth';
 
@@ -78,7 +79,7 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   const stagingPassword = process.env.STAGING_PASSWORD;
 
   if (!stagingPassword) {
@@ -133,4 +134,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
-}
+});

@@ -293,9 +293,27 @@ export default function Sidebar({
     }
   };
 
-  // Find the chatbot being edited
-  const editingChatbot = editingChatbotId
-    ? chatbots.find((c) => c.id === editingChatbotId) ?? null
+  // Find the chatbot being edited - handle special __default__ case
+  const isEditingDefaultChatbot = editingChatbotId === '__default__';
+  const editingChatbot: Chatbot | null = editingChatbotId
+    ? isEditingDefaultChatbot
+      ? {
+          // Virtual default chatbot for editing
+          id: '__default__',
+          name: 'default',
+          description: null,
+          user_id: '', // Will be set when creating
+          folder_id: null,
+          position: 0,
+          config: {
+            model: { provider: 'openai', model_name: 'gpt-4o' },
+            system_prompt: '',
+            features: {},
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      : chatbots.find((c) => c.id === editingChatbotId) ?? null
     : null;
 
   const handleOpenChatbotSettingsLocal = (id: string) => {
@@ -315,7 +333,28 @@ export default function Sidebar({
 
   const handleSaveChatbotSettings = async (config: ChatbotFileConfig) => {
     console.log('[Sidebar] Saving chatbot settings:', editingChatbotId);
-    if (editingChatbotId && onUpdateChatbotConfig) {
+
+    // Special handling for default chatbot - create new instead of update
+    if (isEditingDefaultChatbot && onCreateChatbot) {
+      // Prompt for name
+      const name = window.prompt('Enter a name for your new chatbot:', 'My Chatbot');
+      if (!name || !name.trim()) {
+        // User cancelled - don't save
+        return;
+      }
+
+      try {
+        await onCreateChatbot({
+          name: name.trim(),
+          folder_id: chatbotDefaultFolderId || undefined,
+          config,
+        });
+        console.log('[Sidebar] New chatbot created from default settings');
+      } catch (error) {
+        console.error('[Sidebar] Failed to create chatbot:', error);
+        throw error;
+      }
+    } else if (editingChatbotId && onUpdateChatbotConfig) {
       try {
         await onUpdateChatbotConfig(editingChatbotId, config);
         console.log('[Sidebar] Chatbot settings saved successfully');

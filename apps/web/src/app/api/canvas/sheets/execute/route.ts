@@ -17,6 +17,7 @@ import type {
   SheetsMetadataParams,
   SheetsClearParams,
 } from '@/app/canvas/features/sheets-oauth/types';
+import { withDebug } from '@/lib/debug';
 
 interface ExecuteRequest {
   userId: string;
@@ -26,7 +27,7 @@ interface ExecuteRequest {
   permissions: SheetsPermissions;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   try {
     const body: ExecuteRequest = await request.json();
     const { userId, nodeId, toolName, parameters, permissions } = body;
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // Tool execution functions
 

@@ -7,13 +7,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { withDebug } from '@/lib/debug';
 
 type RouteParams = { params: Promise<{ sessionId: string }> };
 
 /**
  * GET - Get session with messages
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withDebug(async (req, sessionId, { params }: RouteParams) => {
   try {
     const { sessionId } = await params;
 
@@ -93,12 +94,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE - End/delete session
  */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+export const DELETE = withDebug(async (req, sessionId, { params }: RouteParams) => {
   try {
     const { sessionId } = await params;
 
@@ -142,4 +143,4 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

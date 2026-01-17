@@ -22,8 +22,9 @@ import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
 import { mapStripeStatusToTier } from '@/lib/config/tiers';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { withDebug } from '@/lib/debug';
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   try {
     // SECURITY: Restrict this endpoint in production (only allow with explicit flag)
     // This endpoint is a fallback for development when webhooks don't work
@@ -181,4 +182,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

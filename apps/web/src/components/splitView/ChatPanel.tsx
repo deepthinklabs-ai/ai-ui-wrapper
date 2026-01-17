@@ -15,7 +15,7 @@ import MessageComposer from "@/components/dashboard/MessageComposer";
 import RevertUndoButton from "@/components/dashboard/RevertUndoButton";
 import RevertWithDraftUndoButton from "@/components/dashboard/RevertWithDraftUndoButton";
 import QuickSendButtons from "@/components/splitView/QuickSendButtons";
-import { useMessages } from "@/hooks/useMessages";
+import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
 import { useMessageComposition } from "@/hooks/useMessageComposition";
 import { useMessageActions } from "@/hooks/useMessageActions";
 import { useRevertWithDraft } from "@/hooks/useRevertWithDraft";
@@ -117,17 +117,18 @@ export default function ChatPanel({
     return prompt;
   }, [getSystemPromptAddition, crossChatEnabled, isMainChat, panelName, otherPanelName, messageType]);
 
-  // Messages
+  // Messages (with encryption support)
   const {
     messages,
     loadingMessages,
     messagesError,
+    encryptionError,
     sendInFlight,
     summarizeInFlight,
     sendMessage,
     summarizeThread,
     refreshMessages,
-  } = useMessages(threadId, {
+  } = useEncryptedMessages(threadId, {
     onThreadTitleUpdated,
     systemPromptAddition: buildSystemPrompt(),
     userTier,
@@ -300,9 +301,9 @@ export default function ChatPanel({
       </div>
 
       {/* Error display */}
-      {messagesError && (
+      {(messagesError || encryptionError) && (
         <div className="flex-shrink-0 mx-4 mt-3 rounded-lg border border-red-300 bg-red-100/80 backdrop-blur-sm px-4 py-2 text-sm text-red-700">
-          {messagesError}
+          {messagesError || encryptionError}
         </div>
       )}
 

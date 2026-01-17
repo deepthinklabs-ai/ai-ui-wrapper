@@ -20,6 +20,7 @@ export type {
   FetchEventsResult,
   MatchResult,
   AutoReplyResult,
+  SheetsLogResult,
   PollResult,
   PollingConfig,
   NodeRuntimeState,
@@ -39,6 +40,9 @@ export { matchEventsToRules } from './matchRules';
 
 // Auto-reply execution
 export { executeAutoReplies } from './executeAutoReply';
+
+// Sheets logging execution
+export { executeSheetsLogging, logEventToSheets } from './executeSheetsLogging';
 
 // Main orchestrator
 export { pollSSMNode } from './pollNode';

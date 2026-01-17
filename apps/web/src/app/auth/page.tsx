@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useEffect, Suspense } from "react";
+import { useState, FormEvent, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { usePasswordStrength } from "@/hooks/usePasswordStrength";
@@ -15,6 +15,54 @@ const SESSION_TIMEOUT_MESSAGES: Record<string, string> = {
   absolute_timeout: "Your session has expired. Please sign in again.",
   manual_logout: "You have been signed out successfully.",
 };
+
+// Humorous email placeholders
+const EMAIL_PLACEHOLDERS = [
+  "you@emailhere.com",
+  "email@goeshere.com",
+  "type@emailhere.com",
+  "enter@email.now",
+  "email@type.me",
+  "your@email.address",
+  "email@insert.here",
+  "type@your.email",
+  "email@starts.here",
+  "this@is.an.email",
+  "type.email.here@now",
+  "enter.email@above",
+  "email@this.box",
+  "email@right.here",
+  "email@fill.me.in",
+  "email@put.it.here",
+  "email@start.typing",
+  "email@don't.forget",
+  "email@almost.done",
+  "email@one.more.step",
+];
+
+// Humorous forgot password phrases
+const FORGOT_PASSWORD_PHRASES = [
+  "Shall I retrieve the key, Your Grace?",
+  "Your secret shall be restored.",
+  "Allow me to recover it for you.",
+  "The records will be consulted at once.",
+  "Fear not — I'll fetch it immediately.",
+  "Your access will be returned, my liege.",
+  "I will see this corrected promptly.",
+  "The vault may be reopened.",
+  "Your credentials await recovery.",
+  "All is not lost, Your Majesty.",
+  "I shall return what was misplaced.",
+  "Your passage may be restored.",
+  "The seal can be reforged.",
+  "Permit me to recover the key.",
+  "Your authority remains intact.",
+  "The door can be opened once more.",
+  "I will ensure your return.",
+  "The matter will be discreetly handled.",
+  "Your access shall be renewed.",
+  "Let me attend to this at once.",
+];
 
 // Loading fallback for Suspense
 function AuthPageLoading() {
@@ -58,6 +106,16 @@ function AuthPageContent() {
 
   // Session timeout message
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
+
+  // Random email placeholder (stable per mount)
+  const emailPlaceholder = useMemo(() => {
+    return EMAIL_PLACEHOLDERS[Math.floor(Math.random() * EMAIL_PLACEHOLDERS.length)];
+  }, []);
+
+  // Random forgot password phrase (stable per mount)
+  const forgotPasswordPhrase = useMemo(() => {
+    return FORGOT_PASSWORD_PHRASES[Math.floor(Math.random() * FORGOT_PASSWORD_PHRASES.length)];
+  }, []);
 
   // Check for session timeout reason in URL
   useEffect(() => {
@@ -235,8 +293,8 @@ function AuthPageContent() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
-          <p className="mt-4 text-sm text-foreground/60">
+          <img src="/logo.png" alt="Aiuiw" className="h-20 w-auto mx-auto brightness-90" />
+          <p className="mt-4 text-sm text-black">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>
         </div>
@@ -252,11 +310,11 @@ function AuthPageContent() {
             </div>
           )}
 
-          <div className="space-y-4 rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
+          <div className="space-y-4 rounded-2xl border border-black bg-white/60 backdrop-blur-md p-6">
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-foreground"
+                className="block text-sm font-medium text-black"
               >
                 Email address
               </label>
@@ -266,15 +324,15 @@ function AuthPageContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
-                placeholder="you@example.com"
+                className="mt-1 block w-full rounded-md border border-black bg-white/80 px-3 py-2 text-black placeholder-foreground/60 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
+                placeholder={emailPlaceholder}
               />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-foreground"
+                className="block text-sm font-medium text-black"
               >
                 Password
               </label>
@@ -285,7 +343,7 @@ function AuthPageContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 pr-10 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
+                  className="block w-full rounded-md border border-black bg-white/80 px-3 py-2 pr-10 text-black placeholder-foreground/60 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                   placeholder="••••••••"
                   minLength={8}
                 />
@@ -329,9 +387,9 @@ function AuthPageContent() {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-foreground hover:text-foreground/80"
+                    className="text-sm text-black hover:text-black/80"
                   >
-                    Forgot password?
+                    {forgotPasswordPhrase}
                   </button>
                 </div>
               )}
@@ -364,7 +422,7 @@ function AuthPageContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full rainbow-gradient border border-foreground/30 px-4 py-2 text-sm font-semibold text-foreground hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full rounded-full rainbow-gradient border border-black px-4 py-2 text-sm font-semibold text-foreground hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading
                 ? isSignUp
@@ -384,7 +442,7 @@ function AuthPageContent() {
                 setError(null);
                 setMessage(null);
               }}
-              className="text-foreground hover:text-foreground/80"
+              className="text-black hover:text-black/80"
             >
               {isSignUp
                 ? "Already have an account? Sign in"

@@ -9,13 +9,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { UpdateExchangePostRequest, ExchangePostDetail } from '@/app/exchange/types';
+import { withDebug } from '@/lib/debug';
 
 type RouteParams = { params: Promise<{ postId: string }> };
 
 /**
  * GET - Get single post with full details
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withDebug(async (req, sessionId, { params }: RouteParams) => {
   try {
     const { postId } = await params;
 
@@ -111,12 +112,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PATCH - Update post (only description and categories/tags - files are immutable)
  */
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+export const PATCH = withDebug(async (req, sessionId, { params }: RouteParams) => {
   try {
     const { postId } = await params;
     const body: UpdateExchangePostRequest = await req.json();
@@ -246,12 +247,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE - Delete post (owner only)
  */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+export const DELETE = withDebug(async (req, sessionId, { params }: RouteParams) => {
   try {
     const { postId } = await params;
 
@@ -315,4 +316,4 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

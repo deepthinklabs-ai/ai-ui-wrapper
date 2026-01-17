@@ -8,8 +8,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getOAuthConnection } from '@/lib/googleTokenStorage';
+import { withDebug } from '@/lib/debug';
 
-export async function GET(request: NextRequest) {
+export const GET = withDebug(async (request, sessionId) => {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
@@ -61,4 +62,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

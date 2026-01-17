@@ -16,6 +16,7 @@ import { processAutoReply } from '@/app/canvas/features/ssm-agent/features/auto-
 import type { SSMAgentNodeConfig, SSMAlert, SSMEvent, SSMSheetsActionConfig, SSMSheetsField } from '@/app/canvas/types/ssm';
 import type { SSMAutoReplyConfig } from '@/app/canvas/features/ssm-agent/features/auto-reply/types';
 import type { CalendarOAuthConfig } from '@/app/canvas/features/calendar-oauth/types';
+import { withDebug } from '@/lib/debug';
 
 // ============================================================================
 // TYPES
@@ -56,7 +57,7 @@ function getSupabaseAdmin() {
 // HANDLER
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse<PollResponse>> {
+export const POST = withDebug(async (request, sessionId): Promise<NextResponse<PollResponse>> => {
   try {
     const body: PollRequest = await request.json();
     const { canvasId, nodeId, userId, rules, gmail, calendar, auto_reply, sheets_action } = body;
@@ -372,7 +373,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PollRespo
       error: 'Failed to poll data source',
     }, { status: 500 });
   }
-}
+});
 
 // ============================================================================
 // GMAIL FETCHING

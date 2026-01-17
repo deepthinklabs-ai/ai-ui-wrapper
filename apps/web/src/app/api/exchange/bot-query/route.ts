@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { getProviderKey } from '@/lib/secretManager/getKey';
 import type { ChatbotFileProvider } from '@/types/chatbotFile';
+import { withDebug } from '@/lib/debug';
 
 // Rate limit: 10 bot-to-bot queries per day per user
 const BOT_QUERY_DAILY_LIMIT = 10;
@@ -31,7 +32,7 @@ const CLAUDE_API_MODEL_MAP: Record<string, string> = {
 /**
  * POST - Send a bot-to-bot query
  */
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   let userApiKey: string | null = null;
 
   try {
@@ -237,7 +238,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * Call OpenAI API

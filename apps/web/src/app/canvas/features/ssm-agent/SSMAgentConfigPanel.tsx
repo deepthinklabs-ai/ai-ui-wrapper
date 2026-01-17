@@ -164,6 +164,7 @@ export default function SSMAgentConfigPanel({
           rules: configToSync.rules,
           response_templates: configToSync.response_templates || [],
           auto_reply: configToSync.auto_reply,
+          sheets_action: configToSync.sheets_action,
           polling_settings: {
             gmail_enabled: configToSync.gmail?.enabled || false,
             gmail_connection_id: configToSync.gmail?.connectionId,
@@ -201,6 +202,7 @@ export default function SSMAgentConfigPanel({
           rules: configToSync.rules,
           response_templates: configToSync.response_templates || [],
           auto_reply: configToSync.auto_reply,
+          sheets_action: configToSync.sheets_action,
           polling_settings: {
             gmail_enabled: configToSync.gmail?.enabled || false,
             gmail_connection_id: configToSync.gmail?.connectionId,

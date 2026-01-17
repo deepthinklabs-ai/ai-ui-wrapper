@@ -12,6 +12,10 @@ export const ROUTES = {
   // Public routes (no auth required)
   AUTH: '/auth',
   STAGING_LOGIN: '/staging-login',
+  DOCS: '/docs',
+  PRIVACY_POLICY: '/privacy-policy',
+  TERMS: '/terms',
+  CONTACT: '/contact',
 
   // Protected routes (auth required)
   DASHBOARD: '/dashboard',

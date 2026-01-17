@@ -3,7 +3,6 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import OnboardingWelcomeModal from "@/components/settings/OnboardingWelcomeModal";
-import PushToTalkSettings from "@/components/settings/PushToTalkSettings";
 import EncryptionSettings from "@/components/settings/EncryptionSettings";
 import BYOKSettings from "@/components/settings/BYOKSettings";
 import { OAuthConnectionsSettings } from "@/components/settings/oauth";
@@ -63,11 +62,6 @@ function SettingsPageContent() {
 
           {/* Encryption Settings Section */}
           <EncryptionSettings userEmail={user?.email} />
-
-          {/* Push-to-Talk Settings Section */}
-          <section className="rounded-xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
-            <PushToTalkSettings />
-          </section>
 
         </div>
       </main>

@@ -5,16 +5,17 @@
  * These workflows will be available in the Genesis Bot page dropdown.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { ExposedWorkflow } from '@/app/canvas/features/master-trigger/types';
+import { withDebug } from '@/lib/debug';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET(request: Request) {
+export const GET = withDebug(async (request, sessionId) => {
   try {
     // Get userId from query params or auth header
     const { searchParams } = new URL(request.url);
@@ -121,4 +122,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+});

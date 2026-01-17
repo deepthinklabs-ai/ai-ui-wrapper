@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from '@/lib/serverAuth';
+import { withDebug } from '@/lib/debug';
 
 // Lazy-initialized Supabase client with service role for admin operations
 let _supabase: ReturnType<typeof createClient> | null = null;
@@ -23,7 +24,7 @@ function getSupabase() {
   return _supabase;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withDebug(async (request, sessionId) => {
   try {
     // Authenticate the user
     const { user, error: authError } = await getAuthenticatedUser(request);
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/canvas/executions
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
  *
  * Requires authentication - user must own the canvas.
  */
-export async function POST(request: NextRequest) {
+export const POST = withDebug(async (request, sessionId) => {
   try {
     // Authenticate the user
     const { user, error: authError } = await getAuthenticatedUser(request);
@@ -159,4 +160,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

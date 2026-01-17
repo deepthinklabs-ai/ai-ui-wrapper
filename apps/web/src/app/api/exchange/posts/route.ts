@@ -12,11 +12,12 @@ import type {
   ListExchangePostsFilter,
   ExchangePostPreview,
 } from '@/app/exchange/types';
+import { withDebug } from '@/lib/debug';
 
 /**
  * GET - List posts with optional filters
  */
-export async function GET(req: NextRequest) {
+export const GET = withDebug(async (req, sessionId) => {
   try {
     const { searchParams } = new URL(req.url);
 
@@ -201,12 +202,12 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST - Create a new post
  */
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   try {
     const body: CreateExchangePostRequest = await req.json();
     const { title, description, chatbot_file, canvas_file, thread_file, category_ids, tag_names } = body;
@@ -361,4 +362,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

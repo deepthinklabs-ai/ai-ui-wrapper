@@ -30,6 +30,7 @@ export type FeatureId =
   // Voice Input
   | 'voice_input'
   | 'auto_voice_detection'
+  | 'push_to_talk'
 
   // File Attachments
   | 'file_attachments'
@@ -178,6 +179,14 @@ export const FEATURE_DEFINITIONS: Record<FeatureId, FeatureDefinition> = {
     category: 'input_enhancements',
     defaultEnabled: false,
     icon: '🔊',
+  },
+  push_to_talk: {
+    id: 'push_to_talk',
+    name: 'Push-to-Talk',
+    description: 'Hold a key to activate voice input. Configure keybind in chatbot settings.',
+    category: 'input_enhancements',
+    defaultEnabled: false,
+    icon: '🎙️',
   },
 
   // File Attachments

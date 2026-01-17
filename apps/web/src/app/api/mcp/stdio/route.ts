@@ -27,7 +27,7 @@
  * }
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { getAuthenticatedUser } from "@/lib/serverAuth";
@@ -37,12 +37,13 @@ import {
   logSecurityEvent
 } from "@/lib/mcpCommandValidator";
 import { strictRatelimitAsync, rateLimitErrorResponse } from "@/lib/ratelimit";
+import { withDebug } from "@/lib/debug";
 
 // Store active connections
 // In production, use Redis or similar for multi-instance deployments
 const connections = new Map<string, Client>();
 
-export async function POST(request: Request) {
+export const POST = withDebug(async (request, sessionId) => {
   // SECURITY: Require authentication
   const authResult = await getAuthenticatedUser(request);
 
@@ -292,7 +293,7 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 // Cleanup on server shutdown
 process.on("SIGTERM", async () => {

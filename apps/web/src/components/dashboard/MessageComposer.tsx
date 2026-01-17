@@ -108,6 +108,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   const voiceInputEnabled = isFeatureEnabled ? isFeatureEnabled('voice_input') : true;
   // Check if auto voice detection feature is enabled (defaults to false if not provided)
   const autoVoiceDetectionEnabled = isFeatureEnabled ? isFeatureEnabled('auto_voice_detection') : false;
+  // Check if push-to-talk feature is enabled (defaults to false if not provided)
+  const pushToTalkFeatureEnabled = isFeatureEnabled ? isFeatureEnabled('push_to_talk') : false;
   // Check if file attachments feature is enabled (defaults to true if not provided)
   const fileAttachmentsEnabled = isFeatureEnabled ? isFeatureEnabled('file_attachments') : true;
   // Check if model selection feature is enabled (defaults to true if not provided)
@@ -159,8 +161,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
     interimResults: true,
   });
 
-  // Push-to-Talk functionality
-  const { isPushing, isEnabled: isPushToTalkEnabled } = usePushToTalk({
+  // Push-to-Talk functionality - only enabled when feature flag is on
+  const { isPushing, isEnabled: isPushToTalkStorageEnabled } = usePushToTalk({
     onPushStart: () => {
       console.log('[Push-to-Talk] Key pressed - starting voice input');
       if (!isListening && voiceInputEnabled) {
@@ -173,8 +175,11 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
         stopListening();
       }
     },
-    disabled: !voiceInputEnabled || autoVoiceDetectionEnabled, // Disable PTT when voice input is off or auto-detection is on
+    disabled: !voiceInputEnabled || !pushToTalkFeatureEnabled || autoVoiceDetectionEnabled, // Disable PTT when feature flag is off, voice input is off, or auto-detection is on
   });
+
+  // PTT is only truly enabled if both the feature flag AND localStorage setting are enabled
+  const isPushToTalkEnabled = pushToTalkFeatureEnabled && isPushToTalkStorageEnabled;
 
   // Voice Activity Detection - automatically start/stop microphone
   const { isSpeaking: vadIsSpeaking } = useVoiceActivityDetection({

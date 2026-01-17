@@ -31,6 +31,7 @@ import {
 import { getProviderKey } from '@/lib/secretManager/getKey';
 import { getAuthenticatedUserOrService } from '@/lib/serverAuth';
 import { checkAIEnabled } from '@/lib/killSwitches';
+import { withDebug } from '@/lib/debug';
 
 // Map models to their search-enabled variants
 const SEARCH_ENABLED_MODELS: Record<string, string> = {
@@ -40,7 +41,7 @@ const SEARCH_ENABLED_MODELS: Record<string, string> = {
   'gpt-4o': 'gpt-4o-search-preview',
 };
 
-export async function POST(req: NextRequest) {
+export const POST = withDebug(async (req, sessionId) => {
   // Declare outside try so it can be cleared in catch/finally
   let userApiKey: string | null = null;
 
@@ -392,4 +393,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

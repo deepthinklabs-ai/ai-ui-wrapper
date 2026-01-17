@@ -26,6 +26,7 @@ import {
   generateSessionId,
 } from '@/app/canvas/features/ssm-agent/lib/trainingPrompts';
 import { getProviderKey } from '@/lib/secretManager/getKey';
+import { withDebug } from '@/lib/debug';
 
 // ============================================================================
 // SUPABASE CLIENT
@@ -89,10 +90,10 @@ setInterval(() => {
 // HANDLER
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse<SSMTrainingResponse>> {
+export const POST = withDebug(async (request, debugSessionId): Promise<NextResponse<SSMTrainingResponse>> => {
   try {
     const body: SSMTrainingRequest = await request.json();
-    const { sessionId, nodeId, canvasId, userId, message, provider } = body;
+    const { sessionId: trainingSessionId, nodeId, canvasId, userId, message, provider } = body;
 
     // Validate required fields
     if (!nodeId || !canvasId || !userId || !message) {
@@ -138,9 +139,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMTraini
       return !blockedKeys.includes(id) && id.startsWith('train_');
     };
 
-    let session = (sessionId && isValidSessionId(sessionId)) ? sessions[sessionId] : null;
+    let session = (trainingSessionId && isValidSessionId(trainingSessionId)) ? sessions[trainingSessionId] : null;
     const isNewSession = !session;
-    let currentSessionId = sessionId || '';
+    let currentSessionId = trainingSessionId || '';
 
     if (!session) {
       currentSessionId = generateSessionId();
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SSMTraini
       error: 'Failed to process training message',
     }, { status: 500 });
   }
-}
+});
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -500,20 +501,20 @@ function getFallbackResponse(): string {
 // GET SESSION (for debugging/resuming)
 // ============================================================================
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export const GET = withDebug(async (request, debugSessionId): Promise<NextResponse> => {
   const { searchParams } = new URL(request.url);
-  const sessionId = searchParams.get('sessionId');
+  const trainingSessionId = searchParams.get('sessionId');
   const sessions = getSessionStore();
 
-  if (!sessionId || !sessions[sessionId]) {
+  if (!trainingSessionId || !sessions[trainingSessionId]) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  const session = sessions[sessionId];
+  const session = sessions[trainingSessionId];
   return NextResponse.json({
-    sessionId,
+    sessionId: trainingSessionId,
     phase: session.phase,
     messages: session.messages,
     extractedInfo: session.extractedInfo,
   });
-}
+});
