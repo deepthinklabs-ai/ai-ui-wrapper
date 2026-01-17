@@ -252,7 +252,7 @@ function AuthPageContent() {
             </div>
           )}
 
-          <div className="space-y-4 rounded-2xl border border-white/40 bg-white/60 backdrop-blur-md p-6">
+          <div className="space-y-4 rounded-2xl border border-black bg-white/60 backdrop-blur-md p-6">
             <div>
               <label
                 htmlFor="email"
@@ -364,7 +364,7 @@ function AuthPageContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full rainbow-gradient border border-foreground/30 px-4 py-2 text-sm font-semibold text-foreground hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full rounded-full rainbow-gradient border border-black px-4 py-2 text-sm font-semibold text-foreground hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading
                 ? isSignUp
@@ -384,7 +384,7 @@ function AuthPageContent() {
                 setError(null);
                 setMessage(null);
               }}
-              className="text-foreground hover:text-foreground/80"
+              className="text-black hover:text-black/80"
             >
               {isSignUp
                 ? "Already have an account? Sign in"
