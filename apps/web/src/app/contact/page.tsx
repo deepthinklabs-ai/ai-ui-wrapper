@@ -43,10 +43,10 @@ export default function ContactPage() {
                   For general inquiries and support:
                 </p>
                 <a
-                  href="mailto:support@aiuiw.com"
-                  className="text-sky hover:text-sky/80 transition-colors"
+                  href="mailto:dave@deepthinklabs.ai"
+                  className="text-blue-600 hover:text-blue-800 underline transition-colors"
                 >
-                  support@aiuiw.com
+                  dave@deepthinklabs.ai
                 </a>
               </div>
 
