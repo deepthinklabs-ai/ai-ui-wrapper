@@ -236,7 +236,7 @@ function AuthPageContent() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <img src="/logo.png" alt="Aiuiw" className="h-16 w-auto mx-auto brightness-90" />
-          <p className="mt-4 text-sm text-foreground/60">
+          <p className="mt-4 text-sm text-black">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>
         </div>
@@ -256,7 +256,7 @@ function AuthPageContent() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-foreground"
+                className="block text-sm font-medium text-black"
               >
                 Email address
               </label>
@@ -266,7 +266,7 @@ function AuthPageContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
+                className="mt-1 block w-full rounded-md border border-black bg-white/80 px-3 py-2 text-black placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                 placeholder="you@example.com"
               />
             </div>
@@ -274,7 +274,7 @@ function AuthPageContent() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-foreground"
+                className="block text-sm font-medium text-black"
               >
                 Password
               </label>
@@ -285,7 +285,7 @@ function AuthPageContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-md border border-foreground/20 bg-white/80 px-3 py-2 pr-10 text-foreground placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
+                  className="block w-full rounded-md border border-black bg-white/80 px-3 py-2 pr-10 text-black placeholder-foreground/40 focus:border-sky focus:outline-none focus:ring-1 focus:ring-sky"
                   placeholder="••••••••"
                   minLength={8}
                 />
@@ -329,7 +329,7 @@ function AuthPageContent() {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-foreground hover:text-foreground/80"
+                    className="text-sm text-black hover:text-black/80"
                   >
                     Forgot password?
                   </button>
