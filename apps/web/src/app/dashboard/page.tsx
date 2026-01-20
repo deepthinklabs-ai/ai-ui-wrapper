@@ -727,7 +727,7 @@ export default function DashboardPage() {
 
   if (loadingUser || onboardingLoading || tierLoading || isFromSuccessfulCheckout) {
     return (
-      <div className="flex h-screen items-center justify-center text-foreground">
+      <div className="flex h-full items-center justify-center text-foreground">
         <div className="text-center">
           {isFromSuccessfulCheckout ? (
             <>
@@ -745,7 +745,7 @@ export default function DashboardPage() {
 
   if (userError) {
     return (
-      <div className="flex h-screen items-center justify-center text-red-500">
+      <div className="flex h-full items-center justify-center text-red-500">
         Error: {userError}
       </div>
     );
@@ -763,10 +763,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-row h-screen text-foreground">
+    <div className="flex flex-row h-full text-foreground">
       {/* LEFT: sidebar column */}
       <aside
-        className="h-screen flex-shrink-0 relative"
+        className="h-full flex-shrink-0 relative"
         style={sidebarStyle}
       >
         <Sidebar
