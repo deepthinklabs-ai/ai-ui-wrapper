@@ -58,3 +58,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local todo files (not committed)
+TODO.local.md
+*.local.md
