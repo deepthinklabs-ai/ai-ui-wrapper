@@ -48,7 +48,7 @@ export type UnifiedChatResponse = {
 async function sendProChatRequest(
   messages: UnifiedChatMessage[],
   model: AIModel,
-  provider: 'openai' | 'claude' | 'grok' | 'gemini',
+  provider: 'openai' | 'claude' | 'grok' | 'gemini' | 'ssm',
   accessToken: string,
   tools?: any,
   enableWebSearch?: boolean
@@ -57,6 +57,7 @@ async function sendProChatRequest(
     provider === 'openai' ? '/api/pro/openai' :
     provider === 'claude' ? '/api/pro/claude' :
     provider === 'gemini' ? '/api/pro/gemini' :
+    provider === 'ssm' ? '/api/pro/ssm' :
     '/api/pro/grok';
 
   const requestBody: any = {

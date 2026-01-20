@@ -14,7 +14,7 @@ import { AVAILABLE_MODELS, type AIModel, type ModelProvider } from "./apiKeyStor
  */
 export function getAvailableProviders(userTier?: "trial" | "pro" | "expired" | "pending"): ModelProvider[] {
   // BYOK: All providers are available - users configure their own keys
-  return ["openai", "claude", "grok", "gemini"];
+  return ["openai", "claude", "grok", "gemini", "ssm"];
 }
 
 /**
