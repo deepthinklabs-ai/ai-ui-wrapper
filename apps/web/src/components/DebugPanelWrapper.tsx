@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { DebugPanel } from 'vercel-debugpack/browser';
+import { useEffect, useState, useCallback } from 'react';
+import { DebugPanel, initDebugCapture, getDebugCapture } from 'vercel-debugpack/browser';
 
 const DEBUG_STORAGE_KEY = 'vercel-debugpack-enabled';
 
@@ -12,9 +12,11 @@ const DEBUG_STORAGE_KEY = 'vercel-debugpack-enabled';
  * This avoids the auth issues caused by adding ?debug=1 to the URL.
  *
  * Debug mode persists in sessionStorage until the tab is closed.
+ * No page reload required - capture initializes dynamically.
  */
 export default function DebugPanelWrapper() {
   const [debugEnabled, setDebugEnabled] = useState<boolean | null>(null);
+  const [captureReady, setCaptureReady] = useState(false);
 
   // Check if we're on a staging/preview environment
   const isStaging = typeof window !== 'undefined' && (
@@ -23,6 +25,16 @@ export default function DebugPanelWrapper() {
     window.location.hostname.includes('-git-staging-') ||
     (window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('aiuiw.com'))
   );
+
+  // Initialize debug capture when enabled
+  const initializeCapture = useCallback(() => {
+    // Initialize capture with custom isEnabled that always returns true
+    const api = initDebugCapture({ isEnabled: () => true }) || getDebugCapture();
+    if (api) {
+      setCaptureReady(true);
+      console.log('[DebugPanel] Debug capture initialized - session:', api.getSessionId());
+    }
+  }, []);
 
   // Initialize from sessionStorage or URL param
   useEffect(() => {
@@ -39,11 +51,16 @@ export default function DebugPanelWrapper() {
     const shouldEnable = hasDebugParam || storedValue === 'true';
     setDebugEnabled(shouldEnable);
 
+    // If enabled, initialize capture immediately
+    if (shouldEnable) {
+      initializeCapture();
+    }
+
     // If enabled via URL, also store in sessionStorage so it persists
     if (hasDebugParam && storedValue !== 'true') {
       sessionStorage.setItem(DEBUG_STORAGE_KEY, 'true');
     }
-  }, []);
+  }, [initializeCapture]);
 
   // Keyboard shortcut: Ctrl+Shift+L to toggle debug mode on staging
   useEffect(() => {
@@ -57,14 +74,13 @@ export default function DebugPanelWrapper() {
           const newValue = !prev;
           if (newValue) {
             sessionStorage.setItem(DEBUG_STORAGE_KEY, 'true');
-            console.log('[DebugPanel] Debug mode ENABLED - refresh page to start capturing');
+            // Initialize capture immediately without reload
+            initializeCapture();
+            console.log('[DebugPanel] Debug mode ENABLED - capturing logs');
           } else {
             sessionStorage.removeItem(DEBUG_STORAGE_KEY);
-            console.log('[DebugPanel] Debug mode DISABLED');
-          }
-          // Need to refresh for capture to initialize properly
-          if (newValue && !prev) {
-            window.location.reload();
+            setCaptureReady(false);
+            console.log('[DebugPanel] Debug mode DISABLED - reload page to fully stop capture');
           }
           return newValue;
         });
@@ -73,7 +89,7 @@ export default function DebugPanelWrapper() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isStaging]);
+  }, [isStaging, initializeCapture]);
 
   // Don't render until we've checked storage
   if (debugEnabled === null) return null;
@@ -84,7 +100,7 @@ export default function DebugPanelWrapper() {
   return (
     <DebugPanel
       config={{
-        isEnabled: () => true, // Already checked above
+        isEnabled: () => true, // Already initialized above
       }}
     />
   );
