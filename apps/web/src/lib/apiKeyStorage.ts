@@ -56,9 +56,11 @@ export type AIModel =
   // Gemini Models
   | 'gemini-2.0-flash'
   | 'gemini-1.5-pro'
-  | 'gemini-1.5-flash';
+  | 'gemini-1.5-flash'
+  // SSM Models (Local State-Space Models)
+  | 'ssm-agent-v1';
 
-export type ModelProvider = 'openai' | 'claude' | 'grok' | 'gemini';
+export type ModelProvider = 'openai' | 'claude' | 'grok' | 'gemini' | 'ssm';
 
 export type ModelCapabilities = {
   supportsImages: boolean;
@@ -239,6 +241,15 @@ export const AVAILABLE_MODELS: {
     provider: 'gemini',
     capabilities: { supportsImages: true, supportsFiles: true },
     contextWindow: 1000000,
+  },
+  // SSM Models (Local State-Space Models)
+  {
+    value: 'ssm-agent-v1',
+    label: 'SSM Agent (Local)',
+    description: 'Local hierarchical state-space model • Fast inference • Text only',
+    provider: 'ssm',
+    capabilities: { supportsImages: false, supportsFiles: false },
+    contextWindow: 8192,
   },
 ];
 

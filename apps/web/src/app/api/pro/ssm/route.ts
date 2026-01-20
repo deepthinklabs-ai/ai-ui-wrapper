@@ -1,0 +1,232 @@
+/**
+ * SSM (State-Space Model) API Proxy
+ *
+ * This route proxies requests to a local SSM inference server running at localhost:8000.
+ * The SSM server provides fast, CPU-compatible inference using hierarchical state-space models.
+ *
+ * SSM Server API:
+ * - POST /generate: Generate text from a prompt
+ * - GET /health: Check server health
+ * - GET /info: Get model information
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { getAuthenticatedUserOrService } from '@/lib/serverAuth';
+import { withDebug } from '@/lib/debug';
+
+// SSM server configuration
+const SSM_SERVER_URL = process.env.SSM_SERVER_URL || 'http://localhost:8000';
+
+/**
+ * Convert chat messages to a single prompt for SSM
+ * SSM expects a single prompt string, not a messages array
+ */
+function messagesToPrompt(messages: Array<{ role: string; content: string | any[] }>): string {
+  // Build conversation context
+  const conversationParts: string[] = [];
+
+  for (const msg of messages) {
+    const content = typeof msg.content === 'string'
+      ? msg.content
+      : msg.content.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n');
+
+    if (msg.role === 'system') {
+      conversationParts.push(`System: ${content}`);
+    } else if (msg.role === 'user') {
+      conversationParts.push(`User: ${content}`);
+    } else if (msg.role === 'assistant') {
+      conversationParts.push(`Assistant: ${content}`);
+    }
+  }
+
+  // Add prompt for assistant response
+  conversationParts.push('Assistant:');
+
+  return conversationParts.join('\n\n');
+}
+
+export const POST = withDebug(async (req, sessionId) => {
+  try {
+    const body = await req.json();
+    const { messages, model = 'ssm-agent-v1', userId: bodyUserId } = body;
+
+    // SECURITY: Authenticate user
+    const { user, error: authError } = await getAuthenticatedUserOrService(req, bodyUserId);
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: authError || 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    const userId = user.id;
+
+    // Validate required fields
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json(
+        { error: 'Missing messages array' },
+        { status: 400 }
+      );
+    }
+
+    // Initialize Supabase client for user verification
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Verify user tier
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('tier')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 404 }
+      );
+    }
+
+    const userTier = profile.tier as 'trial' | 'pro' | 'expired' | 'pending';
+
+    // Block expired and pending users
+    if (userTier === 'expired') {
+      return NextResponse.json(
+        { error: 'Your trial has expired. Please subscribe to continue using the service.' },
+        { status: 403 }
+      );
+    }
+
+    if (userTier === 'pending') {
+      return NextResponse.json(
+        { error: 'Please complete your subscription setup to use the service.' },
+        { status: 403 }
+      );
+    }
+
+    // Convert messages to SSM prompt format
+    const prompt = messagesToPrompt(messages);
+
+    console.log('[SSM API] Generating response for user:', userId);
+    console.log('[SSM API] Prompt length:', prompt.length, 'characters');
+
+    // Call SSM server
+    const startTime = Date.now();
+
+    const ssmResponse = await fetch(`${SSM_SERVER_URL}/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        max_new: 2048,
+        temperature: 0.7,
+        top_k: 50,
+        stop_at_newline: false,
+      }),
+    });
+
+    if (!ssmResponse.ok) {
+      const errorText = await ssmResponse.text().catch(() => 'Unknown error');
+      console.error('[SSM API] Server error:', ssmResponse.status, errorText);
+
+      if (ssmResponse.status === 503 || ssmResponse.status === 502) {
+        return NextResponse.json(
+          {
+            error: 'SSM server unavailable',
+            message: 'The local SSM server is not running. Please start it with: python -m ssm_server',
+            code: 'SSM_SERVER_OFFLINE',
+          },
+          { status: 503 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: `SSM server error: ${errorText}` },
+        { status: ssmResponse.status }
+      );
+    }
+
+    const data = await ssmResponse.json();
+    const latency = Date.now() - startTime;
+
+    console.log('[SSM API] Response received in', latency, 'ms');
+    console.log('[SSM API] Generated bytes:', data.bytes_generated);
+
+    // Extract the generated text
+    const content = data.text || '';
+
+    // Estimate token counts (rough approximation: ~4 chars per token)
+    const inputTokens = Math.ceil(prompt.length / 4);
+    const outputTokens = Math.ceil(content.length / 4);
+
+    console.log(`[SSM API] User ${userId} | Model: ${model} | Tokens: ~${inputTokens + outputTokens} | Latency: ${latency}ms`);
+
+    return NextResponse.json({
+      content,
+      usage: {
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        total_tokens: inputTokens + outputTokens,
+      },
+      stop_reason: 'end_turn',
+    });
+  } catch (error: any) {
+    console.error('Error in /api/pro/ssm:', error);
+
+    // Handle connection errors to SSM server
+    if (error.cause?.code === 'ECONNREFUSED') {
+      return NextResponse.json(
+        {
+          error: 'SSM server unavailable',
+          message: 'Cannot connect to SSM server at ' + SSM_SERVER_URL + '. Please ensure the server is running.',
+          code: 'SSM_SERVER_OFFLINE',
+        },
+        { status: 503 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+});
+
+/**
+ * Health check endpoint for SSM server
+ */
+export async function GET() {
+  try {
+    const response = await fetch(`${SSM_SERVER_URL}/health`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { status: 'unhealthy', error: 'SSM server returned error' },
+        { status: 503 }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json({
+      status: 'healthy',
+      server: SSM_SERVER_URL,
+      ...data,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        status: 'unhealthy',
+        error: 'Cannot connect to SSM server',
+        server: SSM_SERVER_URL,
+      },
+      { status: 503 }
+    );
+  }
+}

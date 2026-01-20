@@ -54,6 +54,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
   const claudeModels = availableModels.filter((m) => m.provider === "claude");
   const grokModels = availableModels.filter((m) => m.provider === "grok");
   const geminiModels = availableModels.filter((m) => m.provider === "gemini");
+  const ssmModels = availableModels.filter((m) => m.provider === "ssm");
 
   if (availableModels.length === 0) {
     return (
@@ -85,6 +86,10 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
         ) : selectedModelInfo?.provider === "gemini" ? (
           <span className="flex h-4 w-4 items-center justify-center rounded bg-purple-500/30 text-purple-700 text-[10px] font-bold">
             G
+          </span>
+        ) : selectedModelInfo?.provider === "ssm" ? (
+          <span className="flex h-4 w-4 items-center justify-center rounded bg-violet-500/30 text-violet-700 text-[10px] font-bold">
+            S
           </span>
         ) : (
           <span className="flex h-4 w-4 items-center justify-center rounded bg-blue-500/30 text-blue-700 text-[10px] font-bold">
@@ -225,7 +230,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
 
             {/* Gemini Models */}
             {geminiModels.length > 0 && (
-              <div>
+              <div className="mb-3">
                 <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-foreground/50">
                   Gemini Models
                 </div>
@@ -249,6 +254,40 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                             Latest
                           </span>
                         )}
+                      </div>
+                      <div className="text-[10px] text-foreground/50 leading-tight">
+                        {model.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* SSM Models (Local) */}
+            {ssmModels.length > 0 && (
+              <div>
+                <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-foreground/50">
+                  SSM Models (Local)
+                </div>
+                <div className="space-y-1">
+                  {ssmModels.map((model) => (
+                    <button
+                      key={model.value}
+                      onClick={() => handleModelSelect(model.value)}
+                      className={`w-full rounded-md px-3 py-2 text-left transition-colors ${
+                        selectedModel === model.value
+                          ? "bg-violet-500/20 border border-violet-500/30"
+                          : "hover:bg-white/60 border border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-foreground">
+                          {model.label}
+                        </span>
+                        <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[9px] text-violet-700">
+                          Local
+                        </span>
                       </div>
                       <div className="text-[10px] text-foreground/50 leading-tight">
                         {model.description}
