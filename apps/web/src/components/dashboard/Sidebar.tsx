@@ -378,7 +378,7 @@ export default function Sidebar({
           <img
             src="/logo.png"
             alt="aiuiw"
-            className="h-12 w-auto brightness-90"
+            className="h-8 w-auto brightness-90"
           />
         </div>
 
