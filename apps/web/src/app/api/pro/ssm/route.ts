@@ -17,6 +17,26 @@ import { withDebug } from '@/lib/debug';
 
 // SSM server configuration
 const SSM_SERVER_URL = process.env.SSM_SERVER_URL || 'http://localhost:8000';
+const SSM_AUTH_USER = process.env.SSM_AUTH_USER;
+const SSM_AUTH_PASSWORD = process.env.SSM_AUTH_PASSWORD;
+
+/**
+ * Build headers for SSM server requests
+ * Includes basic auth if credentials are configured (for ngrok tunnels)
+ */
+function getSSMHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // Add basic auth if configured (for ngrok with --basic-auth)
+  if (SSM_AUTH_USER && SSM_AUTH_PASSWORD) {
+    const credentials = Buffer.from(`${SSM_AUTH_USER}:${SSM_AUTH_PASSWORD}`).toString('base64');
+    headers['Authorization'] = `Basic ${credentials}`;
+  }
+
+  return headers;
+}
 
 /**
  * Convert chat messages to a single prompt for SSM
@@ -117,9 +137,7 @@ export const POST = withDebug(async (req, sessionId) => {
 
     const ssmResponse = await fetch(`${SSM_SERVER_URL}/generate`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getSSMHeaders(),
       body: JSON.stringify({
         prompt,
         max_new: 2048,
@@ -203,7 +221,7 @@ export async function GET() {
   try {
     const response = await fetch(`${SSM_SERVER_URL}/health`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getSSMHeaders(),
     });
 
     if (!response.ok) {

@@ -2,15 +2,15 @@
  * Session Manager - Handles session lifecycle with timeout enforcement
  *
  * Security features:
- * - Idle timeout: Auto-logout after 20 minutes of inactivity
+ * - Idle timeout: Auto-logout after 2 hours of inactivity
  * - Absolute timeout: Maximum 24-hour session duration
  * - Session metadata tracking in localStorage
  */
 
 // Session timeout configuration
 export const SESSION_CONFIG = {
-  // Idle timeout: 20 minutes (in milliseconds)
-  IDLE_TIMEOUT_MS: 20 * 60 * 1000,
+  // Idle timeout: 2 hours (in milliseconds)
+  IDLE_TIMEOUT_MS: 2 * 60 * 60 * 1000,
 
   // Absolute timeout: 24 hours (in milliseconds)
   ABSOLUTE_TIMEOUT_MS: 24 * 60 * 60 * 1000,

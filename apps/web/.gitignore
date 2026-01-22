@@ -62,3 +62,9 @@ next-env.d.ts
 # local todo files (not committed)
 TODO.local.md
 *.local.md
+
+# Claude Code context (project-specific, not committed)
+CLAUDE.md
+# Debugpack
+debugpack.config.json
+debug-bundle/
