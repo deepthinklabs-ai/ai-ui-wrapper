@@ -121,7 +121,18 @@
       "Bash(gh secret set:*)",
       "WebFetch(domain:www.vercel-status.com)",
       "WebFetch(domain:www.easycron.com)",
-      "WebFetch(domain:cron-job.org)"
+      "WebFetch(domain:cron-job.org)",
+      "Bash(gh repo view:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx debugpack --help:*)",
+      "Bash(npx debugpack:*)",
+      "Bash(npm show vercel-debugpack version)",
+      "Bash(git rm:*)",
+      "Bash(git check-ignore:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm view:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

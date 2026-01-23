@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ls -la \"C:\\\\dev\\\\ai-ui-wrapper\\\\src\\\\app\\\\auth\"\" 2>/dev/null || echo \"Directory not found \")",
+      "Bash(cat:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(gh api:*)",
+      "Bash(git merge:*)"
+    ]
+  }
+}
