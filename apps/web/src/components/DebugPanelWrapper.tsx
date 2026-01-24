@@ -12,7 +12,7 @@ export default function DebugPanelWrapper() {
   return (
     <DebugPanel
       config={{
-        serverUrl: 'https://e7a1c23faed9.ngrok-free.app'
+        serverUrl: 'https://amara-nonaristocratical-unadulteratedly.ngrok-free.dev'
       }}
     />
   );
