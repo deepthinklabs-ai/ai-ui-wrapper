@@ -83,7 +83,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://api.x.ai https://api.stripe.com https://*.vercel-insights.com https://*.vercel-analytics.com https://secretmanager.googleapis.com https://generativelanguage.googleapis.com https://*.sentry.io https://*.ingest.sentry.io${isPreview ? ' http://localhost:3847 https://*.ngrok-free.app https://*.ngrok-free.dev' : ''}`,
+              `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://api.x.ai https://api.stripe.com https://*.vercel-insights.com https://*.vercel-analytics.com https://secretmanager.googleapis.com https://generativelanguage.googleapis.com https://*.sentry.io https://*.ingest.sentry.io https://state-spacemodel.ngrok.io wss://state-spacemodel.ngrok.io${isPreview ? ' http://localhost:3847 https://*.ngrok-free.app https://*.ngrok-free.dev' : ''}`,
               "media-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
