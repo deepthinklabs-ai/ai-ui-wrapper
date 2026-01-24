@@ -12,7 +12,7 @@ export default function DebugPanelWrapper() {
   return (
     <DebugPanel
       config={{
-        serverUrl: 'https://d2dcfea0125c.ngrok-free.app'
+        serverUrl: 'https://e7a1c23faed9.ngrok-free.app'
       }}
     />
   );
