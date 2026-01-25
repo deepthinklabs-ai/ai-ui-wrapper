@@ -12,7 +12,7 @@ import { AVAILABLE_MODELS, type AIModel, type ModelCapabilities } from './apiKey
  */
 export function getModelCapabilities(model: AIModel): ModelCapabilities {
   const modelInfo = AVAILABLE_MODELS.find(m => m.value === model);
-  return modelInfo?.capabilities || { supportsImages: false, supportsFiles: false };
+  return modelInfo?.capabilities || { supportsImages: false, supportsFiles: false, supportsWebSearch: true };
 }
 
 /**
@@ -27,6 +27,13 @@ export function modelSupportsImages(model: AIModel): boolean {
  */
 export function modelSupportsFiles(model: AIModel): boolean {
   return getModelCapabilities(model).supportsFiles;
+}
+
+/**
+ * Check if a model supports web search
+ */
+export function modelSupportsWebSearch(model: AIModel): boolean {
+  return getModelCapabilities(model).supportsWebSearch;
 }
 
 /**

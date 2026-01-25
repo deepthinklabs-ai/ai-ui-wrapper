@@ -47,6 +47,7 @@ type MessageComposerProps = {
   // Web search toggle
   enableWebSearch?: boolean;
   onToggleWebSearch?: () => void;
+  webSearchDisabled?: boolean; // True when model doesn't support web search
   userTier?: "trial" | "pro" | "expired" | "pending";
   isFeatureEnabled?: (featureId: FeatureId) => boolean;
   // Workflow selection props
@@ -88,6 +89,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   onToggleStepByStepNoExplanation,
   enableWebSearch = true,
   onToggleWebSearch,
+  webSearchDisabled = false,
   userTier,
   isFeatureEnabled,
   workflows = [],
@@ -530,9 +532,13 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
             {onToggleWebSearch && (
               <button
                 onClick={onToggleWebSearch}
-                disabled={disabled}
-                className={`flex items-center gap-2 rounded-md border border-foreground/30 bg-white/60 px-3 py-1.5 text-xs text-foreground hover:bg-white/80 disabled:opacity-60 transition-all`}
-                title={enableWebSearch ? "Web search enabled - AI can search the web for current information" : "Web search disabled - AI will only use its training data"}
+                disabled={disabled || webSearchDisabled}
+                className={`flex items-center gap-2 rounded-md border border-foreground/30 bg-white/60 px-3 py-1.5 text-xs text-foreground hover:bg-white/80 disabled:opacity-60 disabled:cursor-not-allowed transition-all ${webSearchDisabled ? 'opacity-50' : ''}`}
+                title={webSearchDisabled
+                  ? "Web search not available for this model"
+                  : enableWebSearch
+                    ? "Web search enabled - AI can search the web for current information"
+                    : "Web search disabled - AI will only use its training data"}
               >
                 <svg
                   className="h-4 w-4"
@@ -547,7 +553,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                     d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
                   />
                 </svg>
-                {enableWebSearch ? "Web search ON" : "Web search OFF"}
+                {webSearchDisabled ? "Web search N/A" : enableWebSearch ? "Web search ON" : "Web search OFF"}
               </button>
             )}
           </div>
