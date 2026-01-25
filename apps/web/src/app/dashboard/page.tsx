@@ -154,6 +154,13 @@ export default function DashboardPage() {
     }
   }, [webSearchSupported]);
 
+  // Disable web search on mount if current model doesn't support it
+  useEffect(() => {
+    if (!webSearchSupported) {
+      setEnableWebSearch(false);
+    }
+  }, [webSearchSupported]);
+
   // Auto-clear API key on logout for security
   useApiKeyCleanup();
 
