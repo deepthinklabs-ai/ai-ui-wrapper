@@ -28,6 +28,7 @@ import { useBYOKStatus } from "@/hooks/useBYOKStatus";
 import { useChatbots, useChatbotFolders, useActiveChatbot } from "@/app/chatbots/hooks";
 import type { CreateChatbotInput } from "@/types/chatbot";
 import { getSelectedModel, setSelectedModel, type AIModel, AVAILABLE_MODELS } from "@/lib/apiKeyStorage";
+import { modelSupportsWebSearch } from "@/lib/modelCapabilities";
 import { verifySubscriptionWithRetry, RETRY_STRATEGIES } from "@/lib/services/subscriptionService";
 import { supabase } from "@/lib/supabaseClient";
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -136,14 +137,29 @@ export default function DashboardPage() {
   const handleModelChange = useCallback((model: AIModel) => {
     setSelectedModelState(model);
     setSelectedModel(model); // Persist to localStorage
+    // Automatically disable web search for models that don't support it
+    if (!modelSupportsWebSearch(model)) {
+      setEnableWebSearch(false);
+    }
   }, []);
 
 
-  // Web search toggle
-  const [enableWebSearch, setEnableWebSearch] = useState(true);
+  // Web search toggle - initialize based on current model's capability
+  const [enableWebSearch, setEnableWebSearch] = useState(() => modelSupportsWebSearch(getSelectedModel()));
+  const webSearchSupported = modelSupportsWebSearch(selectedModel);
   const toggleWebSearch = useCallback(() => {
-    setEnableWebSearch(prev => !prev);
-  }, []);
+    // Only allow toggling if the model supports web search
+    if (webSearchSupported) {
+      setEnableWebSearch(prev => !prev);
+    }
+  }, [webSearchSupported]);
+
+  // Disable web search on mount if current model doesn't support it
+  useEffect(() => {
+    if (!webSearchSupported) {
+      setEnableWebSearch(false);
+    }
+  }, [webSearchSupported]);
 
   // Auto-clear API key on logout for security
   useApiKeyCleanup();
@@ -1050,6 +1066,7 @@ export default function DashboardPage() {
                   onToggleStepByStepNoExplanation={toggleStepByStepNoExplanation}
                   enableWebSearch={enableWebSearch}
                   onToggleWebSearch={toggleWebSearch}
+                  webSearchDisabled={!webSearchSupported}
                   userTier={tier}
                   isFeatureEnabled={isFeatureEnabled}
                   workflows={workflows}

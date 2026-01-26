@@ -65,6 +65,7 @@ export type ModelProvider = 'openai' | 'claude' | 'grok' | 'gemini' | 'ssm';
 export type ModelCapabilities = {
   supportsImages: boolean;
   supportsFiles: boolean;
+  supportsWebSearch: boolean;
   supportedFileTypes?: string[];
 };
 
@@ -82,7 +83,7 @@ export const AVAILABLE_MODELS: {
     label: 'Claude Sonnet 4.5',
     description: 'Most intelligent Claude model, best for coding and complex agents • Supports images • Web search enabled',
     provider: 'claude',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 200000,
   },
   {
@@ -90,7 +91,7 @@ export const AVAILABLE_MODELS: {
     label: 'Claude Sonnet 4',
     description: 'Powerful model for advanced reasoning and analysis • Supports images • Web search enabled',
     provider: 'claude',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 200000,
   },
   {
@@ -98,7 +99,7 @@ export const AVAILABLE_MODELS: {
     label: 'Claude Opus 4.1',
     description: 'Highest intelligence model for complex tasks and deep analysis • Supports images • Web search enabled',
     provider: 'claude',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 200000,
   },
   {
@@ -106,7 +107,7 @@ export const AVAILABLE_MODELS: {
     label: 'Claude Haiku 4.5',
     description: 'Fast and cost-effective, great balance of speed and capability • Supports images • Web search enabled',
     provider: 'claude',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 200000,
   },
   {
@@ -114,7 +115,7 @@ export const AVAILABLE_MODELS: {
     label: 'Claude Haiku 3.5',
     description: 'Ultra-fast and cheapest Claude option • Supports images • Web search enabled',
     provider: 'claude',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 200000,
   },
   // OpenAI Models (GPT-5.1 generation)
@@ -123,7 +124,7 @@ export const AVAILABLE_MODELS: {
     label: 'GPT-5.1',
     description: 'Latest OpenAI model with adaptive reasoning, best for coding and agentic tasks • Supports images • Web search enabled',
     provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 272000,
   },
   {
@@ -131,7 +132,7 @@ export const AVAILABLE_MODELS: {
     label: 'GPT-5 Mini',
     description: 'Faster and more affordable alternative to GPT-5, great balance of power and performance • Supports images',
     provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 128000,
   },
   {
@@ -139,7 +140,7 @@ export const AVAILABLE_MODELS: {
     label: 'GPT-5 Nano',
     description: 'Fastest and most affordable reasoning model, excels at summarization and classification • Supports images',
     provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 128000,
   },
   {
@@ -147,7 +148,7 @@ export const AVAILABLE_MODELS: {
     label: 'GPT-4o',
     description: 'Previous generation flagship • Supports images • Web search enabled',
     provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 128000,
   },
   {
@@ -155,7 +156,7 @@ export const AVAILABLE_MODELS: {
     label: 'GPT-4o Mini',
     description: 'Fast and cost-efficient GPT-4 variant • Supports images',
     provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 128000,
   },
   {
@@ -163,7 +164,7 @@ export const AVAILABLE_MODELS: {
     label: 'GPT-4 Turbo',
     description: 'Earlier GPT-4 version with extended context • Supports images',
     provider: 'openai',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 128000,
   },
   {
@@ -171,7 +172,7 @@ export const AVAILABLE_MODELS: {
     label: 'GPT-3.5 Turbo',
     description: 'Legacy model, fastest and cheapest • Text only (no images)',
     provider: 'openai',
-    capabilities: { supportsImages: false, supportsFiles: false },
+    capabilities: { supportsImages: false, supportsFiles: false, supportsWebSearch: true },
     contextWindow: 16385,
   },
   // Grok Models (xAI)
@@ -181,7 +182,7 @@ export const AVAILABLE_MODELS: {
     label: 'Grok 4 Fast Reasoning',
     description: 'Grok 4 with reasoning capabilities • 2M context window • Supports images • Live web & X search',
     provider: 'grok',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 2000000,
   },
   {
@@ -189,7 +190,7 @@ export const AVAILABLE_MODELS: {
     label: 'Grok 4 Fast Non-Reasoning',
     description: 'Grok 4 without deep reasoning for faster responses • 2M context window • Supports images • Live web & X search',
     provider: 'grok',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 2000000,
   },
   // Grok 4.1 Fast models
@@ -198,7 +199,7 @@ export const AVAILABLE_MODELS: {
     label: 'Grok 4.1 Fast Reasoning',
     description: 'Frontier multimodal model optimized for high-performance agentic tool calling • Supports images • Live web & X search',
     provider: 'grok',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 131072,
   },
   {
@@ -206,7 +207,7 @@ export const AVAILABLE_MODELS: {
     label: 'Grok 4.1 Fast Non-Reasoning',
     description: 'Fast responses without deep reasoning • Supports images • Live web & X search',
     provider: 'grok',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 131072,
   },
   {
@@ -214,7 +215,7 @@ export const AVAILABLE_MODELS: {
     label: 'Grok Code Fast 1',
     description: 'Optimized for coding tasks with fast response times • Supports images • Live web & X search',
     provider: 'grok',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 256000,
   },
   // Gemini Models (Google)
@@ -223,7 +224,7 @@ export const AVAILABLE_MODELS: {
     label: 'Gemini 2.0 Flash',
     description: 'Google\'s latest multimodal model, fast and capable • Supports images and files',
     provider: 'gemini',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 1000000,
   },
   {
@@ -231,7 +232,7 @@ export const AVAILABLE_MODELS: {
     label: 'Gemini 1.5 Pro',
     description: 'Google\'s powerful model with extended context • Supports images and files',
     provider: 'gemini',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 2000000,
   },
   {
@@ -239,16 +240,16 @@ export const AVAILABLE_MODELS: {
     label: 'Gemini 1.5 Flash',
     description: 'Fast and cost-effective Gemini model • Supports images and files',
     provider: 'gemini',
-    capabilities: { supportsImages: true, supportsFiles: true },
+    capabilities: { supportsImages: true, supportsFiles: true, supportsWebSearch: true },
     contextWindow: 1000000,
   },
   // SSM Models (Local State-Space Models)
   {
     value: 'ssm-agent-v1',
     label: 'SSM Agent (Local)',
-    description: 'Local hierarchical state-space model • Fast inference • Text only',
+    description: 'Local hierarchical state-space model • Fast inference • Text only • No web search',
     provider: 'ssm',
-    capabilities: { supportsImages: false, supportsFiles: false },
+    capabilities: { supportsImages: false, supportsFiles: false, supportsWebSearch: false },
     contextWindow: 8192,
   },
 ];

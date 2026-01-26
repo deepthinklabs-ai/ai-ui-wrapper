@@ -65,6 +65,7 @@ TODO.local.md
 
 # Claude Code context (project-specific, not committed)
 CLAUDE.md
+.claude/settings.local.json
 # Debugpack
 debugpack.config.json
 debug-bundle/

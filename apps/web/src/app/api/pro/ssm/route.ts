@@ -140,7 +140,7 @@ export const POST = withDebug(async (req, sessionId) => {
       headers: getSSMHeaders(),
       body: JSON.stringify({
         prompt,
-        max_new: 2048,
+        max_new: 200,
         temperature: 0.7,
         top_k: 50,
         stop_at_newline: false,
