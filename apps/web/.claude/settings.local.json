@@ -132,7 +132,10 @@
       "Bash(git check-ignore:*)",
       "WebFetch(domain:www.npmjs.com)",
       "Bash(npm view:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(npx vercel-debugpack:*)",
+      "WebFetch(domain:dash.cloudflare.com)",
+      "WebFetch(domain:developers.cloudflare.com)"
     ],
     "deny": [],
     "ask": []

@@ -144,8 +144,8 @@ export default function DashboardPage() {
   }, []);
 
 
-  // Web search toggle
-  const [enableWebSearch, setEnableWebSearch] = useState(true);
+  // Web search toggle - initialize based on current model's capability
+  const [enableWebSearch, setEnableWebSearch] = useState(() => modelSupportsWebSearch(getSelectedModel()));
   const webSearchSupported = modelSupportsWebSearch(selectedModel);
   const toggleWebSearch = useCallback(() => {
     // Only allow toggling if the model supports web search

@@ -12,7 +12,8 @@ import { AVAILABLE_MODELS, type AIModel, type ModelCapabilities } from './apiKey
  */
 export function getModelCapabilities(model: AIModel): ModelCapabilities {
   const modelInfo = AVAILABLE_MODELS.find(m => m.value === model);
-  return modelInfo?.capabilities || { supportsImages: false, supportsFiles: false, supportsWebSearch: true };
+  // Default to false for unknown models (safer default)
+  return modelInfo?.capabilities || { supportsImages: false, supportsFiles: false, supportsWebSearch: false };
 }
 
 /**
