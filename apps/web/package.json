@@ -28,7 +28,7 @@
     "@vercel/functions": "^3.3.4",
     "@xyflow/react": "^12.9.3",
     "googleapis": "^166.0.0",
-    "next": "^16.0.8",
+    "next": "^16.1.6",
     "openai": "^6.10.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
